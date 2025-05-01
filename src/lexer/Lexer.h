@@ -5,27 +5,24 @@
 #include <vector>
 
 enum class TokenType {
-    IDENTIFIER,
-    NUMBER,
-    STRING,
-    PLUS,
-    MINUS,
-    STAR,
-    SLASH,
-    LPAREN,
-    RPAREN,
-    ASSIGN,
-    CLASS,
-    FN,
-    LET,
-    VIRTUAL,
-    OVERRIDE,
-    PRINT,
-    IF,
-    ELSE,
-    WHILE,
-    END_OF_FILE,
-    UNKNOWN
+    // Single-character tokens
+    LPAREN, RPAREN, LBRACE, RBRACE, COMMA, DOT, SEMICOLON,
+    
+    // One or two character tokens
+    PLUS, MINUS, STAR, SLASH, 
+    ASSIGN, EQUAL_EQUAL,
+    BANG, BANG_EQUAL,
+    LESS, LESS_EQUAL,
+    GREATER, GREATER_EQUAL,
+    
+    // Literals
+    IDENTIFIER, NUMBER, STRING,
+    
+    // Keywords
+    CLASS, FN, LET, VIRTUAL, OVERRIDE, PRINT, IF, ELSE, WHILE,
+    
+    // Special
+    END_OF_FILE, UNKNOWN
 };
 
 struct Token {
@@ -45,9 +42,12 @@ private:
     int line;
 
     char advance();
+    bool match(char expected);
     bool isAtEnd();
     char peek();
     char peekNext();
+    void skipWhitespace();
+    
     Token identifier();
     Token number();
     Token string();
