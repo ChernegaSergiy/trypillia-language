@@ -1,7 +1,7 @@
 ﻿#ifndef INTERPRETER_H
 #define INTERPRETER_H
 
-#include "AST.h"
+#include "../ast/AST.h"
 
 class Interpreter {
 public:
