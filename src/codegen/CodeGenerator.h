@@ -1,7 +1,7 @@
 ﻿#ifndef CODE_GENERATOR_H
 #define CODE_GENERATOR_H
 
-#include "AST.h"
+#include "../ast/AST.h"
 
 class CodeGenerator {
 public:
