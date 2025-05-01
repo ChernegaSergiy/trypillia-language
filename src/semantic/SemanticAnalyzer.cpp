@@ -1,23 +1,197 @@
 ﻿#include "SemanticAnalyzer.h"
+#include "../symbol/SymbolTable.h"
+#include "../utils/ErrorHandling.h"
 #include <stdexcept>
+#include <iostream>
 
-void SemanticAnalyzer::analyze(ASTNode* ast) {
-    SymbolTable globalScope;
+class SemanticVisitor : public ASTVisitor {
+private:
+    SymbolTable* currentScope;
     
-    class Visitor : public ASTVisitor {
-        SymbolTable* currentScope;
+public:
+    SemanticVisitor() : currentScope(new SymbolTable()) {}
+    
+    ~SemanticVisitor() {
+        while (currentScope) {
+            SymbolTable* parent = currentScope->parent;
+            delete currentScope;
+            currentScope = parent;
+        }
+    }
+    
+    void visit(ProgramNode* node) override {
+        for (auto& decl : node->declarations) {
+            decl->accept(this);
+        }
+    }
+    
+    void visit(BinaryExpr* node) override {
+        node->left->accept(this);
+        node->right->accept(this);
         
-        void visit(FunctionNode* node) override {
-            currentScope = new SymbolTable(currentScope);
-            // Process parameters
-            for (auto stmt : node->body) {
-                stmt->accept(this);
-            }
-            currentScope = currentScope->parent;
+        // Type checking could be implemented here
+    }
+    
+    void visit(LiteralExpr* node) override {
+        // Nothing to do for literals
+    }
+    
+    void visit(VariableExpr* node) override {
+        Symbol* symbol = currentScope->resolve(node->name.lexeme);
+        if (!symbol) {
+            std::string error = "Undefined variable '" + node->name.lexeme + "'";
+            ErrorHandling::reportError(error);
+        }
+    }
+    
+    void visit(AssignExpr* node) override {
+        node->value->accept(this);
+        
+        Symbol* symbol = currentScope->resolve(node->name.lexeme);
+        if (!symbol) {
+            std::string error = "Undefined variable '" + node->name.lexeme + "'";
+            ErrorHandling::reportError(error);
+        } else if (symbol->isConst) {
+            std::string error = "Cannot assign to const variable '" + node->name.lexeme + "'";
+            ErrorHandling::reportError(error);
+        }
+    }
+    
+    void visit(CallExpr* node) override {
+        node->callee->accept(this);
+        
+        for (auto& arg : node->arguments) {
+            arg->accept(this);
         }
         
-        // Other visit methods...
-    };
+        // Function existence and argument count checks could be added here
+    }
     
-    Visitor().visit(ast);
+    void visit(ExpressionStmt* node) override {
+        node->expression->accept(this);
+    }
+    
+    void visit(PrintStmt* node) override {
+        node->expression->accept(this);
+    }
+    
+    void visit(VarStmt* node) override {
+        if (node->initializer) {
+            node->initializer->accept(this);
+        }
+        
+        Symbol symbol;
+        symbol.name = node->name.lexeme;
+        symbol.type = ""; // Type inference would go here
+        symbol.isConst = false;
+        
+        if (!currentScope->define(symbol)) {
+            std::string error = "Variable '" + node->name.lexeme + "' already defined in this scope";
+            ErrorHandling::reportError(error);
+        }
+    }
+    
+    void visit(BlockStmt* node) override {
+        SymbolTable* enclosingScope = currentScope;
+        currentScope = new SymbolTable(enclosingScope);
+        
+        for (auto& stmt : node->statements) {
+            stmt->accept(this);
+        }
+        
+        SymbolTable* previous = currentScope;
+        currentScope = currentScope->parent;
+        delete previous;
+    }
+    
+    void visit(IfStmt* node) override {
+        node->condition->accept(this);
+        node->thenBranch->accept(this);
+        
+        if (node->elseBranch) {
+            node->elseBranch->accept(this);
+        }
+    }
+    
+    void visit(WhileStmt* node) override {
+        node->condition->accept(this);
+        node->body->accept(this);
+    }
+    
+    void visit(FunctionNode* node) override {
+        // Define the function in the current scope
+        Symbol functionSymbol;
+        functionSymbol.name = node->name;
+        functionSymbol.type = "function";
+        functionSymbol.isConst = true;
+        
+        if (!currentScope->define(functionSymbol)) {
+            std::string error = "Function '" + node->name + "' already defined in this scope";
+            ErrorHandling::reportError(error);
+        }
+        
+        // Create a new scope for the function body
+        SymbolTable* enclosingScope = currentScope;
+        currentScope = new SymbolTable(enclosingScope);
+        
+        // Define parameters in the function scope
+        for (const auto& param : node->params) {
+            Symbol paramSymbol;
+            paramSymbol.name = param;
+            paramSymbol.type = "";
+            paramSymbol.isConst = false;
+            
+            if (!currentScope->define(paramSymbol)) {
+                std::string error = "Parameter '" + param + "' already defined";
+                ErrorHandling::reportError(error);
+            }
+        }
+        
+        // Check the function body
+        for (auto& stmt : node->body) {
+            stmt->accept(this);
+        }
+        
+        // Restore the enclosing scope
+        SymbolTable* previous = currentScope;
+        currentScope = currentScope->parent;
+        delete previous;
+    }
+    
+    void visit(ClassNode* node) override {
+        // Define the class in the current scope
+        Symbol classSymbol;
+        classSymbol.name = node->name;
+        classSymbol.type = "class";
+        classSymbol.isConst = true;
+        
+        if (!currentScope->define(classSymbol)) {
+            std::string error = "Class '" + node->name + "' already defined in this scope";
+            ErrorHandling::reportError(error);
+        }
+        
+        // Create a new scope for the class members
+        SymbolTable* enclosingScope = currentScope;
+        currentScope = new SymbolTable(enclosingScope);
+        
+        // Check each method
+        for (auto& method : node->methods) {
+            method->accept(this);
+        }
+        
+        // Restore the enclosing scope
+        SymbolTable* previous = currentScope;
+        currentScope = currentScope->parent;
+        delete previous;
+    }
+};
+
+void SemanticAnalyzer::analyze(ASTNode* ast) {
+    if (!ast) {
+        ErrorHandling::reportError("AST is null");
+        return;
+    }
+    
+    SemanticVisitor visitor;
+    ast->accept(&visitor);
 }
