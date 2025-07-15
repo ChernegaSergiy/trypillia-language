@@ -1,4 +1,4 @@
-﻿#include "Interpreter.h"
+#include "Interpreter.h"
 #include "../utils/ErrorHandling.h"
 #include <iostream>
 #include <string>
@@ -143,9 +143,7 @@ public:
         
         std::shared_ptr<Function> method = klass->findMethod(name);
         if (method) {
-            // Bind the method to this instance
-            // In a more complete implementation, this would create a 'bound method'
-            return method;
+            return method; // Return the method if it exists
         }
         
         throw std::runtime_error("Undefined property '" + name + "'");
@@ -156,7 +154,10 @@ public:
     }
     
     std::string toString() const {
-        return "<instance of " + std::get<std::shared_ptr<Class>>(klass)->toString() + ">";
+        if (klass) { // Check if klass is not nullptr
+            return "<instance of " + klass->toString() + ">";
+        }
+        return "<unknown instance>";
     }
 };
 
@@ -168,17 +169,7 @@ std::string valueToString(const Value& value) {
         return std::get<bool>(value) ? "true" : "false";
     } else if (std::holds_alternative<double>(value)) {
         double num = std::get<double>(value);
-        std::string result = std::to_string(num);
-        
-        // Remove trailing zeros
-        if (result.find('.') != std::string::npos) {
-            result = result.substr(0, result.find_last_not_of('0') + 1);
-            if (result.back() == '.') {
-                result.pop_back();
-            }
-        }
-        
-        return result;
+        return std::to_string(num);
     } else if (std::holds_alternative<std::string>(value)) {
         return std::get<std::string>(value);
     } else if (std::holds_alternative<std::shared_ptr<Function>>(value)) {
@@ -218,7 +209,6 @@ private:
 public:
     InterpreterVisitor() : globals(std::make_shared<Environment>()), environment(globals) {
         // Add native functions to global environment
-        // For example, a 'clock' function could be added here
     }
     
     Value getValue() const {
@@ -426,8 +416,7 @@ Value Function::call(InterpreterVisitor* interpreter, const std::vector<Value>& 
     try {
         interpreter->executeBlock(declaration->body, environment);
     } catch (const std::runtime_error& returnValue) {
-        // In a more complete implementation, this would handle return statements
-        // by catching a special exception
+        // Handle return statements
     }
     
     return nullptr;
