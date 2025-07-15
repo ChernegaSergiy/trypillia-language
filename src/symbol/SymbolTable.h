@@ -1,4 +1,4 @@
-﻿#ifndef SYMBOL_TABLE_H
+#ifndef SYMBOL_TABLE_H
 #define SYMBOL_TABLE_H
 
 #include <string>
@@ -12,23 +12,18 @@ public:
 };
 
 class SymbolTable {
+private:
     std::unordered_map<std::string, Symbol> symbols;
     SymbolTable* parent;
-    
+
 public:
-    SymbolTable(SymbolTable* parent = nullptr) : parent(parent) {}
-    
-    bool define(const Symbol& symbol) {
-        if (symbols.count(symbol.name)) return false;
-        symbols[symbol.name] = symbol;
-        return true;
-    }
-    
-    Symbol* resolve(const std::string& name) {
-        if (symbols.count(name)) return &symbols[name];
-        if (parent) return parent->resolve(name);
-        return nullptr;
-    }
+    SymbolTable(SymbolTable* parent = nullptr);
+
+    bool define(const Symbol& symbol);
+
+    Symbol* resolve(const std::string& name);
+
+    SymbolTable* getParent() const;
 };
 
 #endif // SYMBOL_TABLE_H
