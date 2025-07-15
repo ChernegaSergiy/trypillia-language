@@ -1,4 +1,4 @@
-﻿#ifndef INTERPRETER_H
+#ifndef INTERPRETER_H
 #define INTERPRETER_H
 
 #include "../ast/AST.h"
