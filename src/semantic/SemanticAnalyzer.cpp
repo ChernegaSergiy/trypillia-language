@@ -1,4 +1,4 @@
-﻿#include "SemanticAnalyzer.h"
+#include "SemanticAnalyzer.h"
 #include "../symbol/SymbolTable.h"
 #include "../utils/ErrorHandling.h"
 #include <stdexcept>
@@ -13,7 +13,7 @@ public:
     
     ~SemanticVisitor() {
         while (currentScope) {
-            SymbolTable* parent = currentScope->parent;
+            SymbolTable* parent = currentScope->getParent();
             delete currentScope;
             currentScope = parent;
         }
@@ -28,7 +28,6 @@ public:
     void visit(BinaryExpr* node) override {
         node->left->accept(this);
         node->right->accept(this);
-        
         // Type checking could be implemented here
     }
     
@@ -63,7 +62,6 @@ public:
         for (auto& arg : node->arguments) {
             arg->accept(this);
         }
-        
         // Function existence and argument count checks could be added here
     }
     
@@ -100,7 +98,7 @@ public:
         }
         
         SymbolTable* previous = currentScope;
-        currentScope = currentScope->parent;
+        currentScope = currentScope->getParent();
         delete previous;
     }
     
@@ -119,7 +117,6 @@ public:
     }
     
     void visit(FunctionNode* node) override {
-        // Define the function in the current scope
         Symbol functionSymbol;
         functionSymbol.name = node->name;
         functionSymbol.type = "function";
@@ -130,11 +127,9 @@ public:
             ErrorHandling::reportError(error);
         }
         
-        // Create a new scope for the function body
         SymbolTable* enclosingScope = currentScope;
         currentScope = new SymbolTable(enclosingScope);
         
-        // Define parameters in the function scope
         for (const auto& param : node->params) {
             Symbol paramSymbol;
             paramSymbol.name = param;
@@ -147,19 +142,16 @@ public:
             }
         }
         
-        // Check the function body
         for (auto& stmt : node->body) {
             stmt->accept(this);
         }
         
-        // Restore the enclosing scope
         SymbolTable* previous = currentScope;
-        currentScope = currentScope->parent;
+        currentScope = currentScope->getParent();
         delete previous;
     }
     
     void visit(ClassNode* node) override {
-        // Define the class in the current scope
         Symbol classSymbol;
         classSymbol.name = node->name;
         classSymbol.type = "class";
@@ -170,18 +162,15 @@ public:
             ErrorHandling::reportError(error);
         }
         
-        // Create a new scope for the class members
         SymbolTable* enclosingScope = currentScope;
         currentScope = new SymbolTable(enclosingScope);
         
-        // Check each method
         for (auto& method : node->methods) {
             method->accept(this);
         }
         
-        // Restore the enclosing scope
         SymbolTable* previous = currentScope;
-        currentScope = currentScope->parent;
+        currentScope = currentScope->getParent();
         delete previous;
     }
 };
