@@ -102,6 +102,9 @@ public:
             case TokenType::BANG:
                 code << "!";
                 break;
+            case TokenType::MINUS:
+                code << "-";
+                break;
             case TokenType::PLUS_PLUS:
                 code << "++";
                 break;

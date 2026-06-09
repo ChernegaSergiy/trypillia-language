@@ -129,6 +129,7 @@ ExprNode* Parser::call() {
 // Unary expressions: !, -, ++, -- etc.
 ExprNode* Parser::unary() {
     if (currentToken.type == TokenType::BANG ||
+        currentToken.type == TokenType::MINUS ||
         currentToken.type == TokenType::PLUS_PLUS ||
         currentToken.type == TokenType::MINUS_MINUS) {
         Token op = currentToken;

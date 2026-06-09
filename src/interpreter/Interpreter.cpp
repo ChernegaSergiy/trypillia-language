@@ -424,6 +424,9 @@ public:
             case TokenType::BANG:
                 lastValue = !isTruthy(lastValue);
                 break;
+            case TokenType::MINUS:
+                lastValue = -asNumber(lastValue);
+                break;
             default:
                 lastValue = nullptr;
                 break;
