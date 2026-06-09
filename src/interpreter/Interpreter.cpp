@@ -334,8 +334,8 @@ public:
             case TokenType::PLUS:
                 if (std::holds_alternative<double>(left) && std::holds_alternative<double>(right)) {
                     lastValue = std::get<double>(left) + std::get<double>(right);
-                } else if (std::holds_alternative<std::string>(left) && std::holds_alternative<std::string>(right)) {
-                    lastValue = std::get<std::string>(left) + std::get<std::string>(right);
+                } else if (std::holds_alternative<std::string>(left) || std::holds_alternative<std::string>(right)) {
+                    lastValue = valueToString(left) + valueToString(right);
                 } else {
                     throw std::runtime_error("Operands must be two numbers or two strings");
                 }
