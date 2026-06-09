@@ -116,6 +116,12 @@ public:
     }
 
     void visit(PostfixExpr* node) override {
+        code << node->name.lexeme;
+        if (node->op.type == TokenType::PLUS_PLUS) {
+            code << "++";
+        } else {
+            code << "--";
+        }
     }
     
     void visit(LiteralExpr* node) override {

@@ -402,6 +402,22 @@ public:
     }
 
     void visit(UnaryExpr* node) override {
+        if (node->op.type == TokenType::PLUS_PLUS || node->op.type == TokenType::MINUS_MINUS) {
+            VariableExpr* var = dynamic_cast<VariableExpr*>(node->right);
+            if (!var) {
+                throw std::runtime_error("Invalid prefix expression target");
+            }
+            double num = asNumber(environment->get(var->name.lexeme));
+            if (node->op.type == TokenType::PLUS_PLUS) {
+                num += 1;
+            } else {
+                num -= 1;
+            }
+            lastValue = num;
+            environment->assign(var->name.lexeme, lastValue);
+            return;
+        }
+
         node->right->accept(this);
 
         switch (node->op.type) {
@@ -415,6 +431,14 @@ public:
     }
 
     void visit(PostfixExpr* node) override {
+        double num = asNumber(environment->get(node->name.lexeme));
+        if (node->op.type == TokenType::PLUS_PLUS) {
+            environment->assign(node->name.lexeme, num + 1);
+            lastValue = num;
+        } else {
+            environment->assign(node->name.lexeme, num - 1);
+            lastValue = num;
+        }
     }
 
     void visit(CallExpr* node) override {

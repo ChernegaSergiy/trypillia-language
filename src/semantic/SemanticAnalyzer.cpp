@@ -70,10 +70,34 @@ public:
     }
 
     void visit(UnaryExpr* node) override {
+        if (node->op.type == TokenType::PLUS_PLUS || node->op.type == TokenType::MINUS_MINUS) {
+            VariableExpr* var = dynamic_cast<VariableExpr*>(node->right);
+            if (!var) {
+                ErrorHandling::reportError("Invalid prefix expression target");
+                return;
+            }
+            Symbol* symbol = currentScope->resolve(var->name.lexeme);
+            if (!symbol) {
+                std::string error = "Undefined variable '" + var->name.lexeme + "'";
+                ErrorHandling::reportError(error);
+            } else if (symbol->isConst) {
+                std::string error = "Cannot modify const variable '" + var->name.lexeme + "'";
+                ErrorHandling::reportError(error);
+            }
+            return;
+        }
         node->right->accept(this);
     }
 
     void visit(PostfixExpr* node) override {
+        Symbol* symbol = currentScope->resolve(node->name.lexeme);
+        if (!symbol) {
+            std::string error = "Undefined variable '" + node->name.lexeme + "'";
+            ErrorHandling::reportError(error);
+        } else if (symbol->isConst) {
+            std::string error = "Cannot modify const variable '" + node->name.lexeme + "'";
+            ErrorHandling::reportError(error);
+        }
     }
 
     void visit(CallExpr* node) override {
