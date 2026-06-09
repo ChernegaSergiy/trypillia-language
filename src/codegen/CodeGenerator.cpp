@@ -81,6 +81,9 @@ public:
             case TokenType::GREATER_EQUAL:
                 code << " >= ";
                 break;
+            case TokenType::AND:
+                code << " && ";
+                break;
             default:
                 ErrorHandling::reportError("Unsupported binary operator");
                 break;

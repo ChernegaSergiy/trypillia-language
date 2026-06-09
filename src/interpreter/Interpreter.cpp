@@ -240,6 +240,16 @@ public:
     }
     
     void visit(BinaryExpr* node) override {
+        // Short-circuit logical operators
+        if (node->op.type == TokenType::AND) {
+            node->left->accept(this);
+            if (!isTruthy(lastValue)) {
+                return;
+            }
+            node->right->accept(this);
+            return;
+        }
+
         node->left->accept(this);
         Value left = lastValue;
         
