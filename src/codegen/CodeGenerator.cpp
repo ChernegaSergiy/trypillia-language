@@ -136,7 +136,16 @@ public:
         node->elseBranch->accept(this);
         code << ")";
     }
-    
+
+    void visit(ThisExpr* node) override {
+    }
+
+    void visit(GetExpr* node) override {
+    }
+
+    void visit(SetExpr* node) override {
+    }
+
     void visit(LiteralExpr* node) override {
         switch (node->value.type) {
             case TokenType::STRING:

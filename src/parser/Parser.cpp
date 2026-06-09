@@ -78,6 +78,12 @@ ExprNode* Parser::primary() {
         return new VariableExpr(name);
     }
     
+    if (currentToken.type == TokenType::THIS) {
+        Token keyword = currentToken;
+        advance();
+        return new ThisExpr(keyword);
+    }
+    
     if (match(TokenType::LPAREN)) {
         ExprNode* expr = expression();
         consume(TokenType::RPAREN);
@@ -109,6 +115,10 @@ ExprNode* Parser::call() {
     while (true) {
         if (match(TokenType::LPAREN)) {
             expr = finishCall(expr);
+        } else if (match(TokenType::DOT)) {
+            Token name = currentToken;
+            consume(TokenType::IDENTIFIER);
+            expr = new GetExpr(expr, name);
         } else if (currentToken.type == TokenType::PLUS_PLUS ||
                    currentToken.type == TokenType::MINUS_MINUS) {
             Token op = currentToken;
@@ -256,6 +266,10 @@ ExprNode* Parser::assignment() {
         if (VariableExpr* varExpr = dynamic_cast<VariableExpr*>(expr)) {
             Token name = varExpr->name;
             return new AssignExpr(name, value);
+        }
+        
+        if (GetExpr* getExpr = dynamic_cast<GetExpr*>(expr)) {
+            return new SetExpr(getExpr->object, getExpr->name, value);
         }
         
         throw std::runtime_error("Invalid assignment target");

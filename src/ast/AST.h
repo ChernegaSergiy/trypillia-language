@@ -52,6 +52,46 @@ public:
     void accept(ASTVisitor* visitor) override;
 };
 
+class ThisExpr : public ExprNode {
+public:
+    Token keyword;
+
+    ThisExpr(Token keyword) : keyword(keyword) {}
+
+    void accept(ASTVisitor* visitor) override;
+};
+
+class GetExpr : public ExprNode {
+public:
+    ExprNode* object;
+    Token name;
+
+    GetExpr(ExprNode* object, Token name) : object(object), name(name) {}
+
+    ~GetExpr() {
+        delete object;
+    }
+
+    void accept(ASTVisitor* visitor) override;
+};
+
+class SetExpr : public ExprNode {
+public:
+    ExprNode* object;
+    Token name;
+    ExprNode* value;
+
+    SetExpr(ExprNode* object, Token name, ExprNode* value)
+        : object(object), name(name), value(value) {}
+
+    ~SetExpr() {
+        delete object;
+        delete value;
+    }
+
+    void accept(ASTVisitor* visitor) override;
+};
+
 class PostfixExpr : public ExprNode {
 public:
     Token name;
@@ -304,6 +344,9 @@ public:
     virtual void visit(IfStmt* node) = 0;
     virtual void visit(WhileStmt* node) = 0;
     virtual void visit(UnaryExpr* node) = 0;
+    virtual void visit(ThisExpr* node) = 0;
+    virtual void visit(GetExpr* node) = 0;
+    virtual void visit(SetExpr* node) = 0;
     virtual void visit(PostfixExpr* node) = 0;
     virtual void visit(TernaryExpr* node) = 0;
     virtual void visit(FunctionNode* node) = 0;

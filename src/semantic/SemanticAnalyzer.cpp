@@ -106,6 +106,15 @@ public:
         node->elseBranch->accept(this);
     }
 
+    void visit(ThisExpr* node) override {
+    }
+
+    void visit(GetExpr* node) override {
+    }
+
+    void visit(SetExpr* node) override {
+    }
+
     void visit(CallExpr* node) override {
         node->callee->accept(this);
         
