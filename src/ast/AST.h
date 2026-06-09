@@ -38,6 +38,20 @@ public:
     void accept(ASTVisitor* visitor) override;
 };
 
+class UnaryExpr : public ExprNode {
+public:
+    Token op;
+    ExprNode* right;
+
+    UnaryExpr(Token op, ExprNode* right) : op(op), right(right) {}
+
+    ~UnaryExpr() {
+        delete right;
+    }
+
+    void accept(ASTVisitor* visitor) override;
+};
+
 class BinaryExpr : public ExprNode {
 public:
     ExprNode* left;
@@ -245,6 +259,7 @@ public:
     virtual void visit(BlockStmt* node) = 0;
     virtual void visit(IfStmt* node) = 0;
     virtual void visit(WhileStmt* node) = 0;
+    virtual void visit(UnaryExpr* node) = 0;
     virtual void visit(FunctionNode* node) = 0;
     virtual void visit(ClassNode* node) = 0;
 };
