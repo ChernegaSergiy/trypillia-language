@@ -601,7 +601,10 @@ public:
             node->body->accept(this);
         }
     }
-    
+
+    void visit(ReturnStmt* node) override {
+    }
+
     void visit(FunctionNode* node) override {
         std::shared_ptr<Function> function = std::make_shared<Function>(node, environment);
         environment->define(node->name, function);

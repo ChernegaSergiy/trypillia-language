@@ -290,6 +290,21 @@ public:
     void accept(ASTVisitor* visitor) override;
 };
 
+class ReturnStmt : public StmtNode {
+public:
+    Token keyword;
+    ExprNode* value;
+
+    ReturnStmt(Token keyword, ExprNode* value)
+        : keyword(keyword), value(value) {}
+
+    ~ReturnStmt() {
+        delete value;
+    }
+
+    void accept(ASTVisitor* visitor) override;
+};
+
 class FunctionNode : public StmtNode {
 public:
     std::string name;
@@ -343,6 +358,7 @@ public:
     virtual void visit(BlockStmt* node) = 0;
     virtual void visit(IfStmt* node) = 0;
     virtual void visit(WhileStmt* node) = 0;
+    virtual void visit(ReturnStmt* node) = 0;
     virtual void visit(UnaryExpr* node) = 0;
     virtual void visit(ThisExpr* node) = 0;
     virtual void visit(GetExpr* node) = 0;

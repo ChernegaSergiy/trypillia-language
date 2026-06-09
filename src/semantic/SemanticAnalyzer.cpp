@@ -182,7 +182,10 @@ public:
         node->condition->accept(this);
         node->body->accept(this);
     }
-    
+
+    void visit(ReturnStmt* node) override {
+    }
+
     void visit(FunctionNode* node) override {
         Symbol functionSymbol;
         functionSymbol.name = node->name;

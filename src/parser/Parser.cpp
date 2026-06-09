@@ -347,6 +347,20 @@ StmtNode* Parser::whileStatement() {
     return new WhileStmt(condition, body);
 }
 
+StmtNode* Parser::returnStatement() {
+    Token keyword = currentToken;
+    advance();
+
+    if (currentToken.type == TokenType::SEMICOLON) {
+        advance();
+        return new ReturnStmt(keyword, nullptr);
+    }
+
+    ExprNode* value = expression();
+    consume(TokenType::SEMICOLON);
+    return new ReturnStmt(keyword, value);
+}
+
 StmtNode* Parser::statement() {
     if (match(TokenType::IF)) {
         return ifStatement();
@@ -358,6 +372,10 @@ StmtNode* Parser::statement() {
     
     if (match(TokenType::WHILE)) {
         return whileStatement();
+    }
+    
+    if (currentToken.type == TokenType::RETURN) {
+        return returnStatement();
     }
     
     if (match(TokenType::LBRACE)) {
