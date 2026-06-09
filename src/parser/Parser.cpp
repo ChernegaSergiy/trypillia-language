@@ -60,12 +60,16 @@ ASTNode* Parser::parse() {
 
 // Primary expressions: literals, identifiers, grouped expressions
 ExprNode* Parser::primary() {
-    if (match(TokenType::NUMBER) || match(TokenType::STRING)) {
-        return new LiteralExpr(currentToken);
+    if (currentToken.type == TokenType::NUMBER || currentToken.type == TokenType::STRING) {
+        Token literal = currentToken;
+        advance();
+        return new LiteralExpr(literal);
     }
     
-    if (match(TokenType::IDENTIFIER)) {
-        return new VariableExpr(currentToken);
+    if (currentToken.type == TokenType::IDENTIFIER) {
+        Token name = currentToken;
+        advance();
+        return new VariableExpr(name);
     }
     
     if (match(TokenType::LPAREN)) {
@@ -117,7 +121,7 @@ ExprNode* Parser::unary() {
 ExprNode* Parser::factor() {
     ExprNode* expr = unary();
     
-    while (match({TokenType::STAR, TokenType::SLASH})) {
+    while (currentToken.type == TokenType::STAR || currentToken.type == TokenType::SLASH) {
         Token op = currentToken;
         advance();
         ExprNode* right = unary();
@@ -131,7 +135,7 @@ ExprNode* Parser::factor() {
 ExprNode* Parser::term() {
     ExprNode* expr = factor();
     
-    while (match({TokenType::PLUS, TokenType::MINUS})) {
+    while (currentToken.type == TokenType::PLUS || currentToken.type == TokenType::MINUS) {
         Token op = currentToken;
         advance();
         ExprNode* right = factor();
@@ -157,8 +161,9 @@ ExprNode* Parser::equality() {
 ExprNode* Parser::assignment() {
     ExprNode* expr = equality();
     
-    if (match(TokenType::ASSIGN)) {
+    if (currentToken.type == TokenType::ASSIGN) {
         Token equals = currentToken;
+        advance();
         ExprNode* value = assignment();
         
         if (VariableExpr* varExpr = dynamic_cast<VariableExpr*>(expr)) {
@@ -194,7 +199,7 @@ StmtNode* Parser::block() {
     std::vector<StmtNode*> statements;
     
     while (currentToken.type != TokenType::RBRACE && currentToken.type != TokenType::END_OF_FILE) {
-        statements.push_back(declaration());
+        statements.push_back(dynamic_cast<StmtNode*>(declaration()));
     }
     
     consume(TokenType::RBRACE);
@@ -259,9 +264,7 @@ StmtNode* Parser::varDeclaration() {
     return new VarStmt(name, initializer);
 }
 
-FunctionNode* Parser::parseFunction() {
-    consume(TokenType::FN);
-    
+FunctionNode* Parser::parseFunction() {    
     Token name = currentToken;
     consume(TokenType::IDENTIFIER);
     
@@ -283,7 +286,7 @@ FunctionNode* Parser::parseFunction() {
     std::vector<StmtNode*> body;
     
     while (currentToken.type != TokenType::RBRACE && currentToken.type != TokenType::END_OF_FILE) {
-        body.push_back(declaration());
+        body.push_back(dynamic_cast<StmtNode*>(declaration()));
     }
     
     consume(TokenType::RBRACE);
@@ -291,9 +294,7 @@ FunctionNode* Parser::parseFunction() {
     return new FunctionNode(name.lexeme, parameters, body);
 }
 
-ClassNode* Parser::parseClass() {
-    consume(TokenType::CLASS);
-    
+ClassNode* Parser::parseClass() {    
     Token name = currentToken;
     consume(TokenType::IDENTIFIER);
     
