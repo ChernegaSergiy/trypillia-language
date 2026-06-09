@@ -138,12 +138,18 @@ public:
     }
 
     void visit(ThisExpr* node) override {
+        code << "this";
     }
 
     void visit(GetExpr* node) override {
+        node->object->accept(this);
+        code << "." << node->name.lexeme;
     }
 
     void visit(SetExpr* node) override {
+        node->object->accept(this);
+        code << "." << node->name.lexeme << " = ";
+        node->value->accept(this);
     }
 
     void visit(LiteralExpr* node) override {

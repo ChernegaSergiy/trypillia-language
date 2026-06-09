@@ -107,12 +107,20 @@ public:
     }
 
     void visit(ThisExpr* node) override {
+        Symbol* symbol = currentScope->resolve("this");
+        if (!symbol) {
+            std::string error = "'this' can only be used inside a method";
+            ErrorHandling::reportError(error);
+        }
     }
 
     void visit(GetExpr* node) override {
+        node->object->accept(this);
     }
 
     void visit(SetExpr* node) override {
+        node->object->accept(this);
+        node->value->accept(this);
     }
 
     void visit(CallExpr* node) override {
@@ -223,6 +231,12 @@ public:
         
         SymbolTable* enclosingScope = currentScope;
         currentScope = new SymbolTable(enclosingScope);
+
+        Symbol thisSymbol;
+        thisSymbol.name = "this";
+        thisSymbol.type = "instance";
+        thisSymbol.isConst = true;
+        currentScope->define(thisSymbol);
         
         for (auto& method : node->methods) {
             method->accept(this);
