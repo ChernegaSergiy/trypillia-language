@@ -340,6 +340,38 @@ public:
     }
 
     void visit(CompoundAssignExpr* node) override {
+        Value left = environment->get(node->name.lexeme);
+        node->value->accept(this);
+        Value right = lastValue;
+
+        switch (node->op.type) {
+            case TokenType::PLUS_EQUAL:
+                if (std::holds_alternative<double>(left) && std::holds_alternative<double>(right)) {
+                    lastValue = std::get<double>(left) + std::get<double>(right);
+                } else if (std::holds_alternative<std::string>(left) && std::holds_alternative<std::string>(right)) {
+                    lastValue = std::get<std::string>(left) + std::get<std::string>(right);
+                } else {
+                    throw std::runtime_error("Operands must be two numbers or two strings");
+                }
+                break;
+            case TokenType::MINUS_EQUAL:
+                lastValue = asNumber(left) - asNumber(right);
+                break;
+            case TokenType::STAR_EQUAL:
+                lastValue = asNumber(left) * asNumber(right);
+                break;
+            case TokenType::SLASH_EQUAL:
+                if (asNumber(right) == 0) {
+                    throw std::runtime_error("Division by zero");
+                }
+                lastValue = asNumber(left) / asNumber(right);
+                break;
+            default:
+                lastValue = nullptr;
+                break;
+        }
+
+        environment->assign(node->name.lexeme, lastValue);
     }
 
     void visit(UnaryExpr* node) override {

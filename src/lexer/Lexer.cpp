@@ -65,7 +65,9 @@ Token Lexer::nextToken() {
                 return {TokenType::STAR, "*", line};
             }
         case '/': 
-            if (match('/')) {
+            if (match('=')) {
+                return {TokenType::SLASH_EQUAL, "/=", line};
+            } else if (match('/')) {
                 // Comment extends to the end of the line
                 while (peek() != '\n' && !isAtEnd()) {
                     advance();

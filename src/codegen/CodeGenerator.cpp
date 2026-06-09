@@ -127,10 +127,28 @@ public:
     void visit(AssignExpr* node) override {
         code << node->name.lexeme << " = ";
         node->value->accept(this);
-        code << ";";
     }
 
     void visit(CompoundAssignExpr* node) override {
+        code << node->name.lexeme << " ";
+        switch (node->op.type) {
+            case TokenType::PLUS_EQUAL:
+                code << "+";
+                break;
+            case TokenType::MINUS_EQUAL:
+                code << "-";
+                break;
+            case TokenType::STAR_EQUAL:
+                code << "*";
+                break;
+            case TokenType::SLASH_EQUAL:
+                code << "/";
+                break;
+            default:
+                break;
+        }
+        code << "= ";
+        node->value->accept(this);
     }
     
     void visit(CallExpr* node) override {

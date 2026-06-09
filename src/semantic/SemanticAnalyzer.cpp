@@ -57,6 +57,16 @@ public:
     }
 
     void visit(CompoundAssignExpr* node) override {
+        node->value->accept(this);
+
+        Symbol* symbol = currentScope->resolve(node->name.lexeme);
+        if (!symbol) {
+            std::string error = "Undefined variable '" + node->name.lexeme + "'";
+            ErrorHandling::reportError(error);
+        } else if (symbol->isConst) {
+            std::string error = "Cannot assign to const variable '" + node->name.lexeme + "'";
+            ErrorHandling::reportError(error);
+        }
     }
 
     void visit(UnaryExpr* node) override {
