@@ -1,5 +1,6 @@
 #include "Interpreter.h"
 #include "../utils/ErrorHandling.h"
+#include <stdexcept>
 #include <iostream>
 #include <string>
 #include <variant>
@@ -61,6 +62,15 @@ public:
         
         throw std::runtime_error("Undefined variable '" + name + "'");
     }
+};
+
+// Return exception for flow control
+class ReturnException : public std::runtime_error {
+public:
+    Value value;
+
+    ReturnException(const Value& value)
+        : std::runtime_error("return"), value(value) {}
 };
 
 // Forward declaration of the interpreter visitor
@@ -603,6 +613,12 @@ public:
     }
 
     void visit(ReturnStmt* node) override {
+        Value value = nullptr;
+        if (node->value != nullptr) {
+            node->value->accept(this);
+            value = lastValue;
+        }
+        throw ReturnException(value);
     }
 
     void visit(FunctionNode* node) override {
@@ -634,8 +650,8 @@ Value Function::call(InterpreterVisitor* interpreter, const std::vector<Value>& 
     
     try {
         interpreter->executeBlock(declaration->body, environment);
-    } catch (const std::runtime_error& returnValue) {
-        // Handle return statements
+    } catch (const ReturnException& returnValue) {
+        return returnValue.value;
     }
     
     return nullptr;
@@ -652,7 +668,8 @@ Value BoundMethod::call(InterpreterVisitor* interpreter, const std::vector<Value
 
     try {
         interpreter->executeBlock(method->getDeclaration()->body, environment);
-    } catch (const std::runtime_error& returnValue) {
+    } catch (const ReturnException& returnValue) {
+        return returnValue.value;
     }
 
     return nullptr;

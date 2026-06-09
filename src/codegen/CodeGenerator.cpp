@@ -295,6 +295,13 @@ public:
     }
 
     void visit(ReturnStmt* node) override {
+        indent();
+        code << "return";
+        if (node->value != nullptr) {
+            code << " ";
+            node->value->accept(this);
+        }
+        code << ";\n";
     }
 
     void visit(FunctionNode* node) override {

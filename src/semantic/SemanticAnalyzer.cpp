@@ -184,6 +184,9 @@ public:
     }
 
     void visit(ReturnStmt* node) override {
+        if (node->value != nullptr) {
+            node->value->accept(this);
+        }
     }
 
     void visit(FunctionNode* node) override {
