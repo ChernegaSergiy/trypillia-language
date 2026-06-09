@@ -202,8 +202,8 @@ double asNumber(const Value& value) {
 // Interpreter implementation
 class InterpreterVisitor : public ASTVisitor {
 private:
-    std::shared_ptr<Environment> environment;
     std::shared_ptr<Environment> globals;
+    std::shared_ptr<Environment> environment;
     Value lastValue;
     
 public:
