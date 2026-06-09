@@ -13,11 +13,12 @@
 class Function;
 class Class;
 class Instance;
+class BoundMethod;
 
 // Value type for the interpreter
 using Value = std::variant<std::nullptr_t, bool, double, std::string, 
                            std::shared_ptr<Function>, std::shared_ptr<Class>, 
-                           std::shared_ptr<Instance>>;
+                           std::shared_ptr<Instance>, std::shared_ptr<BoundMethod>>;
 
 // Environment for variable storage
 class Environment {
@@ -89,8 +90,32 @@ public:
     
     Value call(InterpreterVisitor* interpreter, const std::vector<Value>& arguments) override;
     
+    std::shared_ptr<Environment> getClosure() const { return closure; }
+    FunctionNode* getDeclaration() const { return declaration; }
+    
     std::string toString() const {
         return "<fn " + declaration->name + ">";
+    }
+};
+
+// Bound method — binds an instance to a method
+class BoundMethod : public Callable {
+private:
+    std::shared_ptr<Instance> receiver;
+    std::shared_ptr<Function> method;
+
+public:
+    BoundMethod(std::shared_ptr<Instance> receiver, std::shared_ptr<Function> method)
+        : receiver(receiver), method(method) {}
+
+    int arity() const override {
+        return method->arity();
+    }
+
+    Value call(InterpreterVisitor* interpreter, const std::vector<Value>& arguments) override;
+
+    std::string toString() const {
+        return "<bound method>";
     }
 };
 
@@ -128,7 +153,7 @@ public:
 };
 
 // Class instance implementation
-class Instance {
+class Instance : public std::enable_shared_from_this<Instance> {
 private:
     std::shared_ptr<Class> klass;
     std::unordered_map<std::string, Value> fields;
@@ -144,7 +169,7 @@ public:
         
         std::shared_ptr<Function> method = klass->findMethod(name);
         if (method) {
-            return method; // Return the method if it exists
+            return std::make_shared<BoundMethod>(shared_from_this(), method);
         }
         
         throw std::runtime_error("Undefined property '" + name + "'");
@@ -179,6 +204,8 @@ std::string valueToString(const Value& value) {
         return std::get<std::shared_ptr<Class>>(value)->toString();
     } else if (std::holds_alternative<std::shared_ptr<Instance>>(value)) {
         return std::get<std::shared_ptr<Instance>>(value)->toString();
+    } else if (std::holds_alternative<std::shared_ptr<BoundMethod>>(value)) {
+        return std::get<std::shared_ptr<BoundMethod>>(value)->toString();
     }
     
     return "unknown";
@@ -454,12 +481,31 @@ public:
     }
 
     void visit(ThisExpr* node) override {
+        lastValue = environment->get("this");
     }
 
     void visit(GetExpr* node) override {
+        node->object->accept(this);
+        Value object = lastValue;
+
+        if (std::holds_alternative<std::shared_ptr<Instance>>(object)) {
+            auto instance = std::get<std::shared_ptr<Instance>>(object);
+            lastValue = instance->get(node->name.lexeme);
+        } else {
+            throw std::runtime_error("Only instances have properties");
+        }
     }
 
     void visit(SetExpr* node) override {
+        node->object->accept(this);
+        Value object = lastValue;
+
+        if (!std::holds_alternative<std::shared_ptr<Instance>>(object)) {
+            throw std::runtime_error("Only instances have properties");
+        }
+
+        node->value->accept(this);
+        std::get<std::shared_ptr<Instance>>(object)->set(node->name.lexeme, lastValue);
     }
 
     void visit(CallExpr* node) override {
@@ -494,6 +540,17 @@ public:
             }
             
             lastValue = klass->call(this, arguments);
+        } else if (std::holds_alternative<std::shared_ptr<BoundMethod>>(callee)) {
+            auto bound = std::get<std::shared_ptr<BoundMethod>>(callee);
+
+            if (arguments.size() != bound->arity()) {
+                throw std::runtime_error("Expected " +
+                                        std::to_string(bound->arity()) +
+                                        " arguments but got " +
+                                        std::to_string(arguments.size()));
+            }
+
+            lastValue = bound->call(this, arguments);
         } else {
             throw std::runtime_error("Can only call functions and classes");
         }
@@ -581,6 +638,23 @@ Value Function::call(InterpreterVisitor* interpreter, const std::vector<Value>& 
     return nullptr;
 }
 
+// Implementation of BoundMethod::call that depends on InterpreterVisitor
+Value BoundMethod::call(InterpreterVisitor* interpreter, const std::vector<Value>& arguments) {
+    std::shared_ptr<Environment> environment = std::make_shared<Environment>(method->getClosure());
+    environment->define("this", receiver);
+
+    for (size_t i = 0; i < method->getDeclaration()->params.size(); i++) {
+        environment->define(method->getDeclaration()->params[i], arguments[i]);
+    }
+
+    try {
+        interpreter->executeBlock(method->getDeclaration()->body, environment);
+    } catch (const std::runtime_error& returnValue) {
+    }
+
+    return nullptr;
+}
+
 // Implementation of Class::call that depends on InterpreterVisitor
 Value Class::call(InterpreterVisitor* interpreter, const std::vector<Value>& arguments) {
     std::shared_ptr<Instance> instance = std::make_shared<Instance>(std::make_shared<Class>(*this));
@@ -588,7 +662,8 @@ Value Class::call(InterpreterVisitor* interpreter, const std::vector<Value>& arg
     // Call the initializer if it exists
     std::shared_ptr<Function> initializer = findMethod("init");
     if (initializer) {
-        initializer->call(interpreter, arguments);
+        std::shared_ptr<BoundMethod> boundInit = std::make_shared<BoundMethod>(instance, initializer);
+        boundInit->call(interpreter, arguments);
     }
     
     return instance;
