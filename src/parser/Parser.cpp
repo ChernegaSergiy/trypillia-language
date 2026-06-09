@@ -113,7 +113,13 @@ ExprNode* Parser::call() {
 
 // Unary expressions: !, -, etc.
 ExprNode* Parser::unary() {
-    // For now, we don't implement unary operators
+    if (currentToken.type == TokenType::BANG) {
+        Token op = currentToken;
+        advance();
+        ExprNode* right = unary();
+        return new UnaryExpr(op, right);
+    }
+
     return call();
 }
 
@@ -147,14 +153,34 @@ ExprNode* Parser::term() {
 
 // Comparison operators (>, <, >=, <=)
 ExprNode* Parser::comparison() {
-    // This would implement comparison operators, but for simplicity, we'll skip to the next level
-    return term();
+    ExprNode* expr = term();
+
+    while (currentToken.type == TokenType::GREATER ||
+           currentToken.type == TokenType::GREATER_EQUAL ||
+           currentToken.type == TokenType::LESS ||
+           currentToken.type == TokenType::LESS_EQUAL) {
+        Token op = currentToken;
+        advance();
+        ExprNode* right = term();
+        expr = new BinaryExpr(expr, op, right);
+    }
+
+    return expr;
 }
 
 // Equality operators (==, !=)
 ExprNode* Parser::equality() {
-    // This would implement equality operators, but for simplicity, we'll skip to the next level
-    return comparison();
+    ExprNode* expr = comparison();
+
+    while (currentToken.type == TokenType::BANG_EQUAL ||
+           currentToken.type == TokenType::EQUAL_EQUAL) {
+        Token op = currentToken;
+        advance();
+        ExprNode* right = comparison();
+        expr = new BinaryExpr(expr, op, right);
+    }
+
+    return expr;
 }
 
 // Assignment expressions
