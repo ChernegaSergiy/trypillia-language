@@ -106,6 +106,10 @@ void ForStmt::accept(ASTVisitor* visitor) {
     visitor->visit(this);
 }
 
+void ForeachStmt::accept(ASTVisitor* visitor) {
+    visitor->visit(this);
+}
+
 void FunctionNode::accept(ASTVisitor* visitor) {
     visitor->visit(this);
 }

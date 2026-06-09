@@ -401,28 +401,42 @@ StmtNode* Parser::forStatement() {
     
     consume(TokenType::LPAREN);
     
-    // Initializer
-    StmtNode* initializer = nullptr;
-    if (currentToken.type == TokenType::SEMICOLON) {
-        advance(); // no initializer
-    } else if (currentToken.type == TokenType::LET) {
-        advance(); // consume LET
+    // Check for foreach: for (let x in iterable)
+    if (match(TokenType::LET)) {
         Token name = currentToken;
         consume(TokenType::IDENTIFIER);
         
+        if (match(TokenType::IN)) {
+            ExprNode* iterable = expression();
+            consume(TokenType::RPAREN);
+            StmtNode* body = statement();
+            return new ForeachStmt(name, iterable, body);
+        }
+        
+        // Regular for with var initializer
         ExprNode* initExpr = nullptr;
         if (match(TokenType::ASSIGN)) {
             initExpr = expression();
         }
         
-        initializer = new VarStmt(name, initExpr);
+        StmtNode* initializer = new VarStmt(name, initExpr);
         consume(TokenType::SEMICOLON);
+        return finishForLoop(initializer);
+    }
+    
+    // Regular for without var initializer
+    StmtNode* initializer = nullptr;
+    if (currentToken.type == TokenType::SEMICOLON) {
+        advance(); // no initializer
     } else {
         ExprNode* expr = expression();
         initializer = new ExpressionStmt(expr);
-        consume(TokenType::SEMICOLON);
     }
-    
+    consume(TokenType::SEMICOLON);
+    return finishForLoop(initializer);
+}
+
+StmtNode* Parser::finishForLoop(StmtNode* initializer) {
     // Condition (optional, default true)
     ExprNode* condition = nullptr;
     if (currentToken.type != TokenType::SEMICOLON) {

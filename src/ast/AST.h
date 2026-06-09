@@ -390,6 +390,23 @@ public:
     void accept(ASTVisitor* visitor) override;
 };
 
+class ForeachStmt : public StmtNode {
+public:
+    Token name;
+    ExprNode* iterable;
+    StmtNode* body;
+
+    ForeachStmt(Token name, ExprNode* iterable, StmtNode* body)
+        : name(name), iterable(iterable), body(body) {}
+
+    ~ForeachStmt() {
+        delete iterable;
+        delete body;
+    }
+
+    void accept(ASTVisitor* visitor) override;
+};
+
 class FunctionNode : public StmtNode {
 public:
     std::string name;
@@ -447,6 +464,7 @@ public:
     virtual void visit(BreakStmt* node) = 0;
     virtual void visit(ContinueStmt* node) = 0;
     virtual void visit(ForStmt* node) = 0;
+    virtual void visit(ForeachStmt* node) = 0;
     virtual void visit(UnaryExpr* node) = 0;
     virtual void visit(ThisExpr* node) = 0;
     virtual void visit(GetExpr* node) = 0;

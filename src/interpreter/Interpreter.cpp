@@ -753,6 +753,9 @@ public:
         }
     }
 
+    void visit(ForeachStmt* node) override {
+    }
+
     void visit(FunctionNode* node) override {
         std::shared_ptr<Function> function = std::make_shared<Function>(node, environment);
         environment->define(node->name, function);

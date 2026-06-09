@@ -225,6 +225,9 @@ public:
         node->body->accept(this);
     }
 
+    void visit(ForeachStmt* node) override {
+    }
+
     void visit(FunctionNode* node) override {
         Symbol functionSymbol;
         functionSymbol.name = node->name;

@@ -357,6 +357,9 @@ public:
         node->body->accept(this);
     }
 
+    void visit(ForeachStmt* node) override {
+    }
+
     void visit(FunctionNode* node) override {
         // In a real compiler, we would determine the return type
         // For now, we'll just use 'auto'
