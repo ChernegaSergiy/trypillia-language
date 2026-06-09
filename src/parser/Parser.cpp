@@ -264,7 +264,9 @@ StmtNode* Parser::varDeclaration() {
     return new VarStmt(name, initializer);
 }
 
-FunctionNode* Parser::parseFunction() {    
+FunctionNode* Parser::parseFunction() {
+    consume(TokenType::FN);
+    
     Token name = currentToken;
     consume(TokenType::IDENTIFIER);
     
@@ -294,7 +296,9 @@ FunctionNode* Parser::parseFunction() {
     return new FunctionNode(name.lexeme, parameters, body);
 }
 
-ClassNode* Parser::parseClass() {    
+ClassNode* Parser::parseClass() {
+    consume(TokenType::CLASS);
+    
     Token name = currentToken;
     consume(TokenType::IDENTIFIER);
     
@@ -317,15 +321,16 @@ ClassNode* Parser::parseClass() {
 }
 
 ASTNode* Parser::declaration() {
-    if (match(TokenType::CLASS)) {
+    if (currentToken.type == TokenType::CLASS) {
         return parseClass();
     }
     
-    if (match(TokenType::FN)) {
+    if (currentToken.type == TokenType::FN) {
         return parseFunction();
     }
     
-    if (match(TokenType::LET)) {
+    if (currentToken.type == TokenType::LET) {
+        advance();
         return varDeclaration();
     }
     
