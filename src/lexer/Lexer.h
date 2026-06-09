@@ -16,6 +16,9 @@ enum class TokenType {
     LESS, LESS_EQUAL,
     GREATER, GREATER_EQUAL,
     
+    // Logical operators
+    AND, OR,
+    
     // Literals
     IDENTIFIER, NUMBER, STRING,
     

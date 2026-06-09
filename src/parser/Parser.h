@@ -25,6 +25,8 @@ private:
     // Expression parsing methods
     ExprNode* expression();
     ExprNode* assignment();
+    ExprNode* orExpr();
+    ExprNode* andExpr();
     ExprNode* equality();
     ExprNode* comparison();
     ExprNode* term();

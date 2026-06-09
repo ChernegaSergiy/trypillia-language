@@ -102,6 +102,18 @@ Token Lexer::nextToken() {
                 return {TokenType::GREATER, ">", line};
             }
         case '"': return string();
+        case '&':
+            if (match('&')) {
+                return {TokenType::AND, "&&", line};
+            } else {
+                return {TokenType::UNKNOWN, "&", line};
+            }
+        case '|':
+            if (match('|')) {
+                return {TokenType::OR, "||", line};
+            } else {
+                return {TokenType::UNKNOWN, "|", line};
+            }
     }
     
     return {TokenType::UNKNOWN, std::string(1, c), line};
