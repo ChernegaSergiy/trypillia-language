@@ -305,6 +305,24 @@ public:
     void accept(ASTVisitor* visitor) override;
 };
 
+class BreakStmt : public StmtNode {
+public:
+    Token keyword;
+
+    BreakStmt(Token keyword) : keyword(keyword) {}
+
+    void accept(ASTVisitor* visitor) override;
+};
+
+class ContinueStmt : public StmtNode {
+public:
+    Token keyword;
+
+    ContinueStmt(Token keyword) : keyword(keyword) {}
+
+    void accept(ASTVisitor* visitor) override;
+};
+
 class ForStmt : public StmtNode {
 public:
     StmtNode* initializer;
@@ -379,6 +397,8 @@ public:
     virtual void visit(IfStmt* node) = 0;
     virtual void visit(WhileStmt* node) = 0;
     virtual void visit(ReturnStmt* node) = 0;
+    virtual void visit(BreakStmt* node) = 0;
+    virtual void visit(ContinueStmt* node) = 0;
     virtual void visit(ForStmt* node) = 0;
     virtual void visit(UnaryExpr* node) = 0;
     virtual void visit(ThisExpr* node) = 0;

@@ -304,6 +304,16 @@ public:
         code << ";\n";
     }
 
+    void visit(BreakStmt* node) override {
+        indent();
+        code << "break;\n";
+    }
+
+    void visit(ContinueStmt* node) override {
+        indent();
+        code << "continue;\n";
+    }
+
     void visit(ForStmt* node) override {
         indent();
         code << "for (";

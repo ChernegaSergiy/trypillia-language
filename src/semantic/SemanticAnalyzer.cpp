@@ -189,6 +189,12 @@ public:
         }
     }
 
+    void visit(BreakStmt* node) override {
+    }
+
+    void visit(ContinueStmt* node) override {
+    }
+
     void visit(ForStmt* node) override {
         if (node->initializer != nullptr) {
             node->initializer->accept(this);

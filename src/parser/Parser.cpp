@@ -361,6 +361,20 @@ StmtNode* Parser::returnStatement() {
     return new ReturnStmt(keyword, value);
 }
 
+StmtNode* Parser::breakStatement() {
+    Token keyword = currentToken;
+    advance();
+    consume(TokenType::SEMICOLON);
+    return new BreakStmt(keyword);
+}
+
+StmtNode* Parser::continueStatement() {
+    Token keyword = currentToken;
+    advance();
+    consume(TokenType::SEMICOLON);
+    return new ContinueStmt(keyword);
+}
+
 StmtNode* Parser::forStatement() {
     advance(); // consume FOR
     
@@ -422,6 +436,14 @@ StmtNode* Parser::statement() {
     
     if (currentToken.type == TokenType::RETURN) {
         return returnStatement();
+    }
+    
+    if (currentToken.type == TokenType::BREAK) {
+        return breakStatement();
+    }
+    
+    if (currentToken.type == TokenType::CONTINUE) {
+        return continueStatement();
     }
     
     if (currentToken.type == TokenType::FOR) {

@@ -82,6 +82,14 @@ void ReturnStmt::accept(ASTVisitor* visitor) {
     visitor->visit(this);
 }
 
+void BreakStmt::accept(ASTVisitor* visitor) {
+    visitor->visit(this);
+}
+
+void ContinueStmt::accept(ASTVisitor* visitor) {
+    visitor->visit(this);
+}
+
 void ForStmt::accept(ASTVisitor* visitor) {
     visitor->visit(this);
 }

@@ -46,6 +46,8 @@ private:
     StmtNode* whileStatement();
     StmtNode* forStatement();
     StmtNode* returnStatement();
+    StmtNode* breakStatement();
+    StmtNode* continueStatement();
 
     // Declaration parsing methods
     ASTNode* declaration();
