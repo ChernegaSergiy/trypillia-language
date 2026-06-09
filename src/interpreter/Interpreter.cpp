@@ -622,6 +622,24 @@ public:
     }
 
     void visit(ForStmt* node) override {
+        if (node->initializer != nullptr) {
+            node->initializer->accept(this);
+        }
+
+        while (true) {
+            if (node->condition != nullptr) {
+                node->condition->accept(this);
+                if (!isTruthy(lastValue)) {
+                    break;
+                }
+            }
+
+            node->body->accept(this);
+
+            if (node->increment != nullptr) {
+                node->increment->accept(this);
+            }
+        }
     }
 
     void visit(FunctionNode* node) override {

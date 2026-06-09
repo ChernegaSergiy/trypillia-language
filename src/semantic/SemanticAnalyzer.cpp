@@ -190,6 +190,16 @@ public:
     }
 
     void visit(ForStmt* node) override {
+        if (node->initializer != nullptr) {
+            node->initializer->accept(this);
+        }
+        if (node->condition != nullptr) {
+            node->condition->accept(this);
+        }
+        if (node->increment != nullptr) {
+            node->increment->accept(this);
+        }
+        node->body->accept(this);
     }
 
     void visit(FunctionNode* node) override {

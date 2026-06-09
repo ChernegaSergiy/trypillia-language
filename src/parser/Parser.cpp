@@ -371,9 +371,21 @@ StmtNode* Parser::forStatement() {
     if (currentToken.type == TokenType::SEMICOLON) {
         advance(); // no initializer
     } else if (currentToken.type == TokenType::LET) {
-        initializer = varDeclaration();
+        advance(); // consume LET
+        Token name = currentToken;
+        consume(TokenType::IDENTIFIER);
+        
+        ExprNode* initExpr = nullptr;
+        if (match(TokenType::ASSIGN)) {
+            initExpr = expression();
+        }
+        
+        initializer = new VarStmt(name, initExpr);
+        consume(TokenType::SEMICOLON);
     } else {
-        initializer = expressionStatement();
+        ExprNode* expr = expression();
+        initializer = new ExpressionStmt(expr);
+        consume(TokenType::SEMICOLON);
     }
     
     // Condition (optional, default true)
