@@ -9,7 +9,8 @@ enum class TokenType {
     LPAREN, RPAREN, LBRACE, RBRACE, COMMA, DOT, SEMICOLON,
     
     // One or two character tokens
-    PLUS, MINUS, STAR, SLASH, 
+    PLUS, MINUS, STAR, SLASH,
+    PLUS_EQUAL, MINUS_EQUAL, STAR_EQUAL, SLASH_EQUAL,
     ASSIGN, EQUAL_EQUAL,
     BANG, BANG_EQUAL,
     LESS, LESS_EQUAL,

@@ -339,6 +339,9 @@ public:
         environment->assign(node->name.lexeme, lastValue);
     }
 
+    void visit(CompoundAssignExpr* node) override {
+    }
+
     void visit(UnaryExpr* node) override {
         node->right->accept(this);
 

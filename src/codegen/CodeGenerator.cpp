@@ -127,6 +127,10 @@ public:
     void visit(AssignExpr* node) override {
         code << node->name.lexeme << " = ";
         node->value->accept(this);
+        code << ";";
+    }
+
+    void visit(CompoundAssignExpr* node) override {
     }
     
     void visit(CallExpr* node) override {

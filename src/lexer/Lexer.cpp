@@ -46,9 +46,24 @@ Token Lexer::nextToken() {
         case ',': return {TokenType::COMMA, ",", line};
         case '.': return {TokenType::DOT, ".", line};
         case ';': return {TokenType::SEMICOLON, ";", line};
-        case '+': return {TokenType::PLUS, "+", line};
-        case '-': return {TokenType::MINUS, "-", line};
-        case '*': return {TokenType::STAR, "*", line};
+        case '+':
+            if (match('=')) {
+                return {TokenType::PLUS_EQUAL, "+=", line};
+            } else {
+                return {TokenType::PLUS, "+", line};
+            }
+        case '-':
+            if (match('=')) {
+                return {TokenType::MINUS_EQUAL, "-=", line};
+            } else {
+                return {TokenType::MINUS, "-", line};
+            }
+        case '*':
+            if (match('=')) {
+                return {TokenType::STAR_EQUAL, "*=", line};
+            } else {
+                return {TokenType::STAR, "*", line};
+            }
         case '/': 
             if (match('/')) {
                 // Comment extends to the end of the line

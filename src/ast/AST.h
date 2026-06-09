@@ -100,6 +100,21 @@ public:
     void accept(ASTVisitor* visitor) override;
 };
 
+class CompoundAssignExpr : public ExprNode {
+public:
+    Token name;
+    Token op;
+    ExprNode* value;
+
+    CompoundAssignExpr(Token name, Token op, ExprNode* value)
+        : name(name), op(op), value(value) {}
+    ~CompoundAssignExpr() {
+        delete value;
+    }
+
+    void accept(ASTVisitor* visitor) override;
+};
+
 class CallExpr : public ExprNode {
 public:
     ExprNode* callee;
@@ -252,6 +267,7 @@ public:
     virtual void visit(LiteralExpr* node) = 0;
     virtual void visit(VariableExpr* node) = 0;
     virtual void visit(AssignExpr* node) = 0;
+    virtual void visit(CompoundAssignExpr* node) = 0;
     virtual void visit(CallExpr* node) = 0;
     virtual void visit(ExpressionStmt* node) = 0;
     virtual void visit(PrintStmt* node) = 0;

@@ -26,6 +26,10 @@ void AssignExpr::accept(ASTVisitor* visitor) {
     visitor->visit(this);
 }
 
+void CompoundAssignExpr::accept(ASTVisitor* visitor) {
+    visitor->visit(this);
+}
+
 void CallExpr::accept(ASTVisitor* visitor) {
     visitor->visit(this);
 }

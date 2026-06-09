@@ -56,6 +56,9 @@ public:
         }
     }
 
+    void visit(CompoundAssignExpr* node) override {
+    }
+
     void visit(UnaryExpr* node) override {
         node->right->accept(this);
     }

@@ -205,6 +205,22 @@ ExprNode* Parser::assignment() {
         
         throw std::runtime_error("Invalid assignment target");
     }
+
+    if (currentToken.type == TokenType::PLUS_EQUAL ||
+        currentToken.type == TokenType::MINUS_EQUAL ||
+        currentToken.type == TokenType::STAR_EQUAL ||
+        currentToken.type == TokenType::SLASH_EQUAL) {
+        Token op = currentToken;
+        advance();
+        ExprNode* value = assignment();
+
+        if (VariableExpr* varExpr = dynamic_cast<VariableExpr*>(expr)) {
+            Token name = varExpr->name;
+            return new CompoundAssignExpr(name, op, value);
+        }
+
+        throw std::runtime_error("Invalid compound assignment target");
+    }
     
     return expr;
 }
