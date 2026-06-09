@@ -76,6 +76,7 @@ Token Lexer::nextToken() {
             } else {
                 return {TokenType::SLASH, "/", line};
             }
+        case '%': return {TokenType::PERCENT, "%", line};
         case '=': 
             if (match('=')) {
                 return {TokenType::EQUAL_EQUAL, "==", line};

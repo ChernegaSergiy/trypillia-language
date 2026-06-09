@@ -133,7 +133,7 @@ ExprNode* Parser::unary() {
 ExprNode* Parser::factor() {
     ExprNode* expr = unary();
     
-    while (currentToken.type == TokenType::STAR || currentToken.type == TokenType::SLASH) {
+    while (currentToken.type == TokenType::STAR || currentToken.type == TokenType::SLASH || currentToken.type == TokenType::PERCENT) {
         Token op = currentToken;
         advance();
         ExprNode* right = unary();
