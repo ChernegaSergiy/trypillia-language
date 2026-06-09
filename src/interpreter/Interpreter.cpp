@@ -250,6 +250,15 @@ public:
             return;
         }
 
+        if (node->op.type == TokenType::OR) {
+            node->left->accept(this);
+            if (isTruthy(lastValue)) {
+                return;
+            }
+            node->right->accept(this);
+            return;
+        }
+
         node->left->accept(this);
         Value left = lastValue;
         

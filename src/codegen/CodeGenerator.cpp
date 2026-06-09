@@ -84,6 +84,9 @@ public:
             case TokenType::AND:
                 code << " && ";
                 break;
+            case TokenType::OR:
+                code << " || ";
+                break;
             default:
                 ErrorHandling::reportError("Unsupported binary operator");
                 break;
