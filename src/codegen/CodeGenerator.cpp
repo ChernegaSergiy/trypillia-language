@@ -138,12 +138,27 @@ public:
     }
 
     void visit(ListExpr* node) override {
+        code << "std::vector<auto>{";
+        for (size_t i = 0; i < node->elements.size(); i++) {
+            if (i > 0) code << ", ";
+            node->elements[i]->accept(this);
+        }
+        code << "}";
     }
 
     void visit(IndexGetExpr* node) override {
+        node->object->accept(this);
+        code << "[";
+        node->index->accept(this);
+        code << "]";
     }
 
     void visit(IndexSetExpr* node) override {
+        node->object->accept(this);
+        code << "[";
+        node->index->accept(this);
+        code << "] = ";
+        node->value->accept(this);
     }
 
     void visit(ThisExpr* node) override {

@@ -15,11 +15,20 @@ class Function;
 class Class;
 class Instance;
 class BoundMethod;
+class ListValue;
 
 // Value type for the interpreter
-using Value = std::variant<std::nullptr_t, bool, double, std::string, 
+using Value = std::variant<std::nullptr_t, bool, double, std::string, std::shared_ptr<ListValue>,
                            std::shared_ptr<Function>, std::shared_ptr<Class>, 
                            std::shared_ptr<Instance>, std::shared_ptr<BoundMethod>>;
+
+// List value implementation (after Value is defined)
+class ListValue {
+public:
+    std::vector<Value> elements;
+    ListValue() = default;
+    ListValue(std::vector<Value> elements) : elements(std::move(elements)) {}
+};
 
 // Environment for variable storage
 class Environment {
@@ -226,6 +235,15 @@ std::string valueToString(const Value& value) {
         return std::get<std::shared_ptr<Instance>>(value)->toString();
     } else if (std::holds_alternative<std::shared_ptr<BoundMethod>>(value)) {
         return std::get<std::shared_ptr<BoundMethod>>(value)->toString();
+    } else if (std::holds_alternative<std::shared_ptr<ListValue>>(value)) {
+        const auto& list = std::get<std::shared_ptr<ListValue>>(value)->elements;
+        std::string result = "[";
+        for (size_t i = 0; i < list.size(); i++) {
+            if (i > 0) result += ", ";
+            result += valueToString(list[i]);
+        }
+        result += "]";
+        return result;
     }
     
     return "unknown";
@@ -501,12 +519,66 @@ public:
     }
 
     void visit(ListExpr* node) override {
+        std::vector<Value> elements;
+        for (auto* el : node->elements) {
+            el->accept(this);
+            elements.push_back(lastValue);
+        }
+        lastValue = std::make_shared<ListValue>(std::move(elements));
     }
 
     void visit(IndexGetExpr* node) override {
+        node->object->accept(this);
+        Value object = lastValue;
+        
+        if (!std::holds_alternative<std::shared_ptr<ListValue>>(object)) {
+            throw std::runtime_error("Only lists support indexing");
+        }
+        
+        node->index->accept(this);
+        Value index = lastValue;
+        
+        if (!std::holds_alternative<double>(index)) {
+            throw std::runtime_error("Index must be a number");
+        }
+        
+        auto& list = std::get<std::shared_ptr<ListValue>>(object)->elements;
+        int idx = static_cast<int>(std::get<double>(index));
+        
+        if (idx < 0 || idx >= static_cast<int>(list.size())) {
+            throw std::runtime_error("Index out of bounds");
+        }
+        
+        lastValue = list[idx];
     }
 
     void visit(IndexSetExpr* node) override {
+        node->object->accept(this);
+        Value object = lastValue;
+        
+        if (!std::holds_alternative<std::shared_ptr<ListValue>>(object)) {
+            throw std::runtime_error("Only lists support indexing");
+        }
+        
+        node->index->accept(this);
+        Value index = lastValue;
+        
+        if (!std::holds_alternative<double>(index)) {
+            throw std::runtime_error("Index must be a number");
+        }
+        
+        node->value->accept(this);
+        Value value = lastValue;
+        
+        auto& list = std::get<std::shared_ptr<ListValue>>(object)->elements;
+        int idx = static_cast<int>(std::get<double>(index));
+        
+        if (idx < 0 || idx >= static_cast<int>(list.size())) {
+            throw std::runtime_error("Index out of bounds");
+        }
+        
+        list[idx] = value;
+        lastValue = value;
     }
 
     void visit(ThisExpr* node) override {

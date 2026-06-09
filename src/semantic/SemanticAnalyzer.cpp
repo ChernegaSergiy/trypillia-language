@@ -107,12 +107,20 @@ public:
     }
 
     void visit(ListExpr* node) override {
+        for (auto* el : node->elements) {
+            el->accept(this);
+        }
     }
 
     void visit(IndexGetExpr* node) override {
+        node->object->accept(this);
+        node->index->accept(this);
     }
 
     void visit(IndexSetExpr* node) override {
+        node->object->accept(this);
+        node->index->accept(this);
+        node->value->accept(this);
     }
 
     void visit(ThisExpr* node) override {
