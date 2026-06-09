@@ -270,6 +270,30 @@ public:
                 }
                 lastValue = asNumber(left) / asNumber(right);
                 break;
+
+            case TokenType::EQUAL_EQUAL:
+                lastValue = left == right;
+                break;
+
+            case TokenType::BANG_EQUAL:
+                lastValue = !(left == right);
+                break;
+
+            case TokenType::LESS:
+                lastValue = asNumber(left) < asNumber(right);
+                break;
+
+            case TokenType::LESS_EQUAL:
+                lastValue = asNumber(left) <= asNumber(right);
+                break;
+
+            case TokenType::GREATER:
+                lastValue = asNumber(left) > asNumber(right);
+                break;
+
+            case TokenType::GREATER_EQUAL:
+                lastValue = asNumber(left) >= asNumber(right);
+                break;
                 
             default:
                 lastValue = nullptr;
@@ -302,7 +326,20 @@ public:
         
         environment->assign(node->name.lexeme, lastValue);
     }
-    
+
+    void visit(UnaryExpr* node) override {
+        node->right->accept(this);
+
+        switch (node->op.type) {
+            case TokenType::BANG:
+                lastValue = !isTruthy(lastValue);
+                break;
+            default:
+                lastValue = nullptr;
+                break;
+        }
+    }
+
     void visit(CallExpr* node) override {
         node->callee->accept(this);
         Value callee = lastValue;
