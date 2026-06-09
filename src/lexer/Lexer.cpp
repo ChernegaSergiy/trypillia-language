@@ -106,6 +106,8 @@ Token Lexer::nextToken() {
                 return {TokenType::GREATER, ">", line};
             }
         case '"': return string();
+        case '?': return {TokenType::QUESTION, "?", line};
+        case ':': return {TokenType::COLON, ":", line};
         case '&':
             if (match('&')) {
                 return {TokenType::AND, "&&", line};

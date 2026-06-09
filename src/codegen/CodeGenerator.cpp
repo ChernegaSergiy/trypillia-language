@@ -126,6 +126,9 @@ public:
             code << "--";
         }
     }
+
+    void visit(TernaryExpr* node) override {
+    }
     
     void visit(LiteralExpr* node) override {
         switch (node->value.type) {

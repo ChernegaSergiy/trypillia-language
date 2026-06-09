@@ -444,6 +444,9 @@ public:
         }
     }
 
+    void visit(TernaryExpr* node) override {
+    }
+
     void visit(CallExpr* node) override {
         node->callee->accept(this);
         Value callee = lastValue;

@@ -62,6 +62,24 @@ public:
     void accept(ASTVisitor* visitor) override;
 };
 
+class TernaryExpr : public ExprNode {
+public:
+    ExprNode* condition;
+    ExprNode* thenBranch;
+    ExprNode* elseBranch;
+
+    TernaryExpr(ExprNode* condition, ExprNode* thenBranch, ExprNode* elseBranch)
+        : condition(condition), thenBranch(thenBranch), elseBranch(elseBranch) {}
+
+    ~TernaryExpr() {
+        delete condition;
+        delete thenBranch;
+        delete elseBranch;
+    }
+
+    void accept(ASTVisitor* visitor) override;
+};
+
 class BinaryExpr : public ExprNode {
 public:
     ExprNode* left;
@@ -287,6 +305,7 @@ public:
     virtual void visit(WhileStmt* node) = 0;
     virtual void visit(UnaryExpr* node) = 0;
     virtual void visit(PostfixExpr* node) = 0;
+    virtual void visit(TernaryExpr* node) = 0;
     virtual void visit(FunctionNode* node) = 0;
     virtual void visit(ClassNode* node) = 0;
 };
