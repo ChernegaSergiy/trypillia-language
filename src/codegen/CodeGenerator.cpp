@@ -60,11 +60,42 @@ public:
             case TokenType::SLASH:
                 code << " / ";
                 break;
+            case TokenType::EQUAL_EQUAL:
+                code << " == ";
+                break;
+            case TokenType::BANG_EQUAL:
+                code << " != ";
+                break;
+            case TokenType::LESS:
+                code << " < ";
+                break;
+            case TokenType::LESS_EQUAL:
+                code << " <= ";
+                break;
+            case TokenType::GREATER:
+                code << " > ";
+                break;
+            case TokenType::GREATER_EQUAL:
+                code << " >= ";
+                break;
             default:
                 ErrorHandling::reportError("Unsupported binary operator");
                 break;
         }
         
+        node->right->accept(this);
+        code << ")";
+    }
+
+    void visit(UnaryExpr* node) override {
+        code << "(";
+        switch (node->op.type) {
+            case TokenType::BANG:
+                code << "!";
+                break;
+            default:
+                break;
+        }
         node->right->accept(this);
         code << ")";
     }
