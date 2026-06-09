@@ -73,6 +73,9 @@ public:
         node->right->accept(this);
     }
 
+    void visit(PostfixExpr* node) override {
+    }
+
     void visit(CallExpr* node) override {
         node->callee->accept(this);
         

@@ -102,11 +102,20 @@ public:
             case TokenType::BANG:
                 code << "!";
                 break;
+            case TokenType::PLUS_PLUS:
+                code << "++";
+                break;
+            case TokenType::MINUS_MINUS:
+                code << "--";
+                break;
             default:
                 break;
         }
         node->right->accept(this);
         code << ")";
+    }
+
+    void visit(PostfixExpr* node) override {
     }
     
     void visit(LiteralExpr* node) override {

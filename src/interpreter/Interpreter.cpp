@@ -414,6 +414,9 @@ public:
         }
     }
 
+    void visit(PostfixExpr* node) override {
+    }
+
     void visit(CallExpr* node) override {
         node->callee->accept(this);
         Value callee = lastValue;

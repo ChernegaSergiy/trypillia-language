@@ -10,6 +10,10 @@ void UnaryExpr::accept(ASTVisitor* visitor) {
     visitor->visit(this);
 }
 
+void PostfixExpr::accept(ASTVisitor* visitor) {
+    visitor->visit(this);
+}
+
 void BinaryExpr::accept(ASTVisitor* visitor) {
     visitor->visit(this);
 }

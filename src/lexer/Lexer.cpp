@@ -47,13 +47,17 @@ Token Lexer::nextToken() {
         case '.': return {TokenType::DOT, ".", line};
         case ';': return {TokenType::SEMICOLON, ";", line};
         case '+':
-            if (match('=')) {
+            if (match('+')) {
+                return {TokenType::PLUS_PLUS, "++", line};
+            } else if (match('=')) {
                 return {TokenType::PLUS_EQUAL, "+=", line};
             } else {
                 return {TokenType::PLUS, "+", line};
             }
         case '-':
-            if (match('=')) {
+            if (match('-')) {
+                return {TokenType::MINUS_MINUS, "--", line};
+            } else if (match('=')) {
                 return {TokenType::MINUS_EQUAL, "-=", line};
             } else {
                 return {TokenType::MINUS, "-", line};

@@ -109,6 +109,15 @@ ExprNode* Parser::call() {
     while (true) {
         if (match(TokenType::LPAREN)) {
             expr = finishCall(expr);
+        } else if (currentToken.type == TokenType::PLUS_PLUS ||
+                   currentToken.type == TokenType::MINUS_MINUS) {
+            Token op = currentToken;
+            advance();
+            if (VariableExpr* varExpr = dynamic_cast<VariableExpr*>(expr)) {
+                expr = new PostfixExpr(varExpr->name, op);
+            } else {
+                throw std::runtime_error("Invalid postfix expression target");
+            }
         } else {
             break;
         }
@@ -117,9 +126,11 @@ ExprNode* Parser::call() {
     return expr;
 }
 
-// Unary expressions: !, -, etc.
+// Unary expressions: !, -, ++, -- etc.
 ExprNode* Parser::unary() {
-    if (currentToken.type == TokenType::BANG) {
+    if (currentToken.type == TokenType::BANG ||
+        currentToken.type == TokenType::PLUS_PLUS ||
+        currentToken.type == TokenType::MINUS_MINUS) {
         Token op = currentToken;
         advance();
         ExprNode* right = unary();

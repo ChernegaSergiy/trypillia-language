@@ -52,6 +52,16 @@ public:
     void accept(ASTVisitor* visitor) override;
 };
 
+class PostfixExpr : public ExprNode {
+public:
+    Token name;
+    Token op;
+
+    PostfixExpr(Token name, Token op) : name(name), op(op) {}
+
+    void accept(ASTVisitor* visitor) override;
+};
+
 class BinaryExpr : public ExprNode {
 public:
     ExprNode* left;
@@ -276,6 +286,7 @@ public:
     virtual void visit(IfStmt* node) = 0;
     virtual void visit(WhileStmt* node) = 0;
     virtual void visit(UnaryExpr* node) = 0;
+    virtual void visit(PostfixExpr* node) = 0;
     virtual void visit(FunctionNode* node) = 0;
     virtual void visit(ClassNode* node) = 0;
 };
