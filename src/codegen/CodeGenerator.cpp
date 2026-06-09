@@ -358,6 +358,11 @@ public:
     }
 
     void visit(ForeachStmt* node) override {
+        indent();
+        code << "for (auto " << node->name.lexeme << " : ";
+        node->iterable->accept(this);
+        code << ")";
+        node->body->accept(this);
     }
 
     void visit(FunctionNode* node) override {

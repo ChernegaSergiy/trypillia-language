@@ -754,6 +754,27 @@ public:
     }
 
     void visit(ForeachStmt* node) override {
+        node->iterable->accept(this);
+        Value iterable = lastValue;
+
+        if (!std::holds_alternative<std::shared_ptr<ListValue>>(iterable)) {
+            throw std::runtime_error("Foreach requires a list");
+        }
+
+        auto& list = std::get<std::shared_ptr<ListValue>>(iterable)->elements;
+
+        for (size_t i = 0; i < list.size(); i++) {
+            std::shared_ptr<Environment> loopEnv = std::make_shared<Environment>(environment);
+            loopEnv->define(node->name.lexeme, list[i]);
+
+            try {
+                executeBlock({node->body}, loopEnv);
+            } catch (const BreakException&) {
+                break;
+            } catch (const ContinueException&) {
+                continue;
+            }
+        }
     }
 
     void visit(FunctionNode* node) override {

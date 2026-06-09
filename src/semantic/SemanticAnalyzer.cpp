@@ -226,6 +226,18 @@ public:
     }
 
     void visit(ForeachStmt* node) override {
+        node->iterable->accept(this);
+
+        currentScope = new SymbolTable(currentScope);
+        Symbol symbol;
+        symbol.name = node->name.lexeme;
+        symbol.type = "";
+        symbol.isConst = false;
+        currentScope->define(symbol);
+
+        node->body->accept(this);
+
+        currentScope = currentScope->getParent();
     }
 
     void visit(FunctionNode* node) override {
