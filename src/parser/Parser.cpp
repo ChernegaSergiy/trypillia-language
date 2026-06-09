@@ -506,7 +506,7 @@ StmtNode* Parser::varDeclaration() {
     return new VarStmt(name, initializer);
 }
 
-FunctionNode* Parser::parseFunction() {
+FunctionNode* Parser::parseFunction(AccessModifier accessModifier) {
     consume(TokenType::FN);
     
     Token name = currentToken;
@@ -535,7 +535,9 @@ FunctionNode* Parser::parseFunction() {
     
     consume(TokenType::RBRACE);
     
-    return new FunctionNode(name.lexeme, parameters, body);
+    FunctionNode* node = new FunctionNode(name.lexeme, parameters, body);
+    node->accessModifier = accessModifier;
+    return node;
 }
 
 ClassNode* Parser::parseClass() {
@@ -548,11 +550,18 @@ ClassNode* Parser::parseClass() {
     consume(TokenType::LBRACE);
     std::vector<FunctionNode*> methods;
     
+    AccessModifier currentAccess = AccessModifier::PUBLIC;
+    
     while (currentToken.type != TokenType::RBRACE && currentToken.type != TokenType::END_OF_FILE) {
-        if (currentToken.type == TokenType::FN) {
-            methods.push_back(parseFunction());
+        if (currentToken.type == TokenType::PUBLIC) {
+            advance();
+            currentAccess = AccessModifier::PUBLIC;
+        } else if (currentToken.type == TokenType::PRIVATE) {
+            advance();
+            currentAccess = AccessModifier::PRIVATE;
+        } else if (currentToken.type == TokenType::FN) {
+            methods.push_back(parseFunction(currentAccess));
         } else {
-            // Skip non-method declarations in class
             advance();
         }
     }

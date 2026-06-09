@@ -8,6 +8,13 @@
 // Forward declaration
 class ASTVisitor;
 
+// Access modifier for class members
+enum class AccessModifier {
+    PUBLIC,
+    PRIVATE,
+    PROTECTED
+};
+
 class ASTNode {
 public:
     virtual ~ASTNode() = default;
@@ -412,11 +419,12 @@ public:
     std::string name;
     std::vector<std::string> params;
     std::vector<StmtNode*> body;
+    AccessModifier accessModifier;
     
     FunctionNode(std::string name, std::vector<std::string> params, std::vector<StmtNode*> body)
-        : name(name), params(params), body(body) {}
+        : name(name), params(params), body(body), accessModifier(AccessModifier::PUBLIC) {}
     
-    FunctionNode() : name(""), params(), body() {}
+    FunctionNode() : name(""), params(), body(), accessModifier(AccessModifier::PUBLIC) {}
     
     ~FunctionNode() {
         for (auto stmt : body) {

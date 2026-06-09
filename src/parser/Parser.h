@@ -53,7 +53,7 @@ private:
     // Declaration parsing methods
     ASTNode* declaration();
     StmtNode* varDeclaration();
-    FunctionNode* parseFunction();
+    FunctionNode* parseFunction(AccessModifier accessModifier = AccessModifier::PUBLIC);
     ClassNode* parseClass();
 };
 
