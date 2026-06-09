@@ -174,6 +174,20 @@ ExprNode* Parser::comparison() {
     return expr;
 }
 
+// Logical OR
+ExprNode* Parser::orExpr() {
+    ExprNode* expr = andExpr();
+
+    while (currentToken.type == TokenType::OR) {
+        Token op = currentToken;
+        advance();
+        ExprNode* right = andExpr();
+        expr = new BinaryExpr(expr, op, right);
+    }
+
+    return expr;
+}
+
 // Logical AND
 ExprNode* Parser::andExpr() {
     ExprNode* expr = equality();
@@ -205,7 +219,7 @@ ExprNode* Parser::equality() {
 
 // Assignment expressions
 ExprNode* Parser::assignment() {
-    ExprNode* expr = andExpr();
+    ExprNode* expr = orExpr();
     
     if (currentToken.type == TokenType::ASSIGN) {
         Token equals = currentToken;
