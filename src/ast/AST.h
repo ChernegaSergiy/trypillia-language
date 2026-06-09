@@ -305,6 +305,26 @@ public:
     void accept(ASTVisitor* visitor) override;
 };
 
+class ForStmt : public StmtNode {
+public:
+    StmtNode* initializer;
+    ExprNode* condition;
+    ExprNode* increment;
+    StmtNode* body;
+
+    ForStmt(StmtNode* initializer, ExprNode* condition, ExprNode* increment, StmtNode* body)
+        : initializer(initializer), condition(condition), increment(increment), body(body) {}
+
+    ~ForStmt() {
+        delete initializer;
+        delete condition;
+        delete increment;
+        delete body;
+    }
+
+    void accept(ASTVisitor* visitor) override;
+};
+
 class FunctionNode : public StmtNode {
 public:
     std::string name;
@@ -359,6 +379,7 @@ public:
     virtual void visit(IfStmt* node) = 0;
     virtual void visit(WhileStmt* node) = 0;
     virtual void visit(ReturnStmt* node) = 0;
+    virtual void visit(ForStmt* node) = 0;
     virtual void visit(UnaryExpr* node) = 0;
     virtual void visit(ThisExpr* node) = 0;
     virtual void visit(GetExpr* node) = 0;

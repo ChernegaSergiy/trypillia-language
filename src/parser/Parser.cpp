@@ -361,6 +361,40 @@ StmtNode* Parser::returnStatement() {
     return new ReturnStmt(keyword, value);
 }
 
+StmtNode* Parser::forStatement() {
+    advance(); // consume FOR
+    
+    consume(TokenType::LPAREN);
+    
+    // Initializer
+    StmtNode* initializer = nullptr;
+    if (currentToken.type == TokenType::SEMICOLON) {
+        advance(); // no initializer
+    } else if (currentToken.type == TokenType::LET) {
+        initializer = varDeclaration();
+    } else {
+        initializer = expressionStatement();
+    }
+    
+    // Condition (optional, default true)
+    ExprNode* condition = nullptr;
+    if (currentToken.type != TokenType::SEMICOLON) {
+        condition = expression();
+    }
+    consume(TokenType::SEMICOLON);
+    
+    // Increment (optional)
+    ExprNode* increment = nullptr;
+    if (currentToken.type != TokenType::RPAREN) {
+        increment = expression();
+    }
+    consume(TokenType::RPAREN);
+    
+    StmtNode* body = statement();
+    
+    return new ForStmt(initializer, condition, increment, body);
+}
+
 StmtNode* Parser::statement() {
     if (match(TokenType::IF)) {
         return ifStatement();
@@ -376,6 +410,10 @@ StmtNode* Parser::statement() {
     
     if (currentToken.type == TokenType::RETURN) {
         return returnStatement();
+    }
+    
+    if (currentToken.type == TokenType::FOR) {
+        return forStatement();
     }
     
     if (match(TokenType::LBRACE)) {

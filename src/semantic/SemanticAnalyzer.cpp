@@ -189,6 +189,9 @@ public:
         }
     }
 
+    void visit(ForStmt* node) override {
+    }
+
     void visit(FunctionNode* node) override {
         Symbol functionSymbol;
         functionSymbol.name = node->name;
