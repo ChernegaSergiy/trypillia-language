@@ -55,7 +55,11 @@ public:
             ErrorHandling::reportError(error);
         }
     }
-    
+
+    void visit(UnaryExpr* node) override {
+        node->right->accept(this);
+    }
+
     void visit(CallExpr* node) override {
         node->callee->accept(this);
         
