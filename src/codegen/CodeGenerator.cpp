@@ -101,10 +101,22 @@ public:
     }
     
     void visit(LiteralExpr* node) override {
-        if (node->value.type == TokenType::STRING) {
-            code << "\"" << node->value.lexeme << "\"";
-        } else {
-            code << node->value.lexeme;
+        switch (node->value.type) {
+            case TokenType::STRING:
+                code << "\"" << node->value.lexeme << "\"";
+                break;
+            case TokenType::TRUE:
+                code << "true";
+                break;
+            case TokenType::FALSE:
+                code << "false";
+                break;
+            case TokenType::NIL:
+                code << "nullptr";
+                break;
+            default:
+                code << node->value.lexeme;
+                break;
         }
     }
     

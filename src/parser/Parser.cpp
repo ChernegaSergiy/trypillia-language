@@ -66,6 +66,12 @@ ExprNode* Parser::primary() {
         return new LiteralExpr(literal);
     }
     
+    if (currentToken.type == TokenType::TRUE || currentToken.type == TokenType::FALSE || currentToken.type == TokenType::NIL) {
+        Token literal = currentToken;
+        advance();
+        return new LiteralExpr(literal);
+    }
+    
     if (currentToken.type == TokenType::IDENTIFIER) {
         Token name = currentToken;
         advance();

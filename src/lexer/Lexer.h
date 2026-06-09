@@ -19,7 +19,7 @@ enum class TokenType {
     IDENTIFIER, NUMBER, STRING,
     
     // Keywords
-    CLASS, FN, LET, VIRTUAL, OVERRIDE, PRINT, IF, ELSE, WHILE,
+    CLASS, FN, LET, VIRTUAL, OVERRIDE, PRINT, IF, ELSE, WHILE, TRUE, FALSE, NIL,
     
     // Special
     END_OF_FILE, UNKNOWN

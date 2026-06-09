@@ -306,11 +306,23 @@ public:
             case TokenType::NUMBER:
                 lastValue = std::stod(node->value.lexeme);
                 break;
-                
+
             case TokenType::STRING:
                 lastValue = node->value.lexeme;
                 break;
-                
+
+            case TokenType::TRUE:
+                lastValue = true;
+                break;
+
+            case TokenType::FALSE:
+                lastValue = false;
+                break;
+
+            case TokenType::NIL:
+                lastValue = nullptr;
+                break;
+
             default:
                 lastValue = nullptr;
                 break;
