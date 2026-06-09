@@ -186,6 +186,21 @@ ExprNode* Parser::comparison() {
     return expr;
 }
 
+// Ternary conditional (?:)
+ExprNode* Parser::ternary() {
+    ExprNode* expr = orExpr();
+
+    if (currentToken.type == TokenType::QUESTION) {
+        advance();
+        ExprNode* thenBranch = expression();
+        consume(TokenType::COLON);
+        ExprNode* elseBranch = ternary();
+        expr = new TernaryExpr(expr, thenBranch, elseBranch);
+    }
+
+    return expr;
+}
+
 // Logical OR
 ExprNode* Parser::orExpr() {
     ExprNode* expr = andExpr();
@@ -231,7 +246,7 @@ ExprNode* Parser::equality() {
 
 // Assignment expressions
 ExprNode* Parser::assignment() {
-    ExprNode* expr = orExpr();
+    ExprNode* expr = ternary();
     
     if (currentToken.type == TokenType::ASSIGN) {
         Token equals = currentToken;
