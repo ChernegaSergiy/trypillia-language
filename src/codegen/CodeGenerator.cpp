@@ -60,6 +60,9 @@ public:
             case TokenType::SLASH:
                 code << " / ";
                 break;
+            case TokenType::PERCENT:
+                code << " % ";
+                break;
             case TokenType::EQUAL_EQUAL:
                 code << " == ";
                 break;

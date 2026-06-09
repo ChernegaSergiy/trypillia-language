@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 #include <variant>
+#include <cmath>
 #include <memory>
 #include <unordered_map>
 #include <functional>
@@ -269,6 +270,13 @@ public:
                     throw std::runtime_error("Division by zero");
                 }
                 lastValue = asNumber(left) / asNumber(right);
+                break;
+
+            case TokenType::PERCENT:
+                if (asNumber(right) == 0) {
+                    throw std::runtime_error("Division by zero");
+                }
+                lastValue = std::fmod(asNumber(left), asNumber(right));
                 break;
 
             case TokenType::EQUAL_EQUAL:
