@@ -73,6 +73,16 @@ public:
         : std::runtime_error("return"), value(value) {}
 };
 
+class BreakException : public std::runtime_error {
+public:
+    BreakException() : std::runtime_error("break") {}
+};
+
+class ContinueException : public std::runtime_error {
+public:
+    ContinueException() : std::runtime_error("continue") {}
+};
+
 // Forward declaration of the interpreter visitor
 class InterpreterVisitor;
 
@@ -608,7 +618,13 @@ public:
                 break;
             }
             
-            node->body->accept(this);
+            try {
+                node->body->accept(this);
+            } catch (const BreakException&) {
+                break;
+            } catch (const ContinueException&) {
+                // continue to next iteration
+            }
         }
     }
 
@@ -622,9 +638,11 @@ public:
     }
 
     void visit(BreakStmt* node) override {
+        throw BreakException();
     }
 
     void visit(ContinueStmt* node) override {
+        throw ContinueException();
     }
 
     void visit(ForStmt* node) override {
@@ -640,7 +658,13 @@ public:
                 }
             }
 
-            node->body->accept(this);
+            try {
+                node->body->accept(this);
+            } catch (const BreakException&) {
+                break;
+            } catch (const ContinueException&) {
+                // fall through to increment
+            }
 
             if (node->increment != nullptr) {
                 node->increment->accept(this);
