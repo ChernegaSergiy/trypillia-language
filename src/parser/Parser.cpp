@@ -90,6 +90,19 @@ ExprNode* Parser::primary() {
         return expr;
     }
     
+    if (match(TokenType::LBRACKET)) {
+        std::vector<ExprNode*> elements;
+        
+        if (currentToken.type != TokenType::RBRACKET) {
+            do {
+                elements.push_back(expression());
+            } while (match(TokenType::COMMA));
+        }
+        
+        consume(TokenType::RBRACKET);
+        return new ListExpr(elements);
+    }
+    
     throw std::runtime_error("Expected expression");
 }
 
@@ -119,6 +132,10 @@ ExprNode* Parser::call() {
             Token name = currentToken;
             consume(TokenType::IDENTIFIER);
             expr = new GetExpr(expr, name);
+        } else if (match(TokenType::LBRACKET)) {
+            ExprNode* index = expression();
+            consume(TokenType::RBRACKET);
+            expr = new IndexGetExpr(expr, index);
         } else if (currentToken.type == TokenType::PLUS_PLUS ||
                    currentToken.type == TokenType::MINUS_MINUS) {
             Token op = currentToken;
@@ -270,6 +287,10 @@ ExprNode* Parser::assignment() {
         
         if (GetExpr* getExpr = dynamic_cast<GetExpr*>(expr)) {
             return new SetExpr(getExpr->object, getExpr->name, value);
+        }
+        
+        if (IndexGetExpr* indexGetExpr = dynamic_cast<IndexGetExpr*>(expr)) {
+            return new IndexSetExpr(indexGetExpr->object, indexGetExpr->index, value);
         }
         
         throw std::runtime_error("Invalid assignment target");

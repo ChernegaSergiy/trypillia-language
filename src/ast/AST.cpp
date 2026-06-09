@@ -30,6 +30,18 @@ void TernaryExpr::accept(ASTVisitor* visitor) {
     visitor->visit(this);
 }
 
+void ListExpr::accept(ASTVisitor* visitor) {
+    visitor->visit(this);
+}
+
+void IndexGetExpr::accept(ASTVisitor* visitor) {
+    visitor->visit(this);
+}
+
+void IndexSetExpr::accept(ASTVisitor* visitor) {
+    visitor->visit(this);
+}
+
 void BinaryExpr::accept(ASTVisitor* visitor) {
     visitor->visit(this);
 }

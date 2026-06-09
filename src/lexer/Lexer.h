@@ -6,7 +6,7 @@
 
 enum class TokenType {
     // Single-character tokens
-    LPAREN, RPAREN, LBRACE, RBRACE, COMMA, DOT, SEMICOLON, QUESTION, COLON,
+    LPAREN, RPAREN, LBRACE, RBRACE, LBRACKET, RBRACKET, COMMA, DOT, SEMICOLON, QUESTION, COLON,
     
     // One or two character tokens
     PLUS, MINUS, STAR, SLASH, PERCENT,

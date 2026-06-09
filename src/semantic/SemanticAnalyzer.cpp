@@ -106,6 +106,15 @@ public:
         node->elseBranch->accept(this);
     }
 
+    void visit(ListExpr* node) override {
+    }
+
+    void visit(IndexGetExpr* node) override {
+    }
+
+    void visit(IndexSetExpr* node) override {
+    }
+
     void visit(ThisExpr* node) override {
         Symbol* symbol = currentScope->resolve("this");
         if (!symbol) {

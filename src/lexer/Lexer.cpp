@@ -48,6 +48,8 @@ Token Lexer::nextToken() {
         case ')': return {TokenType::RPAREN, ")", line};
         case '{': return {TokenType::LBRACE, "{", line};
         case '}': return {TokenType::RBRACE, "}", line};
+        case '[': return {TokenType::LBRACKET, "[", line};
+        case ']': return {TokenType::RBRACKET, "]", line};
         case ',': return {TokenType::COMMA, ",", line};
         case '.': return {TokenType::DOT, ".", line};
         case ';': return {TokenType::SEMICOLON, ";", line};

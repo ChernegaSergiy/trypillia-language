@@ -214,6 +214,53 @@ public:
     void accept(ASTVisitor* visitor) override;
 };
 
+class ListExpr : public ExprNode {
+public:
+    std::vector<ExprNode*> elements;
+
+    ListExpr(std::vector<ExprNode*> elements) : elements(elements) {}
+
+    ~ListExpr() {
+        for (auto* el : elements) delete el;
+    }
+
+    void accept(ASTVisitor* visitor) override;
+};
+
+class IndexGetExpr : public ExprNode {
+public:
+    ExprNode* object;
+    ExprNode* index;
+
+    IndexGetExpr(ExprNode* object, ExprNode* index)
+        : object(object), index(index) {}
+
+    ~IndexGetExpr() {
+        delete object;
+        delete index;
+    }
+
+    void accept(ASTVisitor* visitor) override;
+};
+
+class IndexSetExpr : public ExprNode {
+public:
+    ExprNode* object;
+    ExprNode* index;
+    ExprNode* value;
+
+    IndexSetExpr(ExprNode* object, ExprNode* index, ExprNode* value)
+        : object(object), index(index), value(value) {}
+
+    ~IndexSetExpr() {
+        delete object;
+        delete index;
+        delete value;
+    }
+
+    void accept(ASTVisitor* visitor) override;
+};
+
 class PrintStmt : public StmtNode {
 public:
     ExprNode* expression;
@@ -406,6 +453,9 @@ public:
     virtual void visit(SetExpr* node) = 0;
     virtual void visit(PostfixExpr* node) = 0;
     virtual void visit(TernaryExpr* node) = 0;
+    virtual void visit(ListExpr* node) = 0;
+    virtual void visit(IndexGetExpr* node) = 0;
+    virtual void visit(IndexSetExpr* node) = 0;
     virtual void visit(FunctionNode* node) = 0;
     virtual void visit(ClassNode* node) = 0;
 };

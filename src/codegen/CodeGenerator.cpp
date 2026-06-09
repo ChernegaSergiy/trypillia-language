@@ -137,6 +137,15 @@ public:
         code << ")";
     }
 
+    void visit(ListExpr* node) override {
+    }
+
+    void visit(IndexGetExpr* node) override {
+    }
+
+    void visit(IndexSetExpr* node) override {
+    }
+
     void visit(ThisExpr* node) override {
         code << "this";
     }
