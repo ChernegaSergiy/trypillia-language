@@ -101,6 +101,9 @@ public:
     }
 
     void visit(TernaryExpr* node) override {
+        node->condition->accept(this);
+        node->thenBranch->accept(this);
+        node->elseBranch->accept(this);
     }
 
     void visit(CallExpr* node) override {

@@ -128,6 +128,13 @@ public:
     }
 
     void visit(TernaryExpr* node) override {
+        code << "(";
+        node->condition->accept(this);
+        code << " ? ";
+        node->thenBranch->accept(this);
+        code << " : ";
+        node->elseBranch->accept(this);
+        code << ")";
     }
     
     void visit(LiteralExpr* node) override {

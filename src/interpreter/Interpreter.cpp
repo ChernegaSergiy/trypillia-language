@@ -445,6 +445,12 @@ public:
     }
 
     void visit(TernaryExpr* node) override {
+        node->condition->accept(this);
+        if (isTruthy(lastValue)) {
+            node->thenBranch->accept(this);
+        } else {
+            node->elseBranch->accept(this);
+        }
     }
 
     void visit(CallExpr* node) override {
