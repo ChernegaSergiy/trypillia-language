@@ -393,7 +393,10 @@ public:
         ifaceSymbol.name = node->name;
         ifaceSymbol.type = "interface";
         ifaceSymbol.isConst = true;
-        currentScope->define(ifaceSymbol);
+        if (!currentScope->define(ifaceSymbol)) {
+            std::string error = "Interface '" + node->name + "' already defined in this scope";
+            ErrorHandling::reportError(error);
+        }
         
         for (auto& method : node->methods) {
             method->accept(this);
@@ -405,7 +408,10 @@ public:
         traitSymbol.name = node->name;
         traitSymbol.type = "trait";
         traitSymbol.isConst = true;
-        currentScope->define(traitSymbol);
+        if (!currentScope->define(traitSymbol)) {
+            std::string error = "Trait '" + node->name + "' already defined in this scope";
+            ErrorHandling::reportError(error);
+        }
         
         for (auto& method : node->methods) {
             method->accept(this);
