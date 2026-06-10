@@ -951,11 +951,31 @@ public:
     }
 
     void visit(SwitchStmt* node) override {
-        // Will be fully implemented in next commit
         node->expression->accept(this);
+        Value switchValue = lastValue;
+        
         for (auto& case_ : node->cases) {
+            bool matched = false;
             if (case_.value) {
                 case_.value->accept(this);
+                if (switchValue == lastValue) {
+                    matched = true;
+                }
+            } else {
+                matched = true;  // default case
+            }
+            
+            if (matched) {
+                try {
+                    for (auto* stmt : case_.body) {
+                        stmt->accept(this);
+                    }
+                } catch (const BreakException&) {
+                    // Exit the switch
+                } catch (const ContinueException&) {
+                    throw;  // Propagate to enclosing loop
+                }
+                break;  // No fall-through
             }
         }
     }
