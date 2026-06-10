@@ -153,3 +153,7 @@ void StaticCallExpr::accept(ASTVisitor* visitor) {
 void StaticSetExpr::accept(ASTVisitor* visitor) {
     visitor->visit(this);
 }
+
+void LoadStmt::accept(ASTVisitor* visitor) {
+    visitor->visit(this);
+}

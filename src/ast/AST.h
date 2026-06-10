@@ -611,6 +611,15 @@ public:
     void accept(ASTVisitor* visitor) override;
 };
 
+class LoadStmt : public StmtNode {
+public:
+    Token filename;
+
+    LoadStmt(Token filename) : filename(filename) {}
+
+    void accept(ASTVisitor* visitor) override;
+};
+
 class ASTVisitor {
 public:
     virtual ~ASTVisitor() = default;
@@ -652,6 +661,7 @@ public:
     virtual void visit(StaticGetExpr* node) = 0;
     virtual void visit(StaticCallExpr* node) = 0;
     virtual void visit(StaticSetExpr* node) = 0;
+    virtual void visit(LoadStmt* node) = 0;
 };
 
 #endif // AST_H
