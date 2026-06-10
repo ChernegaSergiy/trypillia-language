@@ -76,11 +76,27 @@ InterpretResult VM::run() {
                 }
                 break;
             }
+            case static_cast<uint8_t>(OpCode::OP_SUBTRACT): {
+                VMValue b = pop();
+                VMValue a = pop();
+                if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
+                    push(std::get<double>(a) - std::get<double>(b));
+                }
+                break;
+            }
             case static_cast<uint8_t>(OpCode::OP_MULTIPLY): {
                 VMValue b = pop();
                 VMValue a = pop();
                 if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
                     push(std::get<double>(a) * std::get<double>(b));
+                }
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_DIVIDE): {
+                VMValue b = pop();
+                VMValue a = pop();
+                if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
+                    push(std::get<double>(a) / std::get<double>(b));
                 }
                 break;
             }
