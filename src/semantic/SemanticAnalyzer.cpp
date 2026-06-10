@@ -9,7 +9,19 @@ private:
     SymbolTable* currentScope;
     
 public:
-    SemanticVisitor() : currentScope(new SymbolTable()) {}
+    SemanticVisitor() : currentScope(new SymbolTable()) {
+        auto addNative = [&](const std::string& name) {
+            Symbol sym;
+            sym.name = name;
+            sym.type = "function";
+            sym.isConst = true;
+            currentScope->define(sym);
+        };
+        addNative("print");
+        addNative("clock");
+        addNative("len");
+        addNative("push");
+    }
     
     ~SemanticVisitor() {
         while (currentScope) {
