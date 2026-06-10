@@ -719,6 +719,7 @@ InterpretResult VM::run(int targetFrameDepth) {
                     VMValue result = native->function(argCount, stack.data() + stack.size() - argCount);
                     stack.resize(stack.size() - argCount - 1);
                     push(result);
+                    frame = &frames.back();
                 } else if (std::holds_alternative<std::shared_ptr<ObjClass>>(callee)) {
                     auto klass = std::get<std::shared_ptr<ObjClass>>(callee);
                     if (klass->isAbstract) {
@@ -752,6 +753,7 @@ InterpretResult VM::run(int targetFrameDepth) {
                             auto native = std::get<std::shared_ptr<ObjNative>>(initMethod);
                             native->function(argCount, stack.data() + stack.size() - argCount);
                             stack.resize(stack.size() - argCount); // leave the instance on stack
+                            frame = &frames.back();
                         }
                     } else if (argCount != 0) {
                         return runtimeError(std::string("Expected 0 arguments but got ") + std::to_string(argCount) + ".");
@@ -784,6 +786,7 @@ InterpretResult VM::run(int targetFrameDepth) {
                         VMValue result = native->function(argCount, stack.data() + stack.size() - argCount);
                         stack.resize(stack.size() - argCount - 1);
                         push(result);
+                        frame = &frames.back();
                     }
                 } else {
                     return runtimeError(std::string("Can only call functions and classes."));
