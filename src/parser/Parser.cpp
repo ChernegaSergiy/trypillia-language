@@ -84,6 +84,15 @@ ExprNode* Parser::primary() {
         return new ThisExpr(keyword);
     }
     
+    if (currentToken.type == TokenType::SUPER) {
+        Token keyword = currentToken;
+        advance();
+        consume(TokenType::DOT);
+        Token method = currentToken;
+        consume(TokenType::IDENTIFIER);
+        return new SuperExpr(keyword, method);
+    }
+    
     if (match(TokenType::LPAREN)) {
         ExprNode* expr = expression();
         consume(TokenType::RPAREN);
@@ -573,6 +582,15 @@ ClassNode* Parser::parseClass() {
     Token name = currentToken;
     consume(TokenType::IDENTIFIER);
     
+    // Parse optional parent class (< ParentName)
+    std::string parentName = "";
+    if (currentToken.type == TokenType::LESS) {
+        advance();
+        Token parent = currentToken;
+        consume(TokenType::IDENTIFIER);
+        parentName = parent.lexeme;
+    }
+    
     // Parse class body
     consume(TokenType::LBRACE);
     std::vector<FunctionNode*> methods;
@@ -598,7 +616,7 @@ ClassNode* Parser::parseClass() {
     
     consume(TokenType::RBRACE);
     
-    return new ClassNode(name.lexeme, methods, fields);
+    return new ClassNode(name.lexeme, parentName, methods, fields);
 }
 
 ASTNode* Parser::declaration() {

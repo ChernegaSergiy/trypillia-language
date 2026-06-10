@@ -638,7 +638,11 @@ public:
     void visit(ThisExpr* node) override {
         lastValue = environment->get("this");
     }
-
+    
+    void visit(SuperExpr* node) override {
+        throw std::runtime_error("'super' is not implemented yet");
+    }
+    
     void visit(GetExpr* node) override {
         node->object->accept(this);
         Value object = lastValue;

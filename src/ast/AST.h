@@ -68,6 +68,16 @@ public:
     void accept(ASTVisitor* visitor) override;
 };
 
+class SuperExpr : public ExprNode {
+public:
+    Token keyword;
+    Token method;
+
+    SuperExpr(Token keyword, Token method) : keyword(keyword), method(method) {}
+
+    void accept(ASTVisitor* visitor) override;
+};
+
 class GetExpr : public ExprNode {
 public:
     ExprNode* object;
@@ -455,11 +465,12 @@ public:
 class ClassNode : public StmtNode {
 public:
     std::string name;
+    std::string parentName;
     std::vector<FunctionNode*> methods;
     std::vector<FieldDeclNode*> fields;
     
-    ClassNode(std::string name, std::vector<FunctionNode*> methods, std::vector<FieldDeclNode*> fields = {})
-        : name(name), methods(methods), fields(fields) {}
+    ClassNode(std::string name, std::string parentName, std::vector<FunctionNode*> methods, std::vector<FieldDeclNode*> fields = {})
+        : name(name), parentName(parentName), methods(methods), fields(fields) {}
     
     ~ClassNode() {
         for (auto method : methods) {
@@ -496,6 +507,7 @@ public:
     virtual void visit(ForeachStmt* node) = 0;
     virtual void visit(UnaryExpr* node) = 0;
     virtual void visit(ThisExpr* node) = 0;
+    virtual void visit(SuperExpr* node) = 0;
     virtual void visit(GetExpr* node) = 0;
     virtual void visit(SetExpr* node) = 0;
     virtual void visit(PostfixExpr* node) = 0;

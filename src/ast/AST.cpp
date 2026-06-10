@@ -14,6 +14,10 @@ void ThisExpr::accept(ASTVisitor* visitor) {
     visitor->visit(this);
 }
 
+void SuperExpr::accept(ASTVisitor* visitor) {
+    visitor->visit(this);
+}
+
 void GetExpr::accept(ASTVisitor* visitor) {
     visitor->visit(this);
 }

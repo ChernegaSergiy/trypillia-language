@@ -164,7 +164,14 @@ public:
     void visit(ThisExpr* node) override {
         code << "this";
     }
-
+    
+    void visit(SuperExpr* node) override {
+        // In C++, super call like Parent::method()
+        // We don't have the parent type info readily available in codegen
+        // For now, emit a placeholder
+        code << "/* super." << node->method.lexeme << "() */";
+    }
+    
     void visit(GetExpr* node) override {
         node->object->accept(this);
         code << "." << node->name.lexeme;

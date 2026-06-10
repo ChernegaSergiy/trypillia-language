@@ -130,6 +130,15 @@ public:
             ErrorHandling::reportError(error);
         }
     }
+    
+    void visit(SuperExpr* node) override {
+        Symbol* symbol = currentScope->resolve("this");
+        if (!symbol) {
+            std::string error = "'super' can only be used inside a method";
+            ErrorHandling::reportError(error);
+        }
+    }
+    
 
     void visit(GetExpr* node) override {
         node->object->accept(this);
