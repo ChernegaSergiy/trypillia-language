@@ -13,10 +13,16 @@ class Chunk;
 
 struct ObjFunction;
 struct ObjNative;
+struct ObjList;
 
-using VMValue = std::variant<std::nullptr_t, bool, double, std::string, std::shared_ptr<ObjFunction>, std::shared_ptr<ObjNative>>;
+using VMValue = std::variant<std::nullptr_t, bool, double, std::string, std::shared_ptr<ObjFunction>, std::shared_ptr<ObjNative>, std::shared_ptr<ObjList>>;
 
 using NativeFn = VMValue(*)(int argCount, VMValue* args);
+
+struct ObjList {
+    std::vector<VMValue> elements;
+    ObjList(const std::vector<VMValue>& e) : elements(e) {}
+};
 
 struct ObjNative {
     std::string name;

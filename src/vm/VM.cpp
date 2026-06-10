@@ -11,6 +11,8 @@ VM::VM() {
                 std::cout << std::get<std::string>(args[i]);
             } else if (std::holds_alternative<bool>(args[i])) {
                 std::cout << (std::get<bool>(args[i]) ? "true" : "false");
+            } else if (std::holds_alternative<std::shared_ptr<ObjList>>(args[i])) {
+                std::cout << "[list]";
             } else if (std::holds_alternative<std::nullptr_t>(args[i])) {
                 std::cout << "nil";
             }
@@ -249,6 +251,63 @@ InterpretResult VM::run() {
                     std::cout << (std::get<bool>(value) ? "true" : "false") << std::endl;
                 } else if (std::holds_alternative<std::nullptr_t>(value)) {
                     std::cout << "nil" << std::endl;
+                }
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_BUILD_LIST): {
+                uint8_t count = READ_BYTE();
+                std::vector<VMValue> elements(count);
+                for (int i = count - 1; i >= 0; i--) {
+                    elements[i] = pop();
+                }
+                push(std::make_shared<ObjList>(elements));
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_INDEX_GET): {
+                VMValue index = pop();
+                VMValue listVal = pop();
+                if (std::holds_alternative<std::shared_ptr<ObjList>>(listVal)) {
+                    auto list = std::get<std::shared_ptr<ObjList>>(listVal);
+                    if (std::holds_alternative<double>(index)) {
+                        int i = std::get<double>(index);
+                        if (i >= 0 && i < list->elements.size()) {
+                            push(list->elements[i]);
+                        } else {
+                            std::cerr << "Index out of bounds." << std::endl;
+                            return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                        }
+                    } else {
+                        std::cerr << "List index must be a number." << std::endl;
+                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                    }
+                } else {
+                    std::cerr << "Can only index into lists." << std::endl;
+                    return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                }
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_INDEX_SET): {
+                VMValue value = pop();
+                VMValue index = pop();
+                VMValue listVal = pop();
+                if (std::holds_alternative<std::shared_ptr<ObjList>>(listVal)) {
+                    auto list = std::get<std::shared_ptr<ObjList>>(listVal);
+                    if (std::holds_alternative<double>(index)) {
+                        int i = std::get<double>(index);
+                        if (i >= 0 && i < list->elements.size()) {
+                            list->elements[i] = value;
+                            push(value);
+                        } else {
+                            std::cerr << "Index out of bounds." << std::endl;
+                            return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                        }
+                    } else {
+                        std::cerr << "List index must be a number." << std::endl;
+                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                    }
+                } else {
+                    std::cerr << "Can only index into lists." << std::endl;
+                    return InterpretResult::INTERPRET_RUNTIME_ERROR;
                 }
                 break;
             }

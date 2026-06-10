@@ -292,9 +292,23 @@ public:
     void visit(SetExpr* node) override {}
     void visit(PostfixExpr* node) override {}
     void visit(TernaryExpr* node) override {}
-    void visit(ListExpr* node) override {}
-    void visit(IndexGetExpr* node) override {}
-    void visit(IndexSetExpr* node) override {}
+    void visit(ListExpr* node) override {
+        for (auto& el : node->elements) {
+            el->accept(this);
+        }
+        emitBytes(static_cast<uint8_t>(OpCode::OP_BUILD_LIST), node->elements.size());
+    }
+    void visit(IndexGetExpr* node) override {
+        node->object->accept(this);
+        node->index->accept(this);
+        emitByte(static_cast<uint8_t>(OpCode::OP_INDEX_GET));
+    }
+    void visit(IndexSetExpr* node) override {
+        node->object->accept(this);
+        node->index->accept(this);
+        node->value->accept(this);
+        emitByte(static_cast<uint8_t>(OpCode::OP_INDEX_SET));
+    }
     void visit(FunctionNode* node) override {
         auto func = std::make_shared<ObjFunction>();
         func->name = node->name;
