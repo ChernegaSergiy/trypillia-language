@@ -369,6 +369,33 @@ public:
         node->body->accept(this);
     }
 
+    void visit(SwitchStmt* node) override {
+        indent();
+        code << "switch (";
+        node->expression->accept(this);
+        code << ") {\n";
+        indentLevel++;
+        for (auto& case_ : node->cases) {
+            if (case_.value) {
+                indent();
+                code << "case ";
+                case_.value->accept(this);
+                code << ":\n";
+            } else {
+                indent();
+                code << "default:\n";
+            }
+            indentLevel++;
+            for (auto* stmt : case_.body) {
+                stmt->accept(this);
+            }
+            indentLevel--;
+        }
+        indentLevel--;
+        indent();
+        code << "}\n";
+    }
+
     void visit(FunctionNode* node) override {
         // In a real compiler, we would determine the return type
         // For now, we'll just use 'auto'

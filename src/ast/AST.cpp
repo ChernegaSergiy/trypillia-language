@@ -118,6 +118,10 @@ void FunctionNode::accept(ASTVisitor* visitor) {
     visitor->visit(this);
 }
 
+void SwitchStmt::accept(ASTVisitor* visitor) {
+    visitor->visit(this);
+}
+
 void FieldDeclNode::accept(ASTVisitor* visitor) {
     visitor->visit(this);
 }

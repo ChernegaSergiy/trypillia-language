@@ -405,6 +405,48 @@ StmtNode* Parser::continueStatement() {
     return new ContinueStmt(keyword);
 }
 
+StmtNode* Parser::switchStatement() {
+    consume(TokenType::LPAREN);
+    ExprNode* expr = expression();
+    consume(TokenType::RPAREN);
+    consume(TokenType::LBRACE);
+    
+    std::vector<SwitchStmt::Case> cases;
+    
+    while (currentToken.type != TokenType::RBRACE && currentToken.type != TokenType::END_OF_FILE) {
+        if (match(TokenType::CASE)) {
+            ExprNode* value = expression();
+            consume(TokenType::COLON);
+            
+            std::vector<StmtNode*> body;
+            while (currentToken.type != TokenType::CASE && 
+                   currentToken.type != TokenType::DEFAULT && 
+                   currentToken.type != TokenType::RBRACE && 
+                   currentToken.type != TokenType::END_OF_FILE) {
+                body.push_back(statement());
+            }
+            
+            cases.push_back({value, body});
+        } else if (match(TokenType::DEFAULT)) {
+            consume(TokenType::COLON);
+            
+            std::vector<StmtNode*> body;
+            while (currentToken.type != TokenType::CASE && 
+                   currentToken.type != TokenType::RBRACE && 
+                   currentToken.type != TokenType::END_OF_FILE) {
+                body.push_back(statement());
+            }
+            
+            cases.push_back({nullptr, body});
+        } else {
+            throw std::runtime_error("Expected 'case' or 'default' in switch statement");
+        }
+    }
+    
+    consume(TokenType::RBRACE);
+    return new SwitchStmt(expr, cases);
+}
+
 StmtNode* Parser::forStatement() {
     advance(); // consume FOR
     
@@ -492,6 +534,10 @@ StmtNode* Parser::statement() {
     
     if (currentToken.type == TokenType::FOR) {
         return forStatement();
+    }
+    
+    if (match(TokenType::SWITCH)) {
+        return switchStatement();
     }
     
     if (match(TokenType::LBRACE)) {

@@ -249,6 +249,18 @@ public:
         currentScope = currentScope->getParent();
     }
 
+    void visit(SwitchStmt* node) override {
+        node->expression->accept(this);
+        for (auto& case_ : node->cases) {
+            if (case_.value) {
+                case_.value->accept(this);
+            }
+            for (auto* stmt : case_.body) {
+                stmt->accept(this);
+            }
+        }
+    }
+
     void visit(FunctionNode* node) override {
         Symbol functionSymbol;
         functionSymbol.name = node->name;

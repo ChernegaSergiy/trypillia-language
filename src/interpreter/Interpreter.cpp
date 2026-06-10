@@ -950,6 +950,16 @@ public:
         }
     }
 
+    void visit(SwitchStmt* node) override {
+        // Will be fully implemented in next commit
+        node->expression->accept(this);
+        for (auto& case_ : node->cases) {
+            if (case_.value) {
+                case_.value->accept(this);
+            }
+        }
+    }
+
     void visit(FunctionNode* node) override {
         std::shared_ptr<Function> function = std::make_shared<Function>(node, environment);
         environment->define(node->name, function);

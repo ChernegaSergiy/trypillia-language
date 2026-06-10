@@ -425,6 +425,29 @@ public:
     void accept(ASTVisitor* visitor) override;
 };
 
+class SwitchStmt : public StmtNode {
+public:
+    ExprNode* expression;
+    struct Case {
+        ExprNode* value;    // nullptr for default
+        std::vector<StmtNode*> body;
+    };
+    std::vector<Case> cases;
+
+    SwitchStmt(ExprNode* expression, std::vector<Case> cases)
+        : expression(expression), cases(std::move(cases)) {}
+
+    ~SwitchStmt() {
+        delete expression;
+        for (auto& c : cases) {
+            delete c.value;
+            for (auto* s : c.body) delete s;
+        }
+    }
+
+    void accept(ASTVisitor* visitor) override;
+};
+
 class FunctionNode : public StmtNode {
 public:
     std::string name;
@@ -506,6 +529,7 @@ public:
     virtual void visit(ContinueStmt* node) = 0;
     virtual void visit(ForStmt* node) = 0;
     virtual void visit(ForeachStmt* node) = 0;
+    virtual void visit(SwitchStmt* node) = 0;
     virtual void visit(UnaryExpr* node) = 0;
     virtual void visit(ThisExpr* node) = 0;
     virtual void visit(SuperExpr* node) = 0;

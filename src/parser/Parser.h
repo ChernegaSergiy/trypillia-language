@@ -49,6 +49,7 @@ private:
     StmtNode* returnStatement();
     StmtNode* breakStatement();
     StmtNode* continueStatement();
+    StmtNode* switchStatement();
 
     // Declaration parsing methods
     ASTNode* declaration();
