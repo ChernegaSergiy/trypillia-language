@@ -34,6 +34,9 @@ private:
         return -1;
     }
 
+public:
+    CompilerVisitor(Chunk* chunk) : chunk(chunk) {}
+
     void emitByte(uint8_t byte) {
         chunk->write(byte, 1);
     }
@@ -70,9 +73,6 @@ private:
         emitByte((offset >> 8) & 0xff);
         emitByte(offset & 0xff);
     }
-
-public:
-    CompilerVisitor(Chunk* chunk) : chunk(chunk) {}
 
     void visit(ProgramNode* node) override {
         for (auto& decl : node->declarations) {
@@ -293,15 +293,21 @@ public:
     void visit(LoadStmt* node) override {}
 };
 
-Chunk* Compiler::compile(ASTNode* ast) {
-    if (!ast) return nullptr;
+std::shared_ptr<ObjFunction> Compiler::compile(ASTNode* ast) {
+    if (!ast) {
+        ErrorHandling::reportError("AST is null");
+        return nullptr;
+    }
 
-    Chunk* chunk = new Chunk();
-    CompilerVisitor visitor(chunk);
-    
+    auto script = std::make_shared<ObjFunction>();
+    script->name = "<script>";
+    script->chunk = std::make_shared<Chunk>();
+
+    CompilerVisitor visitor(script->chunk.get());
     ast->accept(&visitor);
-    
-    chunk->writeOp(OpCode::OP_RETURN, 1);
-    
-    return chunk;
+
+    visitor.emitByte(static_cast<uint8_t>(OpCode::OP_NIL));
+    visitor.emitByte(static_cast<uint8_t>(OpCode::OP_RETURN));
+
+    return script;
 }

@@ -5,10 +5,20 @@
 #include <cstdint>
 #include <variant>
 #include <string>
+#include <string>
 #include <memory>
 #include "OpCode.h"
 
-using VMValue = std::variant<std::nullptr_t, bool, double, std::string>;
+class Chunk;
+struct ObjFunction {
+    std::string name;
+    int arity;
+    std::shared_ptr<Chunk> chunk;
+
+    ObjFunction() : arity(0) {}
+};
+
+using VMValue = std::variant<std::nullptr_t, bool, double, std::string, std::shared_ptr<ObjFunction>>;
 
 class Chunk {
 public:

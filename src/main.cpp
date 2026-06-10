@@ -38,12 +38,12 @@ int main(int argc, char** argv) {
 
     std::cout << "\n--- Bytecode VM Execution ---\n";
     Compiler compiler;
-    Chunk* chunk = compiler.compile(ast);
+    std::shared_ptr<ObjFunction> function = compiler.compile(ast);
     
-    if (chunk) {
+    if (function) {
+        std::cout << "\n--- Bytecode VM Execution ---\n";
         VM vm;
-        vm.interpret(chunk);
-        delete chunk;
+        vm.interpret(function);
     }
 
     return 0;

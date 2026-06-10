@@ -26,18 +26,28 @@ VMValue VM::peek(int distance) {
     return stack[stack.size() - 1 - distance];
 }
 
-InterpretResult VM::interpret(Chunk* chunk) {
-    this->chunk = chunk;
-    this->ip = chunk->code.data();
+InterpretResult VM::interpret(std::shared_ptr<ObjFunction> function) {
+    stack.clear();
+    frames.clear();
+    
+    push(function);
+    CallFrame frame;
+    frame.function = function;
+    frame.ip = function->chunk->code.data();
+    frame.stackStart = 0;
+    frames.push_back(frame);
+    
     return run();
 }
 
-#define READ_BYTE() (*ip++)
-#define READ_CONSTANT() (chunk->constants[READ_BYTE()])
+#define READ_BYTE() (*frame->ip++)
+#define READ_CONSTANT() (frame->function->chunk->constants[READ_BYTE()])
 #define READ_SHORT() \
-    (ip += 2, (uint16_t)((ip[-2] << 8) | ip[-1]))
+    (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
 
 InterpretResult VM::run() {
+    CallFrame* frame = &frames.back();
+    
     for (;;) {
         uint8_t instruction;
         switch (instruction = READ_BYTE()) {
@@ -122,7 +132,7 @@ InterpretResult VM::run() {
             }
             case static_cast<uint8_t>(OpCode::OP_JUMP): {
                 uint16_t offset = READ_SHORT();
-                ip += offset;
+                frame->ip += offset;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE): {
@@ -136,23 +146,23 @@ InterpretResult VM::run() {
                 }
                 
                 if (isFalsy) {
-                    ip += offset;
+                    frame->ip += offset;
                 }
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_GET_LOCAL): {
                 uint8_t slot = READ_BYTE();
-                push(stack[slot]);
+                push(stack[frame->stackStart + 1 + slot]);
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_SET_LOCAL): {
                 uint8_t slot = READ_BYTE();
-                stack[slot] = peek(0);
+                stack[frame->stackStart + 1 + slot] = peek(0);
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_LOOP): {
                 uint16_t offset = READ_SHORT();
-                ip -= offset;
+                frame->ip -= offset;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_DUP): {
@@ -199,14 +209,43 @@ InterpretResult VM::run() {
                 }
                 break;
             }
-            case static_cast<uint8_t>(OpCode::OP_RETURN): {
-                if (!stack.empty()) {
-                    VMValue result = pop();
-                    if (std::holds_alternative<double>(result)) {
-                        std::cout << "Result: " << std::get<double>(result) << std::endl;
+            case static_cast<uint8_t>(OpCode::OP_CALL): {
+                uint8_t argCount = READ_BYTE();
+                VMValue callee = peek(argCount);
+                if (std::holds_alternative<std::shared_ptr<ObjFunction>>(callee)) {
+                    auto function = std::get<std::shared_ptr<ObjFunction>>(callee);
+                    if (argCount != function->arity) {
+                        std::cerr << "Expected " << function->arity << " arguments but got " << (int)argCount << "." << std::endl;
+                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
                     }
+                    if (frames.size() == 256) {
+                        std::cerr << "Stack overflow." << std::endl;
+                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                    }
+                    CallFrame newFrame;
+                    newFrame.function = function;
+                    newFrame.ip = function->chunk->code.data();
+                    newFrame.stackStart = stack.size() - argCount - 1;
+                    frames.push_back(newFrame);
+                    frame = &frames.back();
+                } else {
+                    std::cerr << "Can only call functions." << std::endl;
+                    return InterpretResult::INTERPRET_RUNTIME_ERROR;
                 }
-                return InterpretResult::INTERPRET_OK;
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_RETURN): {
+                VMValue result = pop();
+                int newStackSize = frame->stackStart;
+                frames.pop_back();
+                if (frames.empty()) {
+                    pop();
+                    return InterpretResult::INTERPRET_OK;
+                }
+                stack.resize(newStackSize);
+                push(result);
+                frame = &frames.back();
+                break;
             }
             default:
                 std::cerr << "Unknown opcode" << std::endl;

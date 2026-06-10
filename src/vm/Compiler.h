@@ -9,7 +9,7 @@ public:
     Compiler() = default;
     ~Compiler() = default;
 
-    Chunk* compile(ASTNode* ast);
+    std::shared_ptr<ObjFunction> compile(ASTNode* ast);
 };
 
 #endif // TRYPILLIA_COMPILER_H

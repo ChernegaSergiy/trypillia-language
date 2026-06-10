@@ -12,10 +12,15 @@ enum class InterpretResult {
     INTERPRET_RUNTIME_ERROR
 };
 
+struct CallFrame {
+    std::shared_ptr<ObjFunction> function;
+    uint8_t* ip;
+    int stackStart;
+};
+
 class VM {
 private:
-    Chunk* chunk;
-    uint8_t* ip;
+    std::vector<CallFrame> frames;
     std::vector<VMValue> stack;
     std::unordered_map<std::string, VMValue> globals;
 
@@ -30,7 +35,7 @@ public:
     VM();
     ~VM();
 
-    InterpretResult interpret(Chunk* chunk);
+    InterpretResult interpret(std::shared_ptr<ObjFunction> function);
 };
 
 #endif // TRYPILLIA_VM_H
