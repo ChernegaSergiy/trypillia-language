@@ -48,7 +48,7 @@ struct VMValueEqual {
 
 struct ObjClass {
     std::string name;
-    std::unordered_map<std::string, std::shared_ptr<ObjFunction>> methods;
+    std::unordered_map<std::string, VMValue> methods;
     std::shared_ptr<ObjClass> superclass;
     bool isAbstract = false;
     std::unordered_map<std::string, VMValue> statics;
@@ -59,13 +59,25 @@ struct ObjClass {
 struct ObjInstance {
     std::shared_ptr<ObjClass> klass;
     std::unordered_map<std::string, VMValue> fields;
+    
+    // Native resource binding
+    void* nativeData = nullptr;
+    void (*freeFn)(void*) = nullptr;
+
     ObjInstance(std::shared_ptr<ObjClass> k) : klass(k) {}
+    
+    ~ObjInstance() {
+        if (nativeData && freeFn) {
+            freeFn(nativeData);
+            nativeData = nullptr;
+        }
+    }
 };
 
 struct ObjBoundMethod {
     std::shared_ptr<ObjInstance> receiver;
-    std::shared_ptr<ObjFunction> method;
-    ObjBoundMethod(std::shared_ptr<ObjInstance> r, std::shared_ptr<ObjFunction> m) : receiver(r), method(m) {}
+    VMValue method;
+    ObjBoundMethod(std::shared_ptr<ObjInstance> r, VMValue m) : receiver(r), method(m) {}
 };
 
 struct ObjList {
@@ -81,6 +93,8 @@ struct ObjNative {
     std::string name;
     int arity;
     NativeFn function;
+    bool isAbstract = false;
+    VMAccessModifier accessModifier = VMAccessModifier::PUBLIC;
 
     ObjNative(std::string n, int a, NativeFn f) : name(n), arity(a), function(f) {}
 };

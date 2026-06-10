@@ -23,7 +23,12 @@ namespace Core {
             } else if (std::holds_alternative<std::shared_ptr<ObjInstance>>(args[i])) {
                 std::cout << "<instance of " << std::get<std::shared_ptr<ObjInstance>>(args[i])->klass->name << ">";
             } else if (std::holds_alternative<std::shared_ptr<ObjBoundMethod>>(args[i])) {
-                std::cout << "<bound method " << std::get<std::shared_ptr<ObjBoundMethod>>(args[i])->method->name << ">";
+                auto boundMethod = std::get<std::shared_ptr<ObjBoundMethod>>(args[i])->method;
+                if (std::holds_alternative<std::shared_ptr<ObjFunction>>(boundMethod)) {
+                    std::cout << "<bound method " << std::get<std::shared_ptr<ObjFunction>>(boundMethod)->name << ">";
+                } else {
+                    std::cout << "<bound method " << std::get<std::shared_ptr<ObjNative>>(boundMethod)->name << ">";
+                }
             } else if (std::holds_alternative<std::nullptr_t>(args[i])) {
                 std::cout << "nil";
             }

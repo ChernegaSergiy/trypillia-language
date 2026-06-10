@@ -1,7 +1,31 @@
 #include "VM.h"
-#include <iostream>
-#include <ctime>
 #include "../native/StdLib.h"
+#include <iostream>
+
+
+static bool isMethodAbstract(const VMValue& method) {
+    if (std::holds_alternative<std::shared_ptr<ObjFunction>>(method)) return std::get<std::shared_ptr<ObjFunction>>(method)->isAbstract;
+    if (std::holds_alternative<std::shared_ptr<ObjNative>>(method)) return std::get<std::shared_ptr<ObjNative>>(method)->isAbstract;
+    return false;
+}
+
+static VMAccessModifier getMethodAccessModifier(const VMValue& method) {
+    if (std::holds_alternative<std::shared_ptr<ObjFunction>>(method)) return std::get<std::shared_ptr<ObjFunction>>(method)->accessModifier;
+    if (std::holds_alternative<std::shared_ptr<ObjNative>>(method)) return std::get<std::shared_ptr<ObjNative>>(method)->accessModifier;
+    return VMAccessModifier::PUBLIC;
+}
+
+static std::string getMethodName(const VMValue& method) {
+    if (std::holds_alternative<std::shared_ptr<ObjFunction>>(method)) return std::get<std::shared_ptr<ObjFunction>>(method)->name;
+    if (std::holds_alternative<std::shared_ptr<ObjNative>>(method)) return std::get<std::shared_ptr<ObjNative>>(method)->name;
+    return "";
+}
+
+static int getMethodArity(const VMValue& method) {
+    if (std::holds_alternative<std::shared_ptr<ObjFunction>>(method)) return std::get<std::shared_ptr<ObjFunction>>(method)->arity;
+    if (std::holds_alternative<std::shared_ptr<ObjNative>>(method)) return std::get<std::shared_ptr<ObjNative>>(method)->arity;
+    return -1;
+}
 
 namespace {
     int utf8_length(const std::string& str) {
@@ -457,7 +481,7 @@ InterpretResult VM::run() {
                 std::string name = std::get<std::string>(READ_CONSTANT());
                 VMValue methodVal = pop();
                 VMValue classVal = peek(0);
-                auto method = std::get<std::shared_ptr<ObjFunction>>(methodVal);
+                auto method = methodVal;
                 auto klass = std::get<std::shared_ptr<ObjClass>>(classVal);
                 klass->methods[name] = method;
                 break;
@@ -466,8 +490,9 @@ InterpretResult VM::run() {
                 std::string name = std::get<std::string>(READ_CONSTANT());
                 VMValue methodVal = pop();
                 VMValue classVal = peek(0);
-                auto method = std::get<std::shared_ptr<ObjFunction>>(methodVal);
-                method->isAbstract = true;
+                auto method = methodVal;
+                if (std::holds_alternative<std::shared_ptr<ObjFunction>>(method)) std::get<std::shared_ptr<ObjFunction>>(method)->isAbstract = true;
+                else std::get<std::shared_ptr<ObjNative>>(method)->isAbstract = true;
                 auto klass = std::get<std::shared_ptr<ObjClass>>(classVal);
                 klass->methods[name] = method;
                 break;
@@ -506,7 +531,7 @@ InterpretResult VM::run() {
                         push(instance->fields[name]);
                     } else if (instance->klass->methods.count(name)) {
                         auto method = instance->klass->methods[name];
-                        if (!checkAccess(method->accessModifier, instance->klass, callerClass)) {
+                        if (!checkAccess(getMethodAccessModifier(method), instance->klass, callerClass)) {
                             std::cerr << "Access error: Cannot access method '" << name << "'." << std::endl;
                             return InterpretResult::INTERPRET_RUNTIME_ERROR;
                         }
@@ -601,7 +626,7 @@ InterpretResult VM::run() {
                         return InterpretResult::INTERPRET_RUNTIME_ERROR;
                     }
                     for (auto const& [name, method] : klass->methods) {
-                        if (method->isAbstract) {
+                        if (isMethodAbstract(method)) {
                             std::cerr << "Cannot instantiate class '" << klass->name << "' because abstract method '" << name << "' is not implemented." << std::endl;
                             return InterpretResult::INTERPRET_RUNTIME_ERROR;
                         }
@@ -612,17 +637,24 @@ InterpretResult VM::run() {
 
                     if (klass->methods.count("init")) {
                         auto initMethod = klass->methods["init"];
-                        if (argCount != initMethod->arity) {
-                            std::cerr << "Expected " << initMethod->arity << " arguments but got " << argCount << "." << std::endl;
+                        if (getMethodArity(initMethod) != -1 && argCount != getMethodArity(initMethod)) {
+                            std::cerr << "Expected " << getMethodArity(initMethod) << " arguments but got " << argCount << "." << std::endl;
                             return InterpretResult::INTERPRET_RUNTIME_ERROR;
                         }
                         
-                        CallFrame newFrame;
-                        newFrame.function = initMethod;
-                        newFrame.ip = initMethod->chunk->code.data();
-                        newFrame.stackStart = stack.size() - argCount - 1;
-                        frames.push_back(newFrame);
-                        frame = &frames.back();
+                        if (std::holds_alternative<std::shared_ptr<ObjFunction>>(initMethod)) {
+                            auto func = std::get<std::shared_ptr<ObjFunction>>(initMethod);
+                            CallFrame newFrame;
+                            newFrame.function = func;
+                            newFrame.ip = func->chunk->code.data();
+                            newFrame.stackStart = stack.size() - argCount - 1;
+                            frames.push_back(newFrame);
+                            frame = &frames.back();
+                        } else {
+                            auto native = std::get<std::shared_ptr<ObjNative>>(initMethod);
+                            native->function(argCount, stack.data() + stack.size() - argCount);
+                            stack.resize(stack.size() - argCount); // leave the instance on stack
+                        }
                     } else if (argCount != 0) {
                         std::cerr << "Expected 0 arguments but got " << argCount << "." << std::endl;
                         return InterpretResult::INTERPRET_RUNTIME_ERROR;
@@ -630,12 +662,12 @@ InterpretResult VM::run() {
                 } else if (std::holds_alternative<std::shared_ptr<ObjBoundMethod>>(callee)) {
                     auto bound = std::get<std::shared_ptr<ObjBoundMethod>>(callee);
                     auto function = bound->method;
-                    if (function->isAbstract) {
-                        std::cerr << "Cannot call abstract method '" << function->name << "'." << std::endl;
+                    if (isMethodAbstract(function)) {
+                        std::cerr << "Cannot call abstract method '" << getMethodName(function) << "'." << std::endl;
                         return InterpretResult::INTERPRET_RUNTIME_ERROR;
                     }
-                    if (argCount != function->arity) {
-                        std::cerr << "Expected " << function->arity << " arguments but got " << (int)argCount << "." << std::endl;
+                    if (getMethodArity(function) != -1 && argCount != getMethodArity(function)) {
+                        std::cerr << "Expected " << getMethodArity(function) << " arguments but got " << (int)argCount << "." << std::endl;
                         return InterpretResult::INTERPRET_RUNTIME_ERROR;
                     }
                     if (frames.size() == 256) {
@@ -643,12 +675,21 @@ InterpretResult VM::run() {
                         return InterpretResult::INTERPRET_RUNTIME_ERROR;
                     }
                     stack[stack.size() - argCount - 1] = bound->receiver;
-                    CallFrame newFrame;
-                    newFrame.function = function;
-                    newFrame.ip = function->chunk->code.data();
-                    newFrame.stackStart = stack.size() - argCount - 1;
-                    frames.push_back(newFrame);
-                    frame = &frames.back();
+                    
+                    if (std::holds_alternative<std::shared_ptr<ObjFunction>>(function)) {
+                        auto func = std::get<std::shared_ptr<ObjFunction>>(function);
+                        CallFrame newFrame;
+                        newFrame.function = func;
+                        newFrame.ip = func->chunk->code.data();
+                        newFrame.stackStart = stack.size() - argCount - 1;
+                        frames.push_back(newFrame);
+                        frame = &frames.back();
+                    } else {
+                        auto native = std::get<std::shared_ptr<ObjNative>>(function);
+                        VMValue result = native->function(argCount, stack.data() + stack.size() - argCount);
+                        stack.resize(stack.size() - argCount - 1);
+                        push(result);
+                    }
                 } else {
                     std::cerr << "Can only call functions and classes." << std::endl;
                     return InterpretResult::INTERPRET_RUNTIME_ERROR;
