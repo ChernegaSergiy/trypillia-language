@@ -307,6 +307,18 @@ public:
             ErrorHandling::reportError(error);
         }
         
+        // Resolve parent class
+        if (!node->parentName.empty()) {
+            Symbol* parentSymbol = currentScope->resolve(node->parentName);
+            if (!parentSymbol) {
+                std::string error = "Parent class '" + node->parentName + "' not found";
+                ErrorHandling::reportError(error);
+            } else if (parentSymbol->type != "class") {
+                std::string error = "'" + node->parentName + "' is not a class";
+                ErrorHandling::reportError(error);
+            }
+        }
+        
         SymbolTable* enclosingScope = currentScope;
         currentScope = new SymbolTable(enclosingScope);
 

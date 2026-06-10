@@ -8,6 +8,7 @@ class CodeGenVisitor : public ASTVisitor {
 private:
     std::stringstream code;
     int indentLevel = 0;
+    std::string currentParentName;
     
     void indent() {
         for (int i = 0; i < indentLevel; i++) {
@@ -166,10 +167,11 @@ public:
     }
     
     void visit(SuperExpr* node) override {
-        // In C++, super call like Parent::method()
-        // We don't have the parent type info readily available in codegen
-        // For now, emit a placeholder
-        code << "/* super." << node->method.lexeme << "() */";
+        if (!currentParentName.empty()) {
+            code << currentParentName << "::" << node->method.lexeme;
+        } else {
+            code << "/* super." << node->method.lexeme << " */";
+        }
     }
     
     void visit(GetExpr* node) override {
@@ -396,7 +398,11 @@ public:
     }
     
     void visit(ClassNode* node) override {
-        code << "class " << node->name << " {\n";
+        code << "class " << node->name;
+        if (!node->parentName.empty()) {
+            code << " : public " << node->parentName;
+        }
+        code << " {\n";
         indentLevel++;
         
         // Check if we need a constructor (any field with initializer)
@@ -440,6 +446,10 @@ public:
             code << " {}\n";
         }
         
+        // Save and set parent name for super calls
+        auto prevParent = currentParentName;
+        currentParentName = node->parentName;
+        
         // Public section
         code << "public:\n";
         for (auto& method : publicMethods) {
@@ -474,6 +484,7 @@ public:
             }
         }
         
+        currentParentName = prevParent;
         indentLevel--;
         code << "};\n\n";
     }

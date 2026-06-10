@@ -99,6 +99,7 @@ public:
 
 // Forward declaration of the interpreter visitor
 class InterpreterVisitor;
+class Class;
 
 // Base callable interface
 class Callable {
@@ -114,10 +115,13 @@ private:
     FunctionNode* declaration;
     std::shared_ptr<Environment> closure;
     AccessModifier accessModifier;
+    std::shared_ptr<Class> owningClass;
     
 public:
-    Function(FunctionNode* declaration, std::shared_ptr<Environment> closure, AccessModifier accessModifier = AccessModifier::PUBLIC)
-        : declaration(declaration), closure(closure), accessModifier(accessModifier) {}
+    Function(FunctionNode* declaration, std::shared_ptr<Environment> closure, 
+             AccessModifier accessModifier = AccessModifier::PUBLIC,
+             std::shared_ptr<Class> owningClass = nullptr)
+        : declaration(declaration), closure(closure), accessModifier(accessModifier), owningClass(owningClass) {}
     
     int arity() const override {
         return declaration->params.size();
@@ -128,6 +132,7 @@ public:
     std::shared_ptr<Environment> getClosure() const { return closure; }
     FunctionNode* getDeclaration() const { return declaration; }
     AccessModifier getAccessModifier() const { return accessModifier; }
+    std::shared_ptr<Class> getOwningClass() const { return owningClass; }
     
     std::string toString() const {
         return "<fn " + declaration->name + ">";
@@ -173,13 +178,15 @@ private:
     std::vector<FieldDecl> fieldDecls;
     std::shared_ptr<Environment> closure;
     std::unordered_map<std::string, AccessModifier> fieldAccess;
+    std::shared_ptr<Class> parent;
     
 public:
     Class(const std::string& name, 
           const std::unordered_map<std::string, std::shared_ptr<Function>>& methods,
           const std::vector<FieldDecl>& fieldDecls = {},
-          std::shared_ptr<Environment> closure = nullptr)
-        : name(name), methods(methods), fieldDecls(fieldDecls), closure(closure) {
+          std::shared_ptr<Environment> closure = nullptr,
+          std::shared_ptr<Class> parent = nullptr)
+        : name(name), methods(methods), fieldDecls(fieldDecls), closure(closure), parent(parent) {
         for (auto& fd : fieldDecls) {
             fieldAccess[fd.name] = fd.accessModifier;
         }
@@ -200,13 +207,28 @@ public:
         if (it != methods.end()) {
             return it->second;
         }
+        if (parent) {
+            return parent->findMethod(name);
+        }
         return nullptr;
     }
     
     AccessModifier getFieldAccess(const std::string& fieldName) const {
         auto it = fieldAccess.find(fieldName);
         if (it != fieldAccess.end()) return it->second;
+        if (parent) return parent->getFieldAccess(fieldName);
         return AccessModifier::PUBLIC;
+    }
+    
+    std::shared_ptr<Class> getParent() const { return parent; }
+    
+    void setMethods(const std::unordered_map<std::string, std::shared_ptr<Function>>& m) { methods = m; }
+    void setFieldDecls(const std::vector<FieldDecl>& fds) { 
+        fieldDecls = fds;
+        fieldAccess.clear();
+        for (auto& fd : fieldDecls) {
+            fieldAccess[fd.name] = fd.accessModifier;
+        }
     }
     
     const std::vector<FieldDecl>& getFieldDecls() const { return fieldDecls; }
@@ -311,7 +333,9 @@ private:
     Value lastValue;
     
 public:
-    InterpreterVisitor() : globals(std::make_shared<Environment>()), environment(globals) {
+    std::shared_ptr<Class> currentClass;
+    
+    InterpreterVisitor() : globals(std::make_shared<Environment>()), environment(globals), currentClass(nullptr) {
         // Add native functions to global environment
     }
     
@@ -640,7 +664,27 @@ public:
     }
     
     void visit(SuperExpr* node) override {
-        throw std::runtime_error("'super' is not implemented yet");
+        if (!currentClass) {
+            throw std::runtime_error("'super' can only be used inside a method");
+        }
+        
+        std::shared_ptr<Class> parent = currentClass->getParent();
+        if (!parent) {
+            throw std::runtime_error("No parent class to call 'super." + node->method.lexeme + "'");
+        }
+        
+        Value thisVal = environment->get("this");
+        if (!std::holds_alternative<std::shared_ptr<Instance>>(thisVal)) {
+            throw std::runtime_error("'super' can only be used inside a method");
+        }
+        
+        auto instance = std::get<std::shared_ptr<Instance>>(thisVal);
+        std::shared_ptr<Function> method = parent->findMethod(node->method.lexeme);
+        if (!method) {
+            throw std::runtime_error("Undefined method '" + node->method.lexeme + "' in parent class");
+        }
+        
+        lastValue = std::make_shared<BoundMethod>(instance, method);
     }
     
     void visit(GetExpr* node) override {
@@ -882,9 +926,24 @@ public:
     void visit(ClassNode* node) override {
         environment->define(node->name, nullptr);
         
+        // Resolve parent class
+        std::shared_ptr<Class> parentClass = nullptr;
+        if (!node->parentName.empty()) {
+            Value parentVal = environment->get(node->parentName);
+            if (!std::holds_alternative<std::shared_ptr<Class>>(parentVal)) {
+                throw std::runtime_error("Parent '" + node->parentName + "' is not a class");
+            }
+            parentClass = std::get<std::shared_ptr<Class>>(parentVal);
+        }
+        
+        // Create the class first so we can pass it as owningClass
+        auto klass = std::make_shared<Class>(node->name, 
+            std::unordered_map<std::string, std::shared_ptr<Function>>(),
+            std::vector<Class::FieldDecl>(), environment, parentClass);
+        
         std::unordered_map<std::string, std::shared_ptr<Function>> methods;
         for (auto& method : node->methods) {
-            std::shared_ptr<Function> function = std::make_shared<Function>(method, environment, method->accessModifier);
+            std::shared_ptr<Function> function = std::make_shared<Function>(method, environment, method->accessModifier, klass);
             methods[method->name] = function;
         }
         
@@ -893,7 +952,10 @@ public:
             fieldDecls.push_back({field->name, field->initializer, field->accessModifier});
         }
         
-        std::shared_ptr<Class> klass = std::make_shared<Class>(node->name, methods, fieldDecls, environment);
+        // Update the class with methods and fields
+        klass->setMethods(methods);
+        klass->setFieldDecls(fieldDecls);
+        
         environment->assign(node->name, klass);
     }
 };
@@ -924,12 +986,17 @@ Value BoundMethod::call(InterpreterVisitor* interpreter, const std::vector<Value
         environment->define(method->getDeclaration()->params[i], arguments[i]);
     }
 
+    auto prevClass = interpreter->currentClass;
+    interpreter->currentClass = method->getOwningClass();
+
     try {
         interpreter->executeBlock(method->getDeclaration()->body, environment);
     } catch (const ReturnException& returnValue) {
+        interpreter->currentClass = prevClass;
         return returnValue.value;
     }
 
+    interpreter->currentClass = prevClass;
     return nullptr;
 }
 
@@ -937,12 +1004,26 @@ Value BoundMethod::call(InterpreterVisitor* interpreter, const std::vector<Value
 Value Class::call(InterpreterVisitor* interpreter, const std::vector<Value>& arguments) {
     std::shared_ptr<Instance> instance = std::make_shared<Instance>(shared_from_this());
     
-    // Evaluate field initializers
-    if (!fieldDecls.empty() && closure) {
-        auto env = std::make_shared<Environment>(closure);
-        env->define("this", instance);
-        interpreter->executeFieldInitializers(instance, fieldDecls, env);
+    // Evaluate field initializers from the whole hierarchy
+    std::vector<std::shared_ptr<Class>> hierarchy;
+    auto klass = shared_from_this();
+    while (klass) {
+        hierarchy.push_back(klass);
+        klass = klass->getParent();
     }
+    // Walk from topmost parent to most derived
+    for (auto it = hierarchy.rbegin(); it != hierarchy.rend(); ++it) {
+        auto& fds = (*it)->getFieldDecls();
+        auto cls = (*it)->getClosure();
+        if (!fds.empty() && cls) {
+            auto env = std::make_shared<Environment>(cls);
+            env->define("this", instance);
+            interpreter->executeFieldInitializers(instance, fds, env);
+        }
+    }
+    
+    auto prevClass = interpreter->currentClass;
+    interpreter->currentClass = shared_from_this();
     
     // Call the initializer if it exists
     std::shared_ptr<Function> initializer = findMethod("init");
@@ -951,6 +1032,7 @@ Value Class::call(InterpreterVisitor* interpreter, const std::vector<Value>& arg
         boundInit->call(interpreter, arguments);
     }
     
+    interpreter->currentClass = prevClass;
     return instance;
 }
 
