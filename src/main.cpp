@@ -3,8 +3,6 @@
 #include "lexer/Lexer.h"
 #include "parser/Parser.h"
 #include "semantic/SemanticAnalyzer.h"
-#include "codegen/CodeGenerator.h"
-#include "interpreter/Interpreter.h"
 #include "vm/Compiler.h"
 #include "vm/VM.h"
 
@@ -30,13 +28,6 @@ int main(int argc, char** argv) {
     SemanticAnalyzer semanticAnalyzer;
     semanticAnalyzer.analyze(ast);
 
-    CodeGenerator codegen;
-    // codegen.generate(ast);
-
-    Interpreter interpreter;
-    // interpreter.execute(ast);
-
-    std::cout << "\n--- Bytecode VM Execution ---\n";
     Compiler compiler;
     std::shared_ptr<ObjFunction> function = compiler.compile(ast);
     
