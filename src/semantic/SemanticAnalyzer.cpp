@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <fstream>
+#include "../native/StdLib.h"
 
 class SemanticVisitor : public ASTVisitor {
 private:
@@ -13,20 +14,7 @@ private:
     
 public:
     SemanticVisitor() : currentScope(new SymbolTable()) {
-        auto addNative = [&](const std::string& name) {
-            Symbol sym;
-            sym.name = name;
-            sym.type = "function";
-            sym.isConst = true;
-            currentScope->define(sym);
-        };
-        addNative("print");
-        addNative("clock");
-        addNative("len");
-        addNative("push");
-        addNative("substring");
-        addNative("toUpper");
-        addNative("toLower");
+        StdLib::registerSymbols(currentScope);
     }
     
     ~SemanticVisitor() {

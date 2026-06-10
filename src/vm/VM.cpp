@@ -1,6 +1,7 @@
 #include "VM.h"
 #include <iostream>
 #include <ctime>
+#include "../native/StdLib.h"
 
 namespace {
     int utf8_length(const std::string& str) {
@@ -47,95 +48,7 @@ namespace {
 }
 
 VM::VM() {
-    auto printNative = [](int argCount, VMValue* args) -> VMValue {
-        for (int i = 0; i < argCount; i++) {
-            if (std::holds_alternative<double>(args[i])) {
-                std::cout << std::get<double>(args[i]);
-            } else if (std::holds_alternative<std::string>(args[i])) {
-                std::cout << std::get<std::string>(args[i]);
-            } else if (std::holds_alternative<bool>(args[i])) {
-                std::cout << (std::get<bool>(args[i]) ? "true" : "false");
-            } else if (std::holds_alternative<std::shared_ptr<ObjList>>(args[i])) {
-                std::cout << "[list]";
-            } else if (std::holds_alternative<std::shared_ptr<ObjClass>>(args[i])) {
-                std::cout << "<class " << std::get<std::shared_ptr<ObjClass>>(args[i])->name << ">";
-            } else if (std::holds_alternative<std::shared_ptr<ObjInstance>>(args[i])) {
-                std::cout << "<instance of " << std::get<std::shared_ptr<ObjInstance>>(args[i])->klass->name << ">";
-            } else if (std::holds_alternative<std::shared_ptr<ObjBoundMethod>>(args[i])) {
-                std::cout << "<bound method " << std::get<std::shared_ptr<ObjBoundMethod>>(args[i])->method->name << ">";
-            } else if (std::holds_alternative<std::nullptr_t>(args[i])) {
-                std::cout << "nil";
-            }
-            if (i < argCount - 1) std::cout << " ";
-        }
-        std::cout << std::endl;
-        return nullptr;
-    };
-    
-    auto clockNative = [](int argCount, VMValue* args) -> VMValue {
-        return (double)clock() / CLOCKS_PER_SEC;
-    };
-    
-    auto lenNative = [](int argCount, VMValue* args) -> VMValue {
-        if (argCount != 1) return nullptr;
-        if (std::holds_alternative<std::shared_ptr<ObjList>>(args[0])) {
-            return (double)std::get<std::shared_ptr<ObjList>>(args[0])->elements.size();
-        } else if (std::holds_alternative<std::string>(args[0])) {
-            return (double)std::get<std::string>(args[0]).length();
-        }
-        return (double)0;
-    };
-    
-    auto pushNative = [](int argCount, VMValue* args) -> VMValue {
-        if (argCount != 2) return nullptr;
-        if (std::holds_alternative<std::shared_ptr<ObjList>>(args[0])) {
-            auto list = std::get<std::shared_ptr<ObjList>>(args[0]);
-            list->elements.push_back(args[1]);
-            return args[1];
-        }
-        return nullptr;
-    };
-
-    auto substringNative = [](int argCount, VMValue* args) -> VMValue {
-        if (argCount != 3) return nullptr;
-        if (std::holds_alternative<std::string>(args[0]) && std::holds_alternative<double>(args[1]) && std::holds_alternative<double>(args[2])) {
-            std::string str = std::get<std::string>(args[0]);
-            int start = std::get<double>(args[1]);
-            int len = std::get<double>(args[2]);
-            if (start >= 0 && start < str.length()) {
-                return str.substr(start, len);
-            }
-        }
-        return nullptr;
-    };
-    
-    auto toUpperNative = [](int argCount, VMValue* args) -> VMValue {
-        if (argCount != 1) return nullptr;
-        if (std::holds_alternative<std::string>(args[0])) {
-            std::string str = std::get<std::string>(args[0]);
-            for (char& c : str) c = std::toupper(c);
-            return str;
-        }
-        return nullptr;
-    };
-    
-    auto toLowerNative = [](int argCount, VMValue* args) -> VMValue {
-        if (argCount != 1) return nullptr;
-        if (std::holds_alternative<std::string>(args[0])) {
-            std::string str = std::get<std::string>(args[0]);
-            for (char& c : str) c = std::tolower(c);
-            return str;
-        }
-        return nullptr;
-    };
-
-    defineNative("print", -1, printNative);
-    defineNative("clock", 0, clockNative);
-    defineNative("len", 1, lenNative);
-    defineNative("push", 2, pushNative);
-    defineNative("substring", 3, substringNative);
-    defineNative("toUpper", 1, toUpperNative);
-    defineNative("toLower", 1, toLowerNative);
+    StdLib::registerAll(this);
 }
 
 VM::~VM() {
@@ -678,7 +591,7 @@ InterpretResult VM::run() {
                         std::cerr << "Expected " << native->arity << " arguments but got " << (int)argCount << "." << std::endl;
                         return InterpretResult::INTERPRET_RUNTIME_ERROR;
                     }
-                    VMValue result = native->function(argCount, &stack[stack.size() - argCount]);
+                    VMValue result = native->function(argCount, stack.data() + stack.size() - argCount);
                     stack.resize(stack.size() - argCount - 1);
                     push(result);
                 } else if (std::holds_alternative<std::shared_ptr<ObjClass>>(callee)) {

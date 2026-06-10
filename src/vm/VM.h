@@ -22,18 +22,19 @@ class VM {
 private:
     std::vector<CallFrame> frames;
     std::vector<VMValue> stack;
-    std::unordered_map<std::string, VMValue> globals;
+    std::unordered_map<std::string, VMValue> globals_private_removed;
 
     void resetStack();
     void push(VMValue value);
     VMValue pop();
     VMValue peek(int distance);
     
-    void defineNative(const std::string& name, int arity, NativeFn function);
-    
     InterpretResult run();
 
 public:
+    std::unordered_map<std::string, VMValue> globals;
+    void defineNative(const std::string& name, int arity, NativeFn function);
+    
     VM();
     ~VM();
 
