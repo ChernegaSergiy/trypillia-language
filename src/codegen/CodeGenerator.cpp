@@ -392,11 +392,21 @@ public:
     
     void visit(ClassNode* node) override {
         code << "class " << node->name << " {\n";
-        code << "public:\n";
         indentLevel++;
         
-        // Generate methods
+        AccessModifier currentAccess = AccessModifier::PUBLIC;
+        code << "public:\n";
+        
+        // Generate methods with access labels
         for (auto& method : node->methods) {
+            if (method->accessModifier != currentAccess) {
+                currentAccess = method->accessModifier;
+                switch (currentAccess) {
+                    case AccessModifier::PUBLIC: code << "public:\n"; break;
+                    case AccessModifier::PRIVATE: code << "private:\n"; break;
+                    default: code << "public:\n"; break;
+                }
+            }
             indent();
             method->accept(this);
         }
