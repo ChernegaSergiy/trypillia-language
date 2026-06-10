@@ -9,7 +9,6 @@ public:
     Compiler() = default;
     ~Compiler() = default;
 
-    // Компілює AST у байт-код Chunk
     Chunk* compile(ASTNode* ast);
 };
 

@@ -32,11 +32,8 @@ InterpretResult VM::interpret(Chunk* chunk) {
     return run();
 }
 
-// Допоміжна макрос-функція для читання наступного байту (опкоду)
 #define READ_BYTE() (*ip++)
-// Читання константи з масиву констант за індексом
 #define READ_CONSTANT() (chunk->constants[READ_BYTE()])
-// Читання 16-бітного зміщення (для стрибків)
 #define READ_SHORT() \
     (ip += 2, (uint16_t)((ip[-2] << 8) | ip[-1]))
 
@@ -148,6 +145,10 @@ InterpretResult VM::run() {
                 ip -= offset;
                 break;
             }
+            case static_cast<uint8_t>(OpCode::OP_DUP): {
+                push(peek(0));
+                break;
+            }
             case static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL): {
                 std::string name = std::get<std::string>(READ_CONSTANT());
                 globals[name] = pop();
@@ -189,7 +190,6 @@ InterpretResult VM::run() {
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_RETURN): {
-                // Тимчасово просто виводимо результат
                 if (!stack.empty()) {
                     VMValue result = pop();
                     if (std::holds_alternative<double>(result)) {

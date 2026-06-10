@@ -6,7 +6,6 @@
 #include <unordered_map>
 #include <string>
 
-// Результат виконання віртуальної машини
 enum class InterpretResult {
     INTERPRET_OK,
     INTERPRET_COMPILE_ERROR,
@@ -16,8 +15,8 @@ enum class InterpretResult {
 class VM {
 private:
     Chunk* chunk;
-    uint8_t* ip; // Instruction Pointer (вказівник на поточну інструкцію)
-    std::vector<VMValue> stack; // Стек для зберігання тимчасових значень
+    uint8_t* ip;
+    std::vector<VMValue> stack;
     std::unordered_map<std::string, VMValue> globals;
 
     void resetStack();
@@ -25,7 +24,6 @@ private:
     VMValue pop();
     VMValue peek(int distance);
     
-    // Головний цикл виконання інструкцій
     InterpretResult run();
 
 public:

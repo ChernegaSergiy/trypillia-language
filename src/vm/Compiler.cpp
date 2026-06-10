@@ -7,7 +7,7 @@ private:
     Chunk* chunk;
 
     void emitByte(uint8_t byte) {
-        chunk->write(byte, 1); // Тимчасово рядок 1
+        chunk->write(byte, 1);
     }
 
     void emitBytes(uint8_t byte1, uint8_t byte2) {
@@ -21,8 +21,8 @@ private:
 
     int emitJump(uint8_t instruction) {
         emitByte(instruction);
-        emitByte(0xff); // placeholder
-        emitByte(0xff); // placeholder
+        emitByte(0xff);
+        emitByte(0xff);
         return chunk->code.size() - 2;
     }
 
@@ -64,7 +64,7 @@ public:
             case TokenType::EQUAL_EQUAL: emitByte(static_cast<uint8_t>(OpCode::OP_EQUAL)); break;
             case TokenType::LESS: emitByte(static_cast<uint8_t>(OpCode::OP_LESS)); break;
             case TokenType::GREATER: emitByte(static_cast<uint8_t>(OpCode::OP_GREATER)); break;
-            // TODO: <=, >=, != 
+    // TODO: <=, >=, !=
             default: break; 
         }
     }
@@ -93,7 +93,6 @@ public:
         emitByte(static_cast<uint8_t>(OpCode::OP_PRINT));
     }
 
-    // Заглушки для всіх інших методів ASTVisitor
     void visit(VariableExpr* node) override {
         emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), chunk->addConstant(node->name.lexeme));
     }
@@ -120,14 +119,14 @@ public:
         node->condition->accept(this);
 
         int thenJump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE));
-        emitByte(static_cast<uint8_t>(OpCode::OP_POP)); // Очищаємо умову зі стеку
+        emitByte(static_cast<uint8_t>(OpCode::OP_POP));
 
         node->thenBranch->accept(this);
 
         int elseJump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP));
 
         patchJump(thenJump);
-        emitByte(static_cast<uint8_t>(OpCode::OP_POP)); // Очищаємо умову зі стеку, якщо стрибнули
+        emitByte(static_cast<uint8_t>(OpCode::OP_POP));
 
         if (node->elseBranch) {
             node->elseBranch->accept(this);
@@ -186,7 +185,41 @@ public:
         }
     }
     void visit(ForeachStmt* node) override {}
-    void visit(SwitchStmt* node) override {}
+    void visit(SwitchStmt* node) override {
+        node->expression->accept(this);
+
+        std::vector<int> endJumps;
+
+        for (auto& case_ : node->cases) {
+            if (case_.value) {
+                emitByte(static_cast<uint8_t>(OpCode::OP_DUP));
+                case_.value->accept(this);
+                emitByte(static_cast<uint8_t>(OpCode::OP_EQUAL));
+
+                int nextCaseJump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE));
+                emitByte(static_cast<uint8_t>(OpCode::OP_POP)); 
+
+                for (auto* stmt : case_.body) {
+                    stmt->accept(this);
+                }
+
+                endJumps.push_back(emitJump(static_cast<uint8_t>(OpCode::OP_JUMP)));
+
+                patchJump(nextCaseJump);
+                emitByte(static_cast<uint8_t>(OpCode::OP_POP)); 
+            } else {
+                for (auto* stmt : case_.body) {
+                    stmt->accept(this);
+                }
+            }
+        }
+
+        for (int jump : endJumps) {
+            patchJump(jump);
+        }
+
+        emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+    }
     void visit(UnaryExpr* node) override {
         node->right->accept(this);
         switch (node->op.type) {
