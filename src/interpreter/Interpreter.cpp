@@ -34,14 +34,16 @@ public:
 class Environment {
 private:
     std::unordered_map<std::string, Value> values;
+    std::unordered_map<std::string, bool> constFlags;
     std::shared_ptr<Environment> enclosing;
     
 public:
     Environment(std::shared_ptr<Environment> enclosing = nullptr)
         : enclosing(enclosing) {}
     
-    void define(const std::string& name, const Value& value) {
+    void define(const std::string& name, const Value& value, bool isConst = false) {
         values[name] = value;
+        constFlags[name] = isConst;
     }
     
     Value get(const std::string& name) {
@@ -60,6 +62,9 @@ public:
     void assign(const std::string& name, const Value& value) {
         auto it = values.find(name);
         if (it != values.end()) {
+            if (constFlags[name]) {
+                throw std::runtime_error("Cannot assign to constant '" + name + "'");
+            }
             it->second = value;
             return;
         }
@@ -759,7 +764,7 @@ public:
             value = lastValue;
         }
         
-        environment->define(node->name.lexeme, value);
+        environment->define(node->name.lexeme, value, node->isConst);
     }
     
     void visit(BlockStmt* node) override {
