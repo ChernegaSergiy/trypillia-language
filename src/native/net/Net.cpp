@@ -11,6 +11,8 @@
 namespace StdLib {
 namespace Net {
 
+    static VM* currentVM = nullptr;
+
     static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* userp) {
         size_t totalSize = size * nmemb;
         userp->append((char*)contents, totalSize);
@@ -36,10 +38,10 @@ namespace Net {
             res = curl_easy_perform(curl);
             curl_easy_cleanup(curl);
             
-            if (res != CURLE_OK) return nullptr;
-            return readBuffer;
+            if (res != CURLE_OK) return makeResultErr(currentVM, curl_easy_strerror(res));
+            return makeResultOk(currentVM, readBuffer);
         }
-        return nullptr;
+        return makeResultErr(currentVM, "Failed to initialize CURL");
     }
 
     static VMValue httpPost(int argCount, VMValue* args) {
@@ -67,13 +69,11 @@ namespace Net {
             curl_slist_free_all(headers);
             curl_easy_cleanup(curl);
             
-            if (res != CURLE_OK) return nullptr;
-            return readBuffer;
+            if (res != CURLE_OK) return makeResultErr(currentVM, curl_easy_strerror(res));
+            return makeResultOk(currentVM, readBuffer);
         }
-        return nullptr;
+        return makeResultErr(currentVM, "Failed to initialize CURL");
     }
-
-    static VM* currentVM = nullptr;
 
     // --- Socket implementation ---
     struct SocketData {

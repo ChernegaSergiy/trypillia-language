@@ -109,10 +109,11 @@ public:
             case TokenType::STAR: emitByte(static_cast<uint8_t>(OpCode::OP_MULTIPLY)); break;
             case TokenType::SLASH: emitByte(static_cast<uint8_t>(OpCode::OP_DIVIDE)); break;
             case TokenType::EQUAL_EQUAL: emitByte(static_cast<uint8_t>(OpCode::OP_EQUAL)); break;
+            case TokenType::BANG_EQUAL: emitByte(static_cast<uint8_t>(OpCode::OP_EQUAL)); emitByte(static_cast<uint8_t>(OpCode::OP_NOT)); break;
             case TokenType::LESS: emitByte(static_cast<uint8_t>(OpCode::OP_LESS)); break;
+            case TokenType::LESS_EQUAL: emitByte(static_cast<uint8_t>(OpCode::OP_GREATER)); emitByte(static_cast<uint8_t>(OpCode::OP_NOT)); break;
             case TokenType::GREATER: emitByte(static_cast<uint8_t>(OpCode::OP_GREATER)); break;
-    // TODO: <=, >=, !=
-            default: break; 
+            case TokenType::GREATER_EQUAL: emitByte(static_cast<uint8_t>(OpCode::OP_LESS)); emitByte(static_cast<uint8_t>(OpCode::OP_NOT)); break;
         }
     }
 

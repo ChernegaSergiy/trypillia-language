@@ -37,8 +37,7 @@ static std::unordered_map<std::string, TokenType> keywords = {
     {"nil", TokenType::NIL},
     {"this", TokenType::THIS},
     {"super", TokenType::SUPER},
-    {"static", TokenType::STATIC},
-    {"print", TokenType::PRINT}
+    {"static", TokenType::STATIC}
 };
 
 Lexer::Lexer(const std::string &source) : source(source), currentIndex(0), line(1) {}
