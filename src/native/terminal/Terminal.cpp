@@ -124,6 +124,13 @@ namespace TerminalModule {
         return nullptr;
     }
 
+    static VMValue terminalWrite(int argCount, VMValue* args) {
+        if (argCount != 1 || !std::holds_alternative<std::string>(args[0])) return nullptr;
+        std::cout << std::get<std::string>(args[0]);
+        std::cout.flush();
+        return nullptr;
+    }
+
     void registerAll(VM* vm) {
         currentVM = vm;
         auto terminalClass = std::make_shared<ObjClass>("Terminal");
@@ -136,6 +143,7 @@ namespace TerminalModule {
         terminalClass->statics["readChar"] = std::make_shared<ObjNative>("readChar", 0, terminalReadChar);
         terminalClass->statics["color"] = std::make_shared<ObjNative>("color", 1, terminalColor);
         terminalClass->statics["reset"] = std::make_shared<ObjNative>("reset", 0, terminalReset);
+        terminalClass->statics["write"] = std::make_shared<ObjNative>("write", 1, terminalWrite);
 
         vm->globals["Terminal"] = terminalClass;
     }
