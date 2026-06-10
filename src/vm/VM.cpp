@@ -13,6 +13,10 @@ VM::VM() {
                 std::cout << (std::get<bool>(args[i]) ? "true" : "false");
             } else if (std::holds_alternative<std::shared_ptr<ObjList>>(args[i])) {
                 std::cout << "[list]";
+            } else if (std::holds_alternative<std::shared_ptr<ObjClass>>(args[i])) {
+                std::cout << "<class " << std::get<std::shared_ptr<ObjClass>>(args[i])->name << ">";
+            } else if (std::holds_alternative<std::shared_ptr<ObjInstance>>(args[i])) {
+                std::cout << "<instance of " << std::get<std::shared_ptr<ObjInstance>>(args[i])->klass->name << ">";
             } else if (std::holds_alternative<std::nullptr_t>(args[i])) {
                 std::cout << "nil";
             }
@@ -333,6 +337,11 @@ InterpretResult VM::run() {
                 }
                 break;
             }
+            case static_cast<uint8_t>(OpCode::OP_CLASS): {
+                std::string name = std::get<std::string>(READ_CONSTANT());
+                push(std::make_shared<ObjClass>(name));
+                break;
+            }
             case static_cast<uint8_t>(OpCode::OP_CALL): {
                 uint8_t argCount = READ_BYTE();
                 VMValue callee = peek(argCount);
@@ -361,8 +370,13 @@ InterpretResult VM::run() {
                     VMValue result = native->function(argCount, &stack[stack.size() - argCount]);
                     stack.resize(stack.size() - argCount - 1);
                     push(result);
+                } else if (std::holds_alternative<std::shared_ptr<ObjClass>>(callee)) {
+                    auto klass = std::get<std::shared_ptr<ObjClass>>(callee);
+                    auto instance = std::make_shared<ObjInstance>(klass);
+                    stack.resize(stack.size() - argCount - 1);
+                    push(instance);
                 } else {
-                    std::cerr << "Can only call functions." << std::endl;
+                    std::cerr << "Can only call functions and classes." << std::endl;
                     return InterpretResult::INTERPRET_RUNTIME_ERROR;
                 }
                 break;

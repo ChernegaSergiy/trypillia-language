@@ -30,6 +30,7 @@ enum class OpCode : uint8_t {
     OP_BUILD_LIST,
     OP_INDEX_GET,
     OP_INDEX_SET,
+    OP_CLASS,
     OP_PRINT,
     OP_RETURN,
     OP_DUP

@@ -333,7 +333,10 @@ public:
         emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), chunk->addConstant(node->name));
     }
     void visit(FieldDeclNode* node) override {}
-    void visit(ClassNode* node) override {}
+    void visit(ClassNode* node) override {
+        emitBytes(static_cast<uint8_t>(OpCode::OP_CLASS), chunk->addConstant(node->name));
+        emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), chunk->addConstant(node->name));
+    }
     void visit(InterfaceNode* node) override {}
     void visit(TraitNode* node) override {}
     void visit(StaticGetExpr* node) override {}
