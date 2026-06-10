@@ -143,7 +143,30 @@ public:
             emitBytes(static_cast<uint8_t>(OpCode::OP_SET_GLOBAL), chunk->addConstant(node->name.lexeme));
         }
     }
-    void visit(CompoundAssignExpr* node) override {}
+    void visit(CompoundAssignExpr* node) override {
+        int arg = resolveLocal(node->name.lexeme);
+        if (arg != -1) {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), (uint8_t)arg);
+        } else {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), chunk->addConstant(node->name.lexeme));
+        }
+        
+        node->value->accept(this);
+        
+        switch (node->op.type) {
+            case TokenType::PLUS_EQUAL: emitByte(static_cast<uint8_t>(OpCode::OP_ADD)); break;
+            case TokenType::MINUS_EQUAL: emitByte(static_cast<uint8_t>(OpCode::OP_SUBTRACT)); break;
+            case TokenType::STAR_EQUAL: emitByte(static_cast<uint8_t>(OpCode::OP_MULTIPLY)); break;
+            case TokenType::SLASH_EQUAL: emitByte(static_cast<uint8_t>(OpCode::OP_DIVIDE)); break;
+            default: break;
+        }
+        
+        if (arg != -1) {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_SET_LOCAL), (uint8_t)arg);
+        } else {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_SET_GLOBAL), chunk->addConstant(node->name.lexeme));
+        }
+    }
     void visit(CallExpr* node) override {
         node->callee->accept(this);
         for (auto& arg : node->arguments) {
@@ -322,7 +345,31 @@ public:
         node->value->accept(this);
         emitBytes(static_cast<uint8_t>(OpCode::OP_PROPERTY_SET), chunk->addConstant(node->name.lexeme));
     }
-    void visit(PostfixExpr* node) override {}
+    void visit(PostfixExpr* node) override {
+        int arg = resolveLocal(node->name.lexeme);
+        if (arg != -1) {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), (uint8_t)arg);
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), (uint8_t)arg);
+        } else {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), chunk->addConstant(node->name.lexeme));
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), chunk->addConstant(node->name.lexeme));
+        }
+        
+        emitBytes(static_cast<uint8_t>(OpCode::OP_CONSTANT), chunk->addConstant(1.0));
+        
+        if (node->op.type == TokenType::PLUS_PLUS) {
+            emitByte(static_cast<uint8_t>(OpCode::OP_ADD));
+        } else {
+            emitByte(static_cast<uint8_t>(OpCode::OP_SUBTRACT));
+        }
+        
+        if (arg != -1) {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_SET_LOCAL), (uint8_t)arg);
+        } else {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_SET_GLOBAL), chunk->addConstant(node->name.lexeme));
+        }
+        emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+    }
     void visit(TernaryExpr* node) override {}
     void visit(ListExpr* node) override {
         for (auto& el : node->elements) {
