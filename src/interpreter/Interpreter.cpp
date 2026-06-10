@@ -108,10 +108,11 @@ class Function : public Callable {
 private:
     FunctionNode* declaration;
     std::shared_ptr<Environment> closure;
+    AccessModifier accessModifier;
     
 public:
-    Function(FunctionNode* declaration, std::shared_ptr<Environment> closure)
-        : declaration(declaration), closure(closure) {}
+    Function(FunctionNode* declaration, std::shared_ptr<Environment> closure, AccessModifier accessModifier = AccessModifier::PUBLIC)
+        : declaration(declaration), closure(closure), accessModifier(accessModifier) {}
     
     int arity() const override {
         return declaration->params.size();
@@ -121,6 +122,7 @@ public:
     
     std::shared_ptr<Environment> getClosure() const { return closure; }
     FunctionNode* getDeclaration() const { return declaration; }
+    AccessModifier getAccessModifier() const { return accessModifier; }
     
     std::string toString() const {
         return "<fn " + declaration->name + ">";
@@ -143,13 +145,16 @@ public:
 
     Value call(InterpreterVisitor* interpreter, const std::vector<Value>& arguments) override;
 
+    std::shared_ptr<Function> getMethod() const { return method; }
+    std::shared_ptr<Instance> getReceiver() const { return receiver; }
+
     std::string toString() const {
         return "<bound method>";
     }
 };
 
 // Class implementation
-class Class : public Callable {
+class Class : public Callable, public std::enable_shared_from_this<Class> {
 private:
     std::string name;
     std::unordered_map<std::string, std::shared_ptr<Function>> methods;
@@ -207,6 +212,8 @@ public:
     void set(const std::string& name, const Value& value) {
         fields[name] = value;
     }
+    
+    std::shared_ptr<Class> getClass() const { return klass; }
     
     std::string toString() const {
         if (klass) { // Check if klass is not nullptr
@@ -592,6 +599,24 @@ public:
         if (std::holds_alternative<std::shared_ptr<Instance>>(object)) {
             auto instance = std::get<std::shared_ptr<Instance>>(object);
             lastValue = instance->get(node->name.lexeme);
+            
+            // Enforce access control for private methods
+            if (std::holds_alternative<std::shared_ptr<BoundMethod>>(lastValue)) {
+                auto bound = std::get<std::shared_ptr<BoundMethod>>(lastValue);
+                if (bound->getMethod()->getAccessModifier() == AccessModifier::PRIVATE) {
+                    bool fromInside = false;
+                    try {
+                        Value thisVal = environment->get("this");
+                        if (std::holds_alternative<std::shared_ptr<Instance>>(thisVal)) {
+                            auto thisInstance = std::get<std::shared_ptr<Instance>>(thisVal);
+                            fromInside = (thisInstance->getClass() == instance->getClass());
+                        }
+                    } catch (...) {}
+                    if (!fromInside) {
+                        throw std::runtime_error("Cannot access private method '" + node->name.lexeme + "' from outside the class");
+                    }
+                }
+            }
         } else {
             throw std::runtime_error("Only instances have properties");
         }
@@ -787,7 +812,7 @@ public:
         
         std::unordered_map<std::string, std::shared_ptr<Function>> methods;
         for (auto& method : node->methods) {
-            std::shared_ptr<Function> function = std::make_shared<Function>(method, environment);
+            std::shared_ptr<Function> function = std::make_shared<Function>(method, environment, method->accessModifier);
             methods[method->name] = function;
         }
         
@@ -833,7 +858,7 @@ Value BoundMethod::call(InterpreterVisitor* interpreter, const std::vector<Value
 
 // Implementation of Class::call that depends on InterpreterVisitor
 Value Class::call(InterpreterVisitor* interpreter, const std::vector<Value>& arguments) {
-    std::shared_ptr<Instance> instance = std::make_shared<Instance>(std::make_shared<Class>(*this));
+    std::shared_ptr<Instance> instance = std::make_shared<Instance>(shared_from_this());
     
     // Call the initializer if it exists
     std::shared_ptr<Function> initializer = findMethod("init");
