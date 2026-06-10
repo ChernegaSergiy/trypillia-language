@@ -29,6 +29,7 @@ int main(int argc, char** argv) {
     semanticAnalyzer.analyze(ast);
 
     Compiler compiler;
+    compiler.currentFilename = argv[1];
     std::shared_ptr<ObjFunction> function = compiler.compile(ast);
     
     if (function) {

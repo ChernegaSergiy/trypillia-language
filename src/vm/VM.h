@@ -29,6 +29,7 @@ private:
     VMValue pop();
     VMValue peek(int distance);
     
+    InterpretResult runtimeError(const std::string& message);
     InterpretResult run();
 
 public:

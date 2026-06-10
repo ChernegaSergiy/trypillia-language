@@ -8,6 +8,7 @@
 class CompilerVisitor : public ASTVisitor {
 private:
     Chunk* chunk;
+    std::string compiler_filename;
 
     struct Local {
         std::string name;
@@ -49,7 +50,7 @@ public:
     };
     std::vector<LoopContext> loops;
 
-    CompilerVisitor(Chunk* chunk) : chunk(chunk) {
+    CompilerVisitor(Chunk* chunk, const std::string& fname) : chunk(chunk), compiler_filename(fname) {
         locals.push_back({"", 0});
     }
 
@@ -540,8 +541,9 @@ public:
         func->name = node->name;
         func->arity = node->params.size();
         func->chunk = std::make_shared<Chunk>();
+        func->filename = compiler_filename;
 
-        CompilerVisitor funcCompiler(func->chunk.get());
+        CompilerVisitor funcCompiler(func->chunk.get(), compiler_filename);
         
         funcCompiler.beginScope();
         for (const auto& param : node->params) {
@@ -570,10 +572,11 @@ public:
         func->name = node->name;
         func->arity = node->params.size();
         func->chunk = std::make_shared<Chunk>();
+        func->filename = compiler_filename;
         func->accessModifier = getVMAccessModifier(node->accessModifier);
         func->enclosingClassName = currentClassName;
 
-        CompilerVisitor funcCompiler(func->chunk.get());
+        CompilerVisitor funcCompiler(func->chunk.get(), compiler_filename);
         
         funcCompiler.currentClassName = currentClassName;
         funcCompiler.currentParentName = currentParentName;
@@ -739,8 +742,11 @@ public:
         ASTNode* ast = parser.parse();
         
         if (ast) {
+            std::string old_fname = compiler_filename;
+            compiler_filename = path;
             ast->accept(this);
             delete ast;
+            compiler_filename = old_fname;
         }
     }
 
@@ -762,8 +768,9 @@ std::shared_ptr<ObjFunction> Compiler::compile(ASTNode* ast) {
     auto script = std::make_shared<ObjFunction>();
     script->name = "<script>";
     script->chunk = std::make_shared<Chunk>();
+    script->filename = currentFilename;
 
-    CompilerVisitor visitor(script->chunk.get());
+    CompilerVisitor visitor(script->chunk.get(), currentFilename);
     ast->accept(&visitor);
 
     visitor.emitByte(static_cast<uint8_t>(OpCode::OP_NIL));

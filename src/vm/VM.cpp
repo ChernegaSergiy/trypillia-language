@@ -119,6 +119,39 @@ InterpretResult VM::interpret(std::shared_ptr<ObjFunction> function) {
 #define READ_SHORT() \
     (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
 
+
+InterpretResult VM::runtimeError(const std::string& message) {
+    std::cerr << "\n ૮ ˶ᵔ ᵕ ᵔ˶ ა \n / づ 📝 ♡ \n\n";
+    std::cerr << "Panic: " << message << "\n\n";
+    std::cerr << "Traceback (most recent call last):\n";
+    
+    for (int i = frames.size() - 1; i >= 0; i--) {
+        CallFrame* frame = &frames[i];
+        std::shared_ptr<ObjFunction> function = frame->function;
+        size_t instruction = frame->ip - function->chunk->code.data() - 1;
+        int line = function->chunk->lines[instruction];
+        
+        std::cerr << "  at ";
+        if (function->name.empty() || function->name == "<script>") {
+            std::cerr << "<main>";
+        } else {
+            std::cerr << function->name << "()";
+        }
+        
+        std::string fname = function->filename.empty() ? "<unknown>" : function->filename;
+        // if fname has path, extract only basename for cleaner output like 'test.try'
+        size_t lastSlash = fname.find_last_of("/\\");
+        if (lastSlash != std::string::npos) {
+            fname = fname.substr(lastSlash + 1);
+        }
+        
+        std::cerr << " in " << fname << ":" << line << "\n";
+    }
+    std::cerr << std::endl;
+    resetStack();
+    return InterpretResult::INTERPRET_RUNTIME_ERROR;
+}
+
 InterpretResult VM::run() {
     CallFrame* frame = &frames.back();
     
@@ -150,8 +183,7 @@ InterpretResult VM::run() {
                 } else if (std::holds_alternative<std::string>(a) && std::holds_alternative<std::string>(b)) {
                     push(std::get<std::string>(a) + std::get<std::string>(b));
                 } else {
-                    std::cerr << "Operands must be two numbers or two strings." << std::endl;
-                    return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                    return runtimeError(std::string("Operands must be two numbers or two strings."));
                 }
                 break;
             }
@@ -277,8 +309,7 @@ InterpretResult VM::run() {
                         break;
                     }
                 }
-                std::cerr << "Invalid operand types for iteration." << std::endl;
-                return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                return runtimeError(std::string("Invalid operand types for iteration."));
             }
             case static_cast<uint8_t>(OpCode::OP_DUP): {
                 push(peek(0));
@@ -292,8 +323,7 @@ InterpretResult VM::run() {
             case static_cast<uint8_t>(OpCode::OP_GET_GLOBAL): {
                 std::string name = std::get<std::string>(READ_CONSTANT());
                 if (globals.find(name) == globals.end()) {
-                    std::cerr << "Undefined variable '" << name << "'." << std::endl;
-                    return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                    return runtimeError(std::string("Undefined variable '") + name + "'.");
                 }
                 push(globals[name]);
                 break;
@@ -301,8 +331,7 @@ InterpretResult VM::run() {
             case static_cast<uint8_t>(OpCode::OP_SET_GLOBAL): {
                 std::string name = std::get<std::string>(READ_CONSTANT());
                 if (globals.find(name) == globals.end()) {
-                    std::cerr << "Undefined variable '" << name << "'." << std::endl;
-                    return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                    return runtimeError(std::string("Undefined variable '") + name + "'.");
                 }
                 globals[name] = peek(0);
                 break;
@@ -354,12 +383,10 @@ InterpretResult VM::run() {
                         if (i >= 0 && i < list->elements.size()) {
                             push(list->elements[i]);
                         } else {
-                            std::cerr << "Index out of bounds." << std::endl;
-                            return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                            return runtimeError(std::string("Index out of bounds."));
                         }
                     } else {
-                        std::cerr << "List index must be a number." << std::endl;
-                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                        return runtimeError(std::string("List index must be a number."));
                     }
                 } else if (std::holds_alternative<std::string>(listVal)) {
                     auto str = std::get<std::string>(listVal);
@@ -369,12 +396,10 @@ InterpretResult VM::run() {
                         if (i >= 0 && i < len) {
                             push(utf8_char_at(str, i));
                         } else {
-                            std::cerr << "String index out of bounds." << std::endl;
-                            return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                            return runtimeError(std::string("String index out of bounds."));
                         }
                     } else {
-                        std::cerr << "String index must be a number." << std::endl;
-                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                        return runtimeError(std::string("String index must be a number."));
                     }
                 } else if (std::holds_alternative<std::shared_ptr<ObjMap>>(listVal)) {
                     auto map = std::get<std::shared_ptr<ObjMap>>(listVal);
@@ -384,8 +409,7 @@ InterpretResult VM::run() {
                         push(nullptr); // Return nil for missing keys
                     }
                 } else {
-                    std::cerr << "Can only index into lists, maps, or strings." << std::endl;
-                    return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                    return runtimeError(std::string("Can only index into lists, maps, or strings."));
                 }
                 break;
             }
@@ -401,20 +425,17 @@ InterpretResult VM::run() {
                             list->elements[i] = value;
                             push(value);
                         } else {
-                            std::cerr << "Index out of bounds." << std::endl;
-                            return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                            return runtimeError(std::string("Index out of bounds."));
                         }
                     } else {
-                        std::cerr << "List index must be a number." << std::endl;
-                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                        return runtimeError(std::string("List index must be a number."));
                     }
                 } else if (std::holds_alternative<std::shared_ptr<ObjMap>>(listVal)) {
                     auto map = std::get<std::shared_ptr<ObjMap>>(listVal);
                     map->values[index] = value;
                     push(value);
                 } else {
-                    std::cerr << "Can only set elements in lists or maps." << std::endl;
-                    return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                    return runtimeError(std::string("Can only set elements in lists or maps."));
                 }
                 break;
             }
@@ -434,8 +455,7 @@ InterpretResult VM::run() {
                 VMValue superclassVal = pop();
                 VMValue subclassVal = pop();
                 if (!std::holds_alternative<std::shared_ptr<ObjClass>>(superclassVal)) {
-                    std::cerr << "Superclass must be a class." << std::endl;
-                    return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                    return runtimeError(std::string("Superclass must be a class."));
                 }
                 auto subclass = std::get<std::shared_ptr<ObjClass>>(subclassVal);
                 auto superclass = std::get<std::shared_ptr<ObjClass>>(superclassVal);
@@ -452,8 +472,7 @@ InterpretResult VM::run() {
                 VMValue mixinVal = pop();
                 VMValue targetVal = pop();
                 if (!std::holds_alternative<std::shared_ptr<ObjClass>>(mixinVal)) {
-                    std::cerr << "Mixin must be a class/trait." << std::endl;
-                    return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                    return runtimeError(std::string("Mixin must be a class/trait."));
                 }
                 auto targetClass = std::get<std::shared_ptr<ObjClass>>(targetVal);
                 auto mixinClass = std::get<std::shared_ptr<ObjClass>>(mixinVal);
@@ -472,8 +491,7 @@ InterpretResult VM::run() {
                     auto method = superclass->methods[methodName];
                     push(std::make_shared<ObjBoundMethod>(receiver, method));
                 } else {
-                    std::cerr << "Undefined superclass method '" << methodName << "'." << std::endl;
-                    return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                    return runtimeError(std::string("Undefined superclass method '") + methodName + "'.");
                 }
                 break;
             }
@@ -524,22 +542,19 @@ InterpretResult VM::run() {
                         VMAccessModifier mod = VMAccessModifier::PUBLIC;
                         if (instance->klass->fieldModifiers.count(name)) mod = instance->klass->fieldModifiers[name];
                         if (!checkAccess(mod, instance->klass, callerClass)) {
-                            std::cerr << "Access error: Cannot access '" << name << "'." << std::endl;
-                            return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                            return runtimeError(std::string("Access error: Cannot access '") + name + "'.");
                         }
                         pop();
                         push(instance->fields[name]);
                     } else if (instance->klass->methods.count(name)) {
                         auto method = instance->klass->methods[name];
                         if (!checkAccess(getMethodAccessModifier(method), instance->klass, callerClass)) {
-                            std::cerr << "Access error: Cannot access method '" << name << "'." << std::endl;
-                            return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                            return runtimeError(std::string("Access error: Cannot access method '") + name + "'.");
                         }
                         pop();
                         push(std::make_shared<ObjBoundMethod>(instance, method));
                     } else {
-                        std::cerr << "Undefined property '" << name << "'." << std::endl;
-                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                        return runtimeError(std::string("Undefined property '") + name + "'.");
                     }
                 } else if (std::holds_alternative<std::shared_ptr<ObjClass>>(instanceVal)) {
                     auto klass = std::get<std::shared_ptr<ObjClass>>(instanceVal);
@@ -548,20 +563,17 @@ InterpretResult VM::run() {
                         if (std::holds_alternative<std::shared_ptr<ObjFunction>>(methodVal)) {
                             auto func = std::get<std::shared_ptr<ObjFunction>>(methodVal);
                             if (!checkAccess(func->accessModifier, klass, callerClass)) {
-                                std::cerr << "Access error: Cannot access static method '" << name << "'." << std::endl;
-                                return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                                return runtimeError(std::string("Access error: Cannot access static method '") + name + "'.");
                             }
                         }
                         // statics (fields) access modifier check can be added here if static fields have modifiers.
                         pop();
                         push(klass->statics[name]);
                     } else {
-                        std::cerr << "Undefined static property '" << name << "'." << std::endl;
-                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                        return runtimeError(std::string("Undefined static property '") + name + "'.");
                     }
                 } else {
-                    std::cerr << "Only instances and classes have properties." << std::endl;
-                    return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                    return runtimeError(std::string("Only instances and classes have properties."));
                 }
                 break;
             }
@@ -576,8 +588,7 @@ InterpretResult VM::run() {
                     VMAccessModifier mod = VMAccessModifier::PUBLIC;
                     if (instance->klass->fieldModifiers.count(name)) mod = instance->klass->fieldModifiers[name];
                     if (!checkAccess(mod, instance->klass, callerClass)) {
-                        std::cerr << "Access error: Cannot set '" << name << "'." << std::endl;
-                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                        return runtimeError(std::string("Access error: Cannot set '") + name + "'.");
                     }
                     instance->fields[name] = value;
                     push(value);
@@ -586,8 +597,7 @@ InterpretResult VM::run() {
                     klass->statics[name] = value;
                     push(value);
                 } else {
-                    std::cerr << "Only instances and classes have properties." << std::endl;
-                    return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                    return runtimeError(std::string("Only instances and classes have properties."));
                 }
                 break;
             }
@@ -597,12 +607,10 @@ InterpretResult VM::run() {
                 if (std::holds_alternative<std::shared_ptr<ObjFunction>>(callee)) {
                     auto function = std::get<std::shared_ptr<ObjFunction>>(callee);
                     if (argCount != function->arity) {
-                        std::cerr << "Expected " << function->arity << " arguments but got " << (int)argCount << "." << std::endl;
-                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                        return runtimeError(std::string("Expected ") + std::to_string(function->arity) + " arguments but got " + std::to_string(argCount) + ".");
                     }
                     if (frames.size() == 256) {
-                        std::cerr << "Stack overflow." << std::endl;
-                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                        return runtimeError(std::string("Stack overflow."));
                     }
                     CallFrame newFrame;
                     newFrame.function = function;
@@ -613,8 +621,7 @@ InterpretResult VM::run() {
                 } else if (std::holds_alternative<std::shared_ptr<ObjNative>>(callee)) {
                     auto native = std::get<std::shared_ptr<ObjNative>>(callee);
                     if (native->arity != -1 && argCount != native->arity) {
-                        std::cerr << "Expected " << native->arity << " arguments but got " << (int)argCount << "." << std::endl;
-                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                        return runtimeError(std::string("Expected ") + std::to_string(native->arity) + " arguments but got " + std::to_string(argCount) + ".");
                     }
                     VMValue result = native->function(argCount, stack.data() + stack.size() - argCount);
                     stack.resize(stack.size() - argCount - 1);
@@ -622,13 +629,11 @@ InterpretResult VM::run() {
                 } else if (std::holds_alternative<std::shared_ptr<ObjClass>>(callee)) {
                     auto klass = std::get<std::shared_ptr<ObjClass>>(callee);
                     if (klass->isAbstract) {
-                        std::cerr << "Cannot instantiate abstract class '" << klass->name << "'." << std::endl;
-                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                        return runtimeError(std::string("Cannot instantiate abstract class '") + klass->name + "'.");
                     }
                     for (auto const& [name, method] : klass->methods) {
                         if (isMethodAbstract(method)) {
-                            std::cerr << "Cannot instantiate class '" << klass->name << "' because abstract method '" << name << "' is not implemented." << std::endl;
-                            return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                            return runtimeError(std::string("Cannot instantiate class '") + klass->name + "' because abstract method '" + name + "' is not implemented.");
                         }
                     }
                     auto instance = std::make_shared<ObjInstance>(klass);
@@ -638,8 +643,7 @@ InterpretResult VM::run() {
                     if (klass->methods.count("init")) {
                         auto initMethod = klass->methods["init"];
                         if (getMethodArity(initMethod) != -1 && argCount != getMethodArity(initMethod)) {
-                            std::cerr << "Expected " << getMethodArity(initMethod) << " arguments but got " << argCount << "." << std::endl;
-                            return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                            return runtimeError(std::string("Expected ") + std::to_string(getMethodArity(initMethod)) + " arguments but got " + std::to_string(argCount) + ".");
                         }
                         
                         if (std::holds_alternative<std::shared_ptr<ObjFunction>>(initMethod)) {
@@ -656,23 +660,19 @@ InterpretResult VM::run() {
                             stack.resize(stack.size() - argCount); // leave the instance on stack
                         }
                     } else if (argCount != 0) {
-                        std::cerr << "Expected 0 arguments but got " << argCount << "." << std::endl;
-                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                        return runtimeError(std::string("Expected 0 arguments but got ") + std::to_string(argCount) + ".");
                     }
                 } else if (std::holds_alternative<std::shared_ptr<ObjBoundMethod>>(callee)) {
                     auto bound = std::get<std::shared_ptr<ObjBoundMethod>>(callee);
                     auto function = bound->method;
                     if (isMethodAbstract(function)) {
-                        std::cerr << "Cannot call abstract method '" << getMethodName(function) << "'." << std::endl;
-                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                        return runtimeError(std::string("Cannot call abstract method '") + getMethodName(function) + "'.");
                     }
                     if (getMethodArity(function) != -1 && argCount != getMethodArity(function)) {
-                        std::cerr << "Expected " << getMethodArity(function) << " arguments but got " << (int)argCount << "." << std::endl;
-                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                        return runtimeError(std::string("Expected ") + std::to_string(getMethodArity(function)) + " arguments but got " + std::to_string(argCount) + ".");
                     }
                     if (frames.size() == 256) {
-                        std::cerr << "Stack overflow." << std::endl;
-                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                        return runtimeError(std::string("Stack overflow."));
                     }
                     stack[stack.size() - argCount - 1] = bound->receiver;
                     
@@ -691,8 +691,7 @@ InterpretResult VM::run() {
                         push(result);
                     }
                 } else {
-                    std::cerr << "Can only call functions and classes." << std::endl;
-                    return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                    return runtimeError(std::string("Can only call functions and classes."));
                 }
                 break;
             }
@@ -710,8 +709,7 @@ InterpretResult VM::run() {
                 break;
             }
             default:
-                std::cerr << "Unknown opcode" << std::endl;
-                return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                return runtimeError(std::string("Unknown opcode"));
         }
     }
 }

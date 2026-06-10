@@ -107,6 +107,7 @@ struct ObjFunction {
     std::unordered_map<std::string, VMValue> statics;
     VMAccessModifier accessModifier = VMAccessModifier::PUBLIC;
     std::string enclosingClassName = "";
+    std::string filename = "";
 
     ObjFunction() : arity(0) {}
 };
