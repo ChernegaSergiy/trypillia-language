@@ -7,6 +7,7 @@
 #include "time/Time.h"
 #include "list/List.h"
 #include "os/OS.h"
+#include "random/Random.h"
 
 namespace StdLib {
     void registerAll(VM* vm) {
@@ -19,6 +20,7 @@ namespace StdLib {
         TimeModule::registerAll(vm);
         ListModule::registerAll(vm);
         OSModule::registerAll(vm);
+        RandomModule::registerAll(vm);
     }
 
     void registerSymbols(SymbolTable* scope) {
@@ -31,6 +33,7 @@ namespace StdLib {
         TimeModule::registerSymbols(scope);
         ListModule::registerSymbols(scope);
         OSModule::registerSymbols(scope);
+        RandomModule::registerSymbols(scope);
     }
 
     VMValue makeResultOk(VM* vm, VMValue value) {
