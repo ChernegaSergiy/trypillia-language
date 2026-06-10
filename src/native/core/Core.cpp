@@ -40,6 +40,15 @@ namespace Core {
         return nullptr;
     }
 
+    static VMValue inputNative(int argCount, VMValue* args) {
+        if (argCount == 1 && std::holds_alternative<std::string>(args[0])) {
+            std::cout << std::get<std::string>(args[0]);
+        }
+        std::string line;
+        std::getline(std::cin, line);
+        return line;
+    }
+
     // --- Error ---
     static VMValue errorInit(int argCount, VMValue* args) {
         VMValue receiver = args[-1];
@@ -105,6 +114,7 @@ namespace Core {
     void registerAll(VM* vm) {
         currentVM = vm;
         vm->defineNative("print", -1, printNative);
+        vm->defineNative("input", -1, inputNative);
 
         auto errorClass = std::make_shared<ObjClass>("Error");
         errorClass->methods["init"] = std::make_shared<ObjNative>("init", -1, errorInit);
@@ -129,6 +139,7 @@ namespace Core {
             scope->define(sym);
         };
         addFunc("print");
+        addFunc("input");
 
         auto addClass = [&](const std::string& name) {
             Symbol sym;
