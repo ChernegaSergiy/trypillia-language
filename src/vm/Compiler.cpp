@@ -638,9 +638,39 @@ public:
         }
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
     }
-    void visit(StaticGetExpr* node) override {}
-    void visit(StaticCallExpr* node) override {}
-    void visit(StaticSetExpr* node) override {}
+    void visit(StaticGetExpr* node) override {
+        int arg = resolveLocal(node->className.lexeme);
+        if (arg != -1) {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), (uint8_t)arg);
+        } else {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), chunk->addConstant(node->className.lexeme));
+        }
+        emitBytes(static_cast<uint8_t>(OpCode::OP_PROPERTY_GET), chunk->addConstant(node->memberName.lexeme));
+    }
+    void visit(StaticCallExpr* node) override {
+        int arg = resolveLocal(node->className.lexeme);
+        if (arg != -1) {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), (uint8_t)arg);
+        } else {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), chunk->addConstant(node->className.lexeme));
+        }
+        emitBytes(static_cast<uint8_t>(OpCode::OP_PROPERTY_GET), chunk->addConstant(node->memberName.lexeme));
+        
+        for (auto& argExpr : node->arguments) {
+            argExpr->accept(this);
+        }
+        emitBytes(static_cast<uint8_t>(OpCode::OP_CALL), node->arguments.size());
+    }
+    void visit(StaticSetExpr* node) override {
+        node->value->accept(this);
+        int arg = resolveLocal(node->className.lexeme);
+        if (arg != -1) {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), (uint8_t)arg);
+        } else {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), chunk->addConstant(node->className.lexeme));
+        }
+        emitBytes(static_cast<uint8_t>(OpCode::OP_PROPERTY_SET), chunk->addConstant(node->memberName.lexeme));
+    }
     void visit(LoadStmt* node) override {}
 };
 
