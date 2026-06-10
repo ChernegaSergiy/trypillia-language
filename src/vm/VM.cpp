@@ -617,8 +617,26 @@ InterpretResult VM::run() {
                         }
                     }
                     auto instance = std::make_shared<ObjInstance>(klass);
-                    stack.resize(stack.size() - argCount - 1);
-                    push(instance);
+                    
+                    stack[stack.size() - argCount - 1] = instance;
+
+                    if (klass->methods.count("init")) {
+                        auto initMethod = klass->methods["init"];
+                        if (argCount != initMethod->arity) {
+                            std::cerr << "Expected " << initMethod->arity << " arguments but got " << argCount << "." << std::endl;
+                            return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                        }
+                        
+                        CallFrame newFrame;
+                        newFrame.function = initMethod;
+                        newFrame.ip = initMethod->chunk->code.data();
+                        newFrame.stackStart = stack.size() - argCount - 1;
+                        frames.push_back(newFrame);
+                        frame = &frames.back();
+                    } else if (argCount != 0) {
+                        std::cerr << "Expected 0 arguments but got " << argCount << "." << std::endl;
+                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                    }
                 } else if (std::holds_alternative<std::shared_ptr<ObjBoundMethod>>(callee)) {
                     auto bound = std::get<std::shared_ptr<ObjBoundMethod>>(callee);
                     auto function = bound->method;

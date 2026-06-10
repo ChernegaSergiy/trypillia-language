@@ -577,12 +577,12 @@ public:
 
         if (node->name == "init" && classNode) {
             for (auto field : classNode->fields) {
+                funcCompiler.emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), 0);
                 if (field->initializer) {
                     field->initializer->accept(&funcCompiler);
                 } else {
                     funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_NIL));
                 }
-                funcCompiler.emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), 0);
                 funcCompiler.emitBytes(static_cast<uint8_t>(OpCode::OP_PROPERTY_SET), funcCompiler.chunk->addConstant(field->name));
                 funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_POP));
             }
