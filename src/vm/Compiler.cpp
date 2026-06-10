@@ -497,6 +497,31 @@ public:
 
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
     }
+    void visit(UsingStmt* node) override {
+        beginScope();
+        
+        node->declaration->accept(this);
+        
+        node->body->accept(this);
+        
+        // We know the resource variable is at the top of the local stack for this block
+        // Wait, if it's an ExpressionStmt, there is no local variable in `locals`.
+        // If it's a VarStmt, the variable is in `locals`.
+        if (dynamic_cast<VarStmt*>(node->declaration)) {
+            uint8_t slot = locals.size() - 1;
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), slot);
+            emitBytes(static_cast<uint8_t>(OpCode::OP_PROPERTY_GET), chunk->addConstant("destroy"));
+            emitBytes(static_cast<uint8_t>(OpCode::OP_CALL), 0);
+            emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+        } else if (dynamic_cast<ExpressionStmt*>(node->declaration)) {
+            // No name to retrieve it by, so `using(File.open())` without let doesn't have a way to call destroy right now
+            // Because the ExpressionStmt evaluates the expression and immediately POPs the result.
+            // Oh! We should probably throw a parse error if it's not a var declaration.
+            // But for now let's just ignore.
+        }
+        
+        endScope();
+    }
     void visit(UnaryExpr* node) override {
         currentLine = node->op.line;
         node->right->accept(this);

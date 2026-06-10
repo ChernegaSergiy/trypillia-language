@@ -262,14 +262,22 @@ public:
 
     void visit(SwitchStmt* node) override {
         node->expression->accept(this);
-        for (auto& case_ : node->cases) {
-            if (case_.value) {
-                case_.value->accept(this);
-            }
-            for (auto* stmt : case_.body) {
-                stmt->accept(this);
-            }
+        for (auto& caseClause : node->cases) {
+            if (caseClause.value) caseClause.value->accept(this);
+            for (auto& stmt : caseClause.body) stmt->accept(this);
         }
+    }
+
+    void visit(UsingStmt* node) override {
+        SymbolTable* enclosingScope = currentScope;
+        currentScope = new SymbolTable(enclosingScope);
+        
+        node->declaration->accept(this);
+        node->body->accept(this);
+        
+        SymbolTable* previous = currentScope;
+        currentScope = currentScope->getParent();
+        delete previous;
     }
 
     void visit(FunctionNode* node) override {

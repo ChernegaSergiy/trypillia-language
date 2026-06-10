@@ -17,7 +17,7 @@ void Parser::consume(TokenType type) {
         advance();
     } else {
         std::string message = "Expected token type " + std::to_string(static_cast<int>(type)) + 
-                            ", got " + std::to_string(static_cast<int>(currentToken.type));
+                            ", got " + std::to_string(static_cast<int>(currentToken.type)) + " at line " + std::to_string(currentToken.line);
         ErrorHandling::reportError(message);
         throw std::runtime_error(message);
     }
@@ -499,6 +499,38 @@ StmtNode* Parser::switchStatement() {
     return new SwitchStmt(expr, cases);
 }
 
+StmtNode* Parser::usingStatement() {
+    consume(TokenType::LPAREN);
+    
+    StmtNode* declaration = nullptr;
+    if (currentToken.type == TokenType::LET || currentToken.type == TokenType::CONST) {
+        bool isConst = (currentToken.type == TokenType::CONST);
+        consume(isConst ? TokenType::CONST : TokenType::LET);
+        if (isConst) {
+            consume(TokenType::LET);
+        }
+        
+        Token name = currentToken;
+        consume(TokenType::IDENTIFIER);
+        
+        ExprNode* initializer = nullptr;
+        if (match(TokenType::ASSIGN)) {
+            initializer = expression();
+        } else if (isConst) {
+            throw std::runtime_error("Constant declaration requires an initializer");
+        }
+        declaration = new VarStmt(name, initializer, isConst);
+    } else {
+        ExprNode* expr = expression();
+        declaration = new ExpressionStmt(expr);
+    }
+    
+    consume(TokenType::RPAREN);
+    StmtNode* body = statement();
+    
+    return new UsingStmt(declaration, body);
+}
+
 StmtNode* Parser::forStatement() {
     advance(); // consume FOR
     
@@ -598,6 +630,11 @@ StmtNode* Parser::statement() {
     
     if (match(TokenType::LBRACE)) {
         return block();
+    }
+    
+    if (currentToken.type == TokenType::USING) {
+        advance();
+        return usingStatement();
     }
     
     return expressionStatement();

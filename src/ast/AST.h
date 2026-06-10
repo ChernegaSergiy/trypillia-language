@@ -458,6 +458,22 @@ public:
     void accept(ASTVisitor* visitor) override;
 };
 
+
+class UsingStmt : public StmtNode {
+public:
+    StmtNode* declaration;
+    StmtNode* body;
+
+    UsingStmt(StmtNode* declaration, StmtNode* body) : declaration(declaration), body(body) {}
+
+    ~UsingStmt() {
+        delete declaration;
+        delete body;
+    }
+
+    void accept(ASTVisitor* visitor) override;
+};
+
 class SwitchStmt : public StmtNode {
 public:
     ExprNode* expression;
@@ -660,6 +676,7 @@ public:
     virtual void visit(ForStmt* node) = 0;
     virtual void visit(ForeachStmt* node) = 0;
     virtual void visit(SwitchStmt* node) = 0;
+    virtual void visit(UsingStmt* node) = 0;
     virtual void visit(UnaryExpr* node) = 0;
     virtual void visit(ThisExpr* node) = 0;
     virtual void visit(SuperExpr* node) = 0;
