@@ -50,6 +50,27 @@ InterpretResult VM::run() {
                 }
                 break;
             }
+            case static_cast<uint8_t>(OpCode::OP_MULTIPLY): {
+                VMValue b = pop();
+                VMValue a = pop();
+                if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
+                    push(std::get<double>(a) * std::get<double>(b));
+                }
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_POP): {
+                pop();
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_PRINT): {
+                VMValue value = pop();
+                if (std::holds_alternative<double>(value)) {
+                    std::cout << std::get<double>(value) << std::endl;
+                } else if (std::holds_alternative<std::string>(value)) {
+                    std::cout << std::get<std::string>(value) << std::endl;
+                }
+                break;
+            }
             case static_cast<uint8_t>(OpCode::OP_RETURN): {
                 // Тимчасово просто виводимо результат
                 if (!stack.empty()) {
