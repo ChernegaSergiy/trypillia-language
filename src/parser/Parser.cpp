@@ -737,6 +737,17 @@ ClassNode* Parser::parseClass() {
             methods.push_back(parseFunction(currentAccess, true));
         } else if (currentToken.type == TokenType::FN) {
             methods.push_back(parseFunction(currentAccess));
+        } else if (currentToken.type == TokenType::DESTROY) {
+            advance();
+            consume(TokenType::LBRACE);
+            std::vector<StmtNode*> body;
+            while (currentToken.type != TokenType::RBRACE && currentToken.type != TokenType::END_OF_FILE) {
+                body.push_back(dynamic_cast<StmtNode*>(declaration()));
+            }
+            consume(TokenType::RBRACE);
+            auto node = new FunctionNode("destroy", {}, body);
+            node->accessModifier = currentAccess;
+            methods.push_back(node);
         } else if (currentToken.type == TokenType::STATIC) {
             advance();
             if (currentToken.type == TokenType::FN) {

@@ -387,6 +387,8 @@ private:
 public:
     Instance(std::shared_ptr<Class> klass) : klass(klass) {}
     
+    ~Instance();
+    
     Value get(const std::string& name) {
         auto it = fields.find(name);
         if (it != fields.end()) {
@@ -471,6 +473,7 @@ private:
     std::shared_ptr<Environment> environment;
     Value lastValue;
     std::vector<ASTNode*> loadedASTs;
+    std::vector<std::weak_ptr<Instance>> instancesWithDestroy;
     
 public:
     std::shared_ptr<Class> currentClass;
@@ -1337,7 +1340,40 @@ public:
             ast->accept(this);
         }
     }
+    
+    void registerInstance(std::shared_ptr<Instance> inst) {
+        if (inst->getClass()->findMethod("destroy")) {
+            instancesWithDestroy.push_back(inst);
+        }
+    }
+    
+    void cleanup() {
+        for (auto& weak : instancesWithDestroy) {
+            auto inst = weak.lock();
+            if (inst) {
+                auto destroyFn = inst->getClass()->findMethod("destroy");
+                if (destroyFn) {
+                    auto env = std::make_shared<Environment>(destroyFn->getClosure());
+                    env->define("this", inst);
+                    auto prevEnv = environment;
+                    environment = env;
+                    try {
+                        executeBlock(destroyFn->getDeclaration()->body, env);
+                    } catch (...) {
+                        environment = prevEnv;
+                        continue;
+                    }
+                    environment = prevEnv;
+                }
+            }
+        }
+        instancesWithDestroy.clear();
+    }
 };
+
+// Implementation of Instance destructor
+Instance::~Instance() {
+}
 
 // Implementation of Function::call that depends on InterpreterVisitor
 Value Function::call(InterpreterVisitor* interpreter, const std::vector<Value>& arguments) {
@@ -1430,6 +1466,10 @@ Value Class::call(InterpreterVisitor* interpreter, const std::vector<Value>& arg
     
     std::shared_ptr<Instance> instance = std::make_shared<Instance>(shared_from_this());
     
+    if (interpreter) {
+        interpreter->registerInstance(instance);
+    }
+    
     // Evaluate field initializers from the whole hierarchy
     std::vector<std::shared_ptr<Class>> hierarchy;
     auto hierarchyKlass = shared_from_this();
@@ -1471,6 +1511,7 @@ void Interpreter::execute(ASTNode* ast) {
     try {
         InterpreterVisitor visitor;
         ast->accept(&visitor);
+        visitor.cleanup();
     } catch (const std::exception& e) {
         ErrorHandling::reportError("Runtime error: " + std::string(e.what()));
     }

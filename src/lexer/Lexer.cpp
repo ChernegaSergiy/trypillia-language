@@ -29,6 +29,7 @@ static std::unordered_map<std::string, TokenType> keywords = {
     {"implements", TokenType::IMPLEMENTS},
     {"trait", TokenType::TRAIT},
     {"load", TokenType::LOAD},
+    {"destroy", TokenType::DESTROY},
     {"switch", TokenType::SWITCH},
     {"case", TokenType::CASE},
     {"default", TokenType::DEFAULT},
