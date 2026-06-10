@@ -396,6 +396,17 @@ InterpretResult VM::run() {
                 push(std::make_shared<ObjList>(elements));
                 break;
             }
+            case static_cast<uint8_t>(OpCode::OP_BUILD_MAP): {
+                uint8_t count = READ_BYTE();
+                auto map = std::make_shared<ObjMap>();
+                for (int i = count - 1; i >= 0; i--) {
+                    VMValue value = pop();
+                    VMValue key = pop();
+                    map->values[key] = value;
+                }
+                push(map);
+                break;
+            }
             case static_cast<uint8_t>(OpCode::OP_INDEX_GET): {
                 VMValue index = pop();
                 VMValue listVal = pop();
@@ -428,8 +439,15 @@ InterpretResult VM::run() {
                         std::cerr << "String index must be a number." << std::endl;
                         return InterpretResult::INTERPRET_RUNTIME_ERROR;
                     }
+                } else if (std::holds_alternative<std::shared_ptr<ObjMap>>(listVal)) {
+                    auto map = std::get<std::shared_ptr<ObjMap>>(listVal);
+                    if (map->values.count(index)) {
+                        push(map->values[index]);
+                    } else {
+                        push(nullptr); // Return nil for missing keys
+                    }
                 } else {
-                    std::cerr << "Can only index into lists or strings." << std::endl;
+                    std::cerr << "Can only index into lists, maps, or strings." << std::endl;
                     return InterpretResult::INTERPRET_RUNTIME_ERROR;
                 }
                 break;
@@ -453,8 +471,12 @@ InterpretResult VM::run() {
                         std::cerr << "List index must be a number." << std::endl;
                         return InterpretResult::INTERPRET_RUNTIME_ERROR;
                     }
+                } else if (std::holds_alternative<std::shared_ptr<ObjMap>>(listVal)) {
+                    auto map = std::get<std::shared_ptr<ObjMap>>(listVal);
+                    map->values[index] = value;
+                    push(value);
                 } else {
-                    std::cerr << "Can only index into lists." << std::endl;
+                    std::cerr << "Can only set elements in lists or maps." << std::endl;
                     return InterpretResult::INTERPRET_RUNTIME_ERROR;
                 }
                 break;
