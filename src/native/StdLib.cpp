@@ -3,6 +3,8 @@
 #include "fs/FS.h"
 #include "net/Net.h"
 #include "json/Json.h"
+#include "string/String.h"
+#include "time/Time.h"
 
 namespace StdLib {
     void registerAll(VM* vm) {
@@ -11,6 +13,8 @@ namespace StdLib {
         FS::registerAll(vm);
         Net::registerAll(vm);
         Json::registerAll(vm);
+        StringModule::registerAll(vm);
+        TimeModule::registerAll(vm);
     }
 
     void registerSymbols(SymbolTable* scope) {
@@ -19,6 +23,8 @@ namespace StdLib {
         FS::registerSymbols(scope);
         Net::registerSymbols(scope);
         Json::registerSymbols(scope);
+        StringModule::registerSymbols(scope);
+        TimeModule::registerSymbols(scope);
     }
 
     VMValue makeResultOk(VM* vm, VMValue value) {

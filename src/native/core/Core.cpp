@@ -40,10 +40,6 @@ namespace Core {
         return nullptr;
     }
 
-    static VMValue clockNative(int argCount, VMValue* args) {
-        return (double)clock() / CLOCKS_PER_SEC;
-    }
-
     static VMValue lenNative(int argCount, VMValue* args) {
         if (argCount != 1) return nullptr;
         if (std::holds_alternative<std::shared_ptr<ObjList>>(args[0])) {
@@ -62,34 +58,6 @@ namespace Core {
             return args[0];
         }
         return nullptr;
-    }
-
-    static VMValue substringNative(int argCount, VMValue* args) {
-        if (argCount != 3) return nullptr;
-        if (!std::holds_alternative<std::string>(args[0]) || 
-            !std::holds_alternative<double>(args[1]) || 
-            !std::holds_alternative<double>(args[2])) return nullptr;
-            
-        std::string str = std::get<std::string>(args[0]);
-        int start = std::get<double>(args[1]);
-        int length = std::get<double>(args[2]);
-        
-        if (start < 0 || start >= str.length()) return std::string("");
-        return str.substr(start, length);
-    }
-
-    static VMValue toUpperNative(int argCount, VMValue* args) {
-        if (argCount != 1 || !std::holds_alternative<std::string>(args[0])) return nullptr;
-        std::string str = std::get<std::string>(args[0]);
-        for (char& c : str) c = std::toupper(c);
-        return str;
-    }
-
-    static VMValue toLowerNative(int argCount, VMValue* args) {
-        if (argCount != 1 || !std::holds_alternative<std::string>(args[0])) return nullptr;
-        std::string str = std::get<std::string>(args[0]);
-        for (char& c : str) c = std::tolower(c);
-        return str;
     }
 
     // --- Error ---
@@ -157,12 +125,8 @@ namespace Core {
     void registerAll(VM* vm) {
         currentVM = vm;
         vm->defineNative("print", -1, printNative);
-        vm->defineNative("clock", 0, clockNative);
         vm->defineNative("len", 1, lenNative);
         vm->defineNative("push", 2, pushNative);
-        vm->defineNative("substring", 3, substringNative);
-        vm->defineNative("toUpper", 1, toUpperNative);
-        vm->defineNative("toLower", 1, toLowerNative);
 
         auto errorClass = std::make_shared<ObjClass>("Error");
         errorClass->methods["init"] = std::make_shared<ObjNative>("init", -1, errorInit);
@@ -187,12 +151,8 @@ namespace Core {
             scope->define(sym);
         };
         addFunc("print");
-        addFunc("clock");
         addFunc("len");
         addFunc("push");
-        addFunc("substring");
-        addFunc("toUpper");
-        addFunc("toLower");
 
         auto addClass = [&](const std::string& name) {
             Symbol sym;
