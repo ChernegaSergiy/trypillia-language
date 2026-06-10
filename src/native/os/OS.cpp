@@ -10,6 +10,8 @@
 
 namespace StdLib {
 namespace OSModule {
+    
+    std::vector<std::string> commandLineArgs;
 
     static VM* currentVM = nullptr;
 
@@ -61,6 +63,14 @@ namespace OSModule {
         return nullptr; // Unreachable
     }
 
+    static VMValue osArgs(int argCount, VMValue* args) {
+        std::vector<VMValue> listElements;
+        for (const auto& arg : commandLineArgs) {
+            listElements.push_back(arg);
+        }
+        return std::make_shared<ObjList>(listElements);
+    }
+
     void registerAll(VM* vm) {
         currentVM = vm;
         auto osClass = std::make_shared<ObjClass>("OS");
@@ -69,6 +79,7 @@ namespace OSModule {
         osClass->statics["cwd"] = std::make_shared<ObjNative>("cwd", 0, osCwd);
         osClass->statics["exec"] = std::make_shared<ObjNative>("exec", 1, osExec);
         osClass->statics["exit"] = std::make_shared<ObjNative>("exit", -1, osExit); // -1 means variable number of args (0 or 1)
+        osClass->statics["args"] = std::make_shared<ObjNative>("args", 0, osArgs);
 
         vm->globals["OS"] = osClass;
     }

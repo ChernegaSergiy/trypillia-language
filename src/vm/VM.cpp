@@ -243,8 +243,21 @@ InterpretResult VM::run(int targetFrameDepth) {
                     push(std::get<double>(a) + std::get<double>(b));
                 } else if (std::holds_alternative<std::string>(a) && std::holds_alternative<std::string>(b)) {
                     push(std::get<std::string>(a) + std::get<std::string>(b));
+                } else if (std::holds_alternative<std::string>(a) && std::holds_alternative<double>(b)) {
+                    double val = std::get<double>(b);
+                    // Remove trailing zeros for integers
+                    std::string strVal = std::to_string(val);
+                    strVal.erase(strVal.find_last_not_of('0') + 1, std::string::npos);
+                    if (strVal.back() == '.') strVal.pop_back();
+                    push(std::get<std::string>(a) + strVal);
+                } else if (std::holds_alternative<double>(a) && std::holds_alternative<std::string>(b)) {
+                    double val = std::get<double>(a);
+                    std::string strVal = std::to_string(val);
+                    strVal.erase(strVal.find_last_not_of('0') + 1, std::string::npos);
+                    if (strVal.back() == '.') strVal.pop_back();
+                    push(strVal + std::get<std::string>(b));
                 } else {
-                    return runtimeError(std::string("Operands must be two numbers or two strings."));
+                    return runtimeError(std::string("Operands must be numbers or strings."));
                 }
                 break;
             }

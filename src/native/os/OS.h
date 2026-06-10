@@ -6,6 +6,7 @@
 
 namespace StdLib {
 namespace OSModule {
+    extern std::vector<std::string> commandLineArgs;
     void registerSymbols(SymbolTable* scope);
     void registerAll(VM* vm);
 }

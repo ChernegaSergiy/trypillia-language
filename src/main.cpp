@@ -5,6 +5,7 @@
 #include "semantic/SemanticAnalyzer.h"
 #include "vm/Compiler.h"
 #include "vm/VM.h"
+#include "native/os/OS.h"
 
 int main(int argc, char** argv) {
     if (argc < 2) {
@@ -20,6 +21,10 @@ int main(int argc, char** argv) {
     
     std::string sourceCode((std::istreambuf_iterator<char>(sourceFile)),
                             std::istreambuf_iterator<char>());
+
+    for (int i = 2; i < argc; i++) {
+        StdLib::OSModule::commandLineArgs.push_back(argv[i]);
+    }
 
     Lexer lexer(sourceCode);
     Parser parser(lexer);
