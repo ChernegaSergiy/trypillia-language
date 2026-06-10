@@ -213,11 +213,11 @@ public:
         return nullptr;
     }
     
-    AccessModifier getFieldAccess(const std::string& fieldName) const {
+    std::pair<AccessModifier, std::shared_ptr<Class>> getFieldAccess(const std::string& fieldName) {
         auto it = fieldAccess.find(fieldName);
-        if (it != fieldAccess.end()) return it->second;
+        if (it != fieldAccess.end()) return {it->second, shared_from_this()};
         if (parent) return parent->getFieldAccess(fieldName);
-        return AccessModifier::PUBLIC;
+        return {AccessModifier::PUBLIC, nullptr};
     }
     
     std::shared_ptr<Class> getParent() const { return parent; }
@@ -695,36 +695,56 @@ public:
             auto instance = std::get<std::shared_ptr<Instance>>(object);
             
             // Check field access BEFORE get() to avoid leaking private field values
-            if (instance->getClass()->getFieldAccess(node->name.lexeme) == AccessModifier::PRIVATE) {
-                checkAccess(instance, node->name.lexeme);
+            auto [fieldMod, fieldDeclClass] = instance->getClass()->getFieldAccess(node->name.lexeme);
+            if (fieldMod != AccessModifier::PUBLIC) {
+                checkAccess(instance, node->name.lexeme, fieldDeclClass, fieldMod);
             }
             
             lastValue = instance->get(node->name.lexeme);
             
-            // Enforce access control for private methods
+            // Enforce access control for methods
             if (std::holds_alternative<std::shared_ptr<BoundMethod>>(lastValue)) {
                 auto bound = std::get<std::shared_ptr<BoundMethod>>(lastValue);
-                if (bound->getMethod()->getAccessModifier() == AccessModifier::PRIVATE) {
-                    checkAccess(instance, node->name.lexeme);
+                auto modifier = bound->getMethod()->getAccessModifier();
+                if (modifier != AccessModifier::PUBLIC) {
+                    auto declaringClass = bound->getMethod()->getOwningClass();
+                    checkAccess(instance, node->name.lexeme, declaringClass, modifier);
                 }
             }
         } else {
             throw std::runtime_error("Only instances have properties");
         }
     }
+
+    bool isSubclassOf(std::shared_ptr<Class> child, std::shared_ptr<Class> parent) {
+        auto klass = child;
+        while (klass) {
+            if (klass == parent) return true;
+            klass = klass->getParent();
+        }
+        return false;
+    }
     
-    void checkAccess(std::shared_ptr<Instance> instance, const std::string& name) {
-        bool fromInside = false;
+    void checkAccess(std::shared_ptr<Instance> targetInstance, const std::string& name,
+                     std::shared_ptr<Class> declaringClass, AccessModifier modifier) {
+        if (modifier == AccessModifier::PUBLIC) return;
+        
         try {
             Value thisVal = environment->get("this");
             if (std::holds_alternative<std::shared_ptr<Instance>>(thisVal)) {
                 auto thisInstance = std::get<std::shared_ptr<Instance>>(thisVal);
-                fromInside = (thisInstance->getClass() == instance->getClass());
+                auto currentClass = thisInstance->getClass();
+                
+                if (modifier == AccessModifier::PRIVATE) {
+                    if (currentClass == declaringClass) return;
+                } else if (modifier == AccessModifier::PROTECTED) {
+                    if (isSubclassOf(currentClass, declaringClass)) return;
+                }
             }
         } catch (...) {}
-        if (!fromInside) {
-            throw std::runtime_error("Cannot access private member '" + name + "' from outside the class");
-        }
+        
+        std::string modStr = (modifier == AccessModifier::PRIVATE) ? "private" : "protected";
+        throw std::runtime_error("Cannot access " + modStr + " member '" + name + "' from outside the class");
     }
     
     void visit(SetExpr* node) override {
@@ -739,9 +759,10 @@ public:
         
         auto instance = std::get<std::shared_ptr<Instance>>(object);
         
-        // Enforce access control for private fields
-        if (instance->getClass()->getFieldAccess(node->name.lexeme) == AccessModifier::PRIVATE) {
-            checkAccess(instance, node->name.lexeme);
+        // Enforce access control for fields
+        auto [fieldMod, fieldDeclClass] = instance->getClass()->getFieldAccess(node->name.lexeme);
+        if (fieldMod != AccessModifier::PUBLIC) {
+            checkAccess(instance, node->name.lexeme, fieldDeclClass, fieldMod);
         }
         
         instance->set(node->name.lexeme, lastValue);

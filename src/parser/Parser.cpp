@@ -605,6 +605,9 @@ ClassNode* Parser::parseClass() {
         } else if (currentToken.type == TokenType::PRIVATE) {
             advance();
             currentAccess = AccessModifier::PRIVATE;
+        } else if (currentToken.type == TokenType::PROTECTED) {
+            advance();
+            currentAccess = AccessModifier::PROTECTED;
         } else if (currentToken.type == TokenType::FN) {
             methods.push_back(parseFunction(currentAccess));
         } else if (currentToken.type == TokenType::LET || currentToken.type == TokenType::IDENTIFIER) {
