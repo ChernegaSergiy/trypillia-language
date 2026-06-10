@@ -39,7 +39,8 @@ namespace OSModule {
         std::string result;
         
         // Use popen to run the command and read its stdout
-        std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
+        auto deleter = [](FILE* f) { pclose(f); };
+        std::unique_ptr<FILE, decltype(deleter)> pipe(popen(cmd.c_str(), "r"), deleter);
         if (!pipe) {
             return makeResultErr(currentVM, "popen() failed!");
         }
