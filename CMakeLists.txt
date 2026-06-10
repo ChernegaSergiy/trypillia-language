@@ -8,3 +8,5 @@ include_directories(include)
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 
 add_executable(trypillia ${SOURCES})
+find_package(CURL REQUIRED)
+target_link_libraries(trypillia CURL::libcurl)
