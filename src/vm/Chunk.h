@@ -17,8 +17,9 @@ struct ObjNative;
 struct ObjList;
 struct ObjClass;
 struct ObjInstance;
+struct ObjBoundMethod;
 
-using VMValue = std::variant<std::nullptr_t, bool, double, std::string, std::shared_ptr<ObjFunction>, std::shared_ptr<ObjNative>, std::shared_ptr<ObjList>, std::shared_ptr<ObjClass>, std::shared_ptr<ObjInstance>>;
+using VMValue = std::variant<std::nullptr_t, bool, double, std::string, std::shared_ptr<ObjFunction>, std::shared_ptr<ObjNative>, std::shared_ptr<ObjList>, std::shared_ptr<ObjClass>, std::shared_ptr<ObjInstance>, std::shared_ptr<ObjBoundMethod>>;
 
 using NativeFn = VMValue(*)(int argCount, VMValue* args);
 
@@ -32,6 +33,12 @@ struct ObjInstance {
     std::shared_ptr<ObjClass> klass;
     std::unordered_map<std::string, VMValue> fields;
     ObjInstance(std::shared_ptr<ObjClass> k) : klass(k) {}
+};
+
+struct ObjBoundMethod {
+    std::shared_ptr<ObjInstance> receiver;
+    std::shared_ptr<ObjFunction> method;
+    ObjBoundMethod(std::shared_ptr<ObjInstance> r, std::shared_ptr<ObjFunction> m) : receiver(r), method(m) {}
 };
 
 struct ObjList {

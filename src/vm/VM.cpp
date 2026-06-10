@@ -17,6 +17,8 @@ VM::VM() {
                 std::cout << "<class " << std::get<std::shared_ptr<ObjClass>>(args[i])->name << ">";
             } else if (std::holds_alternative<std::shared_ptr<ObjInstance>>(args[i])) {
                 std::cout << "<instance of " << std::get<std::shared_ptr<ObjInstance>>(args[i])->klass->name << ">";
+            } else if (std::holds_alternative<std::shared_ptr<ObjBoundMethod>>(args[i])) {
+                std::cout << "<bound method " << std::get<std::shared_ptr<ObjBoundMethod>>(args[i])->method->name << ">";
             } else if (std::holds_alternative<std::nullptr_t>(args[i])) {
                 std::cout << "nil";
             }
@@ -358,6 +360,10 @@ InterpretResult VM::run() {
                     if (instance->fields.count(name)) {
                         pop();
                         push(instance->fields[name]);
+                    } else if (instance->klass->methods.count(name)) {
+                        auto method = instance->klass->methods[name];
+                        pop();
+                        push(std::make_shared<ObjBoundMethod>(instance, method));
                     } else {
                         std::cerr << "Undefined property '" << name << "'." << std::endl;
                         return InterpretResult::INTERPRET_RUNTIME_ERROR;
@@ -415,6 +421,24 @@ InterpretResult VM::run() {
                     auto instance = std::make_shared<ObjInstance>(klass);
                     stack.resize(stack.size() - argCount - 1);
                     push(instance);
+                } else if (std::holds_alternative<std::shared_ptr<ObjBoundMethod>>(callee)) {
+                    auto bound = std::get<std::shared_ptr<ObjBoundMethod>>(callee);
+                    auto function = bound->method;
+                    if (argCount != function->arity) {
+                        std::cerr << "Expected " << function->arity << " arguments but got " << (int)argCount << "." << std::endl;
+                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                    }
+                    if (frames.size() == 256) {
+                        std::cerr << "Stack overflow." << std::endl;
+                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                    }
+                    stack[stack.size() - argCount - 1] = bound->receiver;
+                    CallFrame newFrame;
+                    newFrame.function = function;
+                    newFrame.ip = function->chunk->code.data();
+                    newFrame.stackStart = stack.size() - argCount - 1;
+                    frames.push_back(newFrame);
+                    frame = &frames.back();
                 } else {
                     std::cerr << "Can only call functions and classes." << std::endl;
                     return InterpretResult::INTERPRET_RUNTIME_ERROR;
