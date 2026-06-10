@@ -527,6 +527,12 @@ InterpretResult VM::run() {
                         std::cerr << "Cannot instantiate abstract class '" << klass->name << "'." << std::endl;
                         return InterpretResult::INTERPRET_RUNTIME_ERROR;
                     }
+                    for (auto const& [name, method] : klass->methods) {
+                        if (method->isAbstract) {
+                            std::cerr << "Cannot instantiate class '" << klass->name << "' because abstract method '" << name << "' is not implemented." << std::endl;
+                            return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                        }
+                    }
                     auto instance = std::make_shared<ObjInstance>(klass);
                     stack.resize(stack.size() - argCount - 1);
                     push(instance);
