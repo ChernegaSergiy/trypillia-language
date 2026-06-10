@@ -59,6 +59,7 @@ private:
     FunctionNode* parseFunction(AccessModifier accessModifier = AccessModifier::PUBLIC, bool isAbstract = false);
     ClassNode* parseClass();
     InterfaceNode* parseInterface();
+    TraitNode* parseTrait();
 };
 
 #endif // PARSER_H

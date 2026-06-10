@@ -559,6 +559,36 @@ public:
         indentLevel--;
         code << "};\n\n";
     }
+
+    void visit(TraitNode* node) override {
+        code << "class " << node->name << " {\n";
+        indentLevel++;
+        code << "public:\n";
+        for (auto& method : node->methods) {
+            indent();
+            code << "virtual auto " << method->name << "(";
+            for (size_t i = 0; i < method->params.size(); i++) {
+                if (i > 0) code << ", ";
+                code << "auto " << method->params[i];
+            }
+            if (method->isAbstract) {
+                code << ") = 0;\n";
+            } else {
+                code << ") {\n";
+                indentLevel++;
+                for (auto& stmt : method->body) {
+                    indent();
+                    stmt->accept(this);
+                    code << "\n";
+                }
+                indentLevel--;
+                indent();
+                code << "}\n";
+            }
+        }
+        indentLevel--;
+        code << "};\n\n";
+    }
 };
 
 void CodeGenerator::generate(ASTNode* ast) {

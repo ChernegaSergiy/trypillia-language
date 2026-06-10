@@ -336,14 +336,14 @@ public:
             }
         }
         
-        // Resolve implemented interfaces
+        // Resolve implemented interfaces and traits
         for (auto& ifaceName : node->interfaceNames) {
             Symbol* ifaceSymbol = currentScope->resolve(ifaceName);
             if (!ifaceSymbol) {
-                std::string error = "Interface '" + ifaceName + "' not found";
+                std::string error = "Interface/trait '" + ifaceName + "' not found";
                 ErrorHandling::reportError(error);
-            } else if (ifaceSymbol->type != "interface") {
-                std::string error = "'" + ifaceName + "' is not an interface";
+            } else if (ifaceSymbol->type != "interface" && ifaceSymbol->type != "trait") {
+                std::string error = "'" + ifaceName + "' is not an interface or trait";
                 ErrorHandling::reportError(error);
             }
         }
@@ -376,6 +376,18 @@ public:
         ifaceSymbol.type = "interface";
         ifaceSymbol.isConst = true;
         currentScope->define(ifaceSymbol);
+        
+        for (auto& method : node->methods) {
+            method->accept(this);
+        }
+    }
+
+    void visit(TraitNode* node) override {
+        Symbol traitSymbol;
+        traitSymbol.name = node->name;
+        traitSymbol.type = "trait";
+        traitSymbol.isConst = true;
+        currentScope->define(traitSymbol);
         
         for (auto& method : node->methods) {
             method->accept(this);

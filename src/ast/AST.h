@@ -545,6 +545,24 @@ public:
     void accept(ASTVisitor* visitor) override;
 };
 
+class TraitNode : public StmtNode {
+public:
+    std::string name;
+    std::vector<FunctionNode*> methods;
+    std::vector<std::string> parentNames;
+
+    TraitNode(std::string name, std::vector<FunctionNode*> methods, std::vector<std::string> parentNames = {})
+        : name(name), methods(methods), parentNames(parentNames) {}
+
+    ~TraitNode() {
+        for (auto method : methods) {
+            delete method;
+        }
+    }
+
+    void accept(ASTVisitor* visitor) override;
+};
+
 class ASTVisitor {
 public:
     virtual ~ASTVisitor() = default;
@@ -582,6 +600,7 @@ public:
     virtual void visit(FieldDeclNode* node) = 0;
     virtual void visit(ClassNode* node) = 0;
     virtual void visit(InterfaceNode* node) = 0;
+    virtual void visit(TraitNode* node) = 0;
 };
 
 #endif // AST_H

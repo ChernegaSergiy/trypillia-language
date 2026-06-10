@@ -137,3 +137,7 @@ void ClassNode::accept(ASTVisitor* visitor) {
 void InterfaceNode::accept(ASTVisitor* visitor) {
     visitor->visit(this);
 }
+
+void TraitNode::accept(ASTVisitor* visitor) {
+    visitor->visit(this);
+}

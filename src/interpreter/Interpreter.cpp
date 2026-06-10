@@ -18,12 +18,13 @@ class Instance;
 class BoundMethod;
 class ListValue;
 class Interface;
+class Trait;
 
 // Value type for the interpreter
 using Value = std::variant<std::nullptr_t, bool, double, std::string, std::shared_ptr<ListValue>,
                            std::shared_ptr<Function>, std::shared_ptr<Class>, 
                            std::shared_ptr<Instance>, std::shared_ptr<BoundMethod>,
-                           std::shared_ptr<Interface>>;
+                           std::shared_ptr<Interface>, std::shared_ptr<Trait>>;
 
 // List value implementation (after Value is defined)
 class ListValue {
@@ -136,7 +137,8 @@ public:
     FunctionNode* getDeclaration() const { return declaration; }
     AccessModifier getAccessModifier() const { return accessModifier; }
     std::shared_ptr<Class> getOwningClass() const { return owningClass; }
-    
+    bool isAbstract() const { return declaration->isAbstract; }
+
     std::string toString() const {
         return "<fn " + declaration->name + ">";
     }
@@ -186,6 +188,7 @@ private:
     std::shared_ptr<Class> parent;
     bool isAbstract;
     std::vector<std::shared_ptr<Interface>> interfaces;
+    std::vector<std::shared_ptr<Trait>> traits;
     
 public:
     Class(const std::string& name, 
@@ -238,6 +241,11 @@ public:
     void setInterfaces(const std::vector<std::shared_ptr<Interface>>& ifaces) { interfaces = ifaces; }
     std::vector<std::shared_ptr<Interface>> getInterfaces() const { return interfaces; }
     
+    void setTraits(const std::vector<std::shared_ptr<Trait>>& ts) { traits = ts; }
+    std::vector<std::shared_ptr<Trait>> getTraits() const { return traits; }
+    
+    void applyTraitMethods();
+    
     bool isFieldConst(const std::string& fieldName) {
         if (fieldConst.find(fieldName) != fieldConst.end()) return true;
         if (parent) return parent->isFieldConst(fieldName);
@@ -286,6 +294,59 @@ public:
         return "<interface " + name + ">";
     }
 };
+
+// Trait runtime type
+class Trait : public std::enable_shared_from_this<Trait> {
+private:
+    std::string name;
+    std::unordered_map<std::string, std::shared_ptr<Function>> methods;
+    std::vector<std::shared_ptr<Trait>> parents;
+
+public:
+    Trait(const std::string& name,
+          const std::unordered_map<std::string, std::shared_ptr<Function>>& methods,
+          std::vector<std::shared_ptr<Trait>> parents = {})
+        : name(name), methods(methods), parents(parents) {}
+
+    std::shared_ptr<Function> findMethod(const std::string& methodName) const {
+        auto it = methods.find(methodName);
+        if (it != methods.end()) return it->second;
+        for (auto& parent : parents) {
+            auto result = parent->findMethod(methodName);
+            if (result) return result;
+        }
+        return nullptr;
+    }
+
+    const std::unordered_map<std::string, std::shared_ptr<Function>>& getMethods() const {
+        return methods;
+    }
+
+    std::string getName() const { return name; }
+    std::vector<std::shared_ptr<Trait>> getParents() const { return parents; }
+
+    std::string toString() const {
+        return "<trait " + name + ">";
+    }
+};
+
+// Trait method application
+void Class::applyTraitMethods() {
+    for (auto& trait : traits) {
+        for (auto& [name, func] : trait->getMethods()) {
+            if (methods.find(name) == methods.end() && !func->isAbstract()) {
+                methods[name] = func;
+            }
+        }
+        for (auto& parentTrait : trait->getParents()) {
+            for (auto& [name, func] : parentTrait->getMethods()) {
+                if (methods.find(name) == methods.end() && !func->isAbstract()) {
+                    methods[name] = func;
+                }
+            }
+        }
+    }
+}
 
 // Class instance implementation
 class Instance : public std::enable_shared_from_this<Instance> {
@@ -1069,20 +1130,26 @@ public:
             fieldDecls.push_back({field->name, field->initializer, field->accessModifier, field->isConst});
         }
         
-        // Resolve interfaces
+        // Resolve interfaces and traits
         std::vector<std::shared_ptr<Interface>> interfaces;
+        std::vector<std::shared_ptr<Trait>> traits;
         for (auto& ifaceName : node->interfaceNames) {
-            Value ifaceVal = environment->get(ifaceName);
-            if (!std::holds_alternative<std::shared_ptr<Interface>>(ifaceVal)) {
-                throw std::runtime_error("'" + ifaceName + "' is not an interface");
+            Value val = environment->get(ifaceName);
+            if (std::holds_alternative<std::shared_ptr<Interface>>(val)) {
+                interfaces.push_back(std::get<std::shared_ptr<Interface>>(val));
+            } else if (std::holds_alternative<std::shared_ptr<Trait>>(val)) {
+                traits.push_back(std::get<std::shared_ptr<Trait>>(val));
+            } else {
+                throw std::runtime_error("'" + ifaceName + "' is not an interface or trait");
             }
-            interfaces.push_back(std::get<std::shared_ptr<Interface>>(ifaceVal));
         }
         
-        // Update the class with methods, fields, and interfaces
+        // Update the class with methods, fields, interfaces, and traits
         klass->setMethods(methods);
         klass->setFieldDecls(fieldDecls);
         klass->setInterfaces(interfaces);
+        klass->setTraits(traits);
+        klass->applyTraitMethods();
         
         environment->assign(node->name, klass);
     }
@@ -1109,6 +1176,30 @@ public:
         
         auto iface = std::make_shared<Interface>(node->name, methods, parentIfaces);
         environment->assign(node->name, iface);
+    }
+
+    void visit(TraitNode* node) override {
+        // Resolve parent traits
+        std::vector<std::shared_ptr<Trait>> parentTraits;
+        for (auto& parentName : node->parentNames) {
+            Value parentVal = environment->get(parentName);
+            if (!std::holds_alternative<std::shared_ptr<Trait>>(parentVal)) {
+                throw std::runtime_error("'" + parentName + "' is not a trait");
+            }
+            parentTraits.push_back(std::get<std::shared_ptr<Trait>>(parentVal));
+        }
+        
+        environment->define(node->name, nullptr);
+        
+        // Create the trait
+        std::unordered_map<std::string, std::shared_ptr<Function>> methods;
+        for (auto& method : node->methods) {
+            auto func = std::make_shared<Function>(method, environment);
+            methods[method->name] = func;
+        }
+        
+        auto trait = std::make_shared<Trait>(node->name, methods, parentTraits);
+        environment->assign(node->name, trait);
     }
 };
 
@@ -1164,6 +1255,10 @@ std::shared_ptr<Function> Class::findMethod(const std::string& methodName) const
     for (auto& iface : interfaces) {
         auto result = iface->findMethod(methodName);
         if (result) return result;
+    }
+    for (auto& trait : traits) {
+        auto result = trait->findMethod(methodName);
+        if (result && !result->isAbstract()) return result;
     }
     return nullptr;
 }

@@ -763,6 +763,67 @@ InterfaceNode* Parser::parseInterface() {
     return new InterfaceNode(name.lexeme, methods, parentNames);
 }
 
+TraitNode* Parser::parseTrait() {
+    Token name = currentToken;
+    consume(TokenType::IDENTIFIER);
+    
+    std::vector<std::string> parentNames;
+    if (currentToken.type == TokenType::LESS) {
+        advance();
+        do {
+            Token parent = currentToken;
+            consume(TokenType::IDENTIFIER);
+            parentNames.push_back(parent.lexeme);
+        } while (match(TokenType::COMMA));
+    }
+    
+    consume(TokenType::LBRACE);
+    std::vector<FunctionNode*> methods;
+    
+    while (currentToken.type != TokenType::RBRACE && currentToken.type != TokenType::END_OF_FILE) {
+        if (currentToken.type == TokenType::FN) {
+            advance();
+            
+            Token methodName = currentToken;
+            consume(TokenType::IDENTIFIER);
+            
+            consume(TokenType::LPAREN);
+            std::vector<std::string> parameters;
+            if (currentToken.type != TokenType::RPAREN) {
+                do {
+                    Token param = currentToken;
+                    consume(TokenType::IDENTIFIER);
+                    parameters.push_back(param.lexeme);
+                } while (match(TokenType::COMMA));
+            }
+            consume(TokenType::RPAREN);
+            
+            if (currentToken.type == TokenType::SEMICOLON) {
+                // Abstract method
+                advance();
+                auto method = new FunctionNode(methodName.lexeme, parameters, {});
+                method->isAbstract = true;
+                methods.push_back(method);
+            } else {
+                // Method with body
+                consume(TokenType::LBRACE);
+                std::vector<StmtNode*> body;
+                while (currentToken.type != TokenType::RBRACE && currentToken.type != TokenType::END_OF_FILE) {
+                    body.push_back(dynamic_cast<StmtNode*>(declaration()));
+                }
+                consume(TokenType::RBRACE);
+                auto method = new FunctionNode(methodName.lexeme, parameters, body);
+                methods.push_back(method);
+            }
+        } else {
+            advance();
+        }
+    }
+    
+    consume(TokenType::RBRACE);
+    return new TraitNode(name.lexeme, methods, parentNames);
+}
+
 ASTNode* Parser::declaration() {
     if (currentToken.type == TokenType::ABSTRACT) {
         advance();
@@ -777,6 +838,11 @@ ASTNode* Parser::declaration() {
     if (currentToken.type == TokenType::INTERFACE) {
         advance();
         return parseInterface();
+    }
+    
+    if (currentToken.type == TokenType::TRAIT) {
+        advance();
+        return parseTrait();
     }
     
     if (currentToken.type == TokenType::CLASS) {
