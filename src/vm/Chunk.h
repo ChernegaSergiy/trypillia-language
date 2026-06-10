@@ -28,6 +28,7 @@ struct ObjClass {
     std::unordered_map<std::string, std::shared_ptr<ObjFunction>> methods;
     std::shared_ptr<ObjClass> superclass;
     bool isAbstract = false;
+    std::unordered_map<std::string, VMValue> statics;
     ObjClass(std::string name) : name(name), superclass(nullptr) {}
 };
 
@@ -61,6 +62,7 @@ struct ObjFunction {
     int arity;
     std::shared_ptr<Chunk> chunk;
     bool isAbstract = false;
+    std::unordered_map<std::string, VMValue> statics;
 
     ObjFunction() : arity(0) {}
 };

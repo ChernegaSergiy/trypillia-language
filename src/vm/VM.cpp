@@ -535,8 +535,17 @@ InterpretResult VM::run() {
                         std::cerr << "Undefined property '" << name << "'." << std::endl;
                         return InterpretResult::INTERPRET_RUNTIME_ERROR;
                     }
+                } else if (std::holds_alternative<std::shared_ptr<ObjClass>>(instanceVal)) {
+                    auto klass = std::get<std::shared_ptr<ObjClass>>(instanceVal);
+                    if (klass->statics.count(name)) {
+                        pop();
+                        push(klass->statics[name]);
+                    } else {
+                        std::cerr << "Undefined static property '" << name << "'." << std::endl;
+                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                    }
                 } else {
-                    std::cerr << "Only instances have properties." << std::endl;
+                    std::cerr << "Only instances and classes have properties." << std::endl;
                     return InterpretResult::INTERPRET_RUNTIME_ERROR;
                 }
                 break;
@@ -549,8 +558,12 @@ InterpretResult VM::run() {
                     auto instance = std::get<std::shared_ptr<ObjInstance>>(instanceVal);
                     instance->fields[name] = value;
                     push(value);
+                } else if (std::holds_alternative<std::shared_ptr<ObjClass>>(instanceVal)) {
+                    auto klass = std::get<std::shared_ptr<ObjClass>>(instanceVal);
+                    klass->statics[name] = value;
+                    push(value);
                 } else {
-                    std::cerr << "Only instances have properties." << std::endl;
+                    std::cerr << "Only instances and classes have properties." << std::endl;
                     return InterpretResult::INTERPRET_RUNTIME_ERROR;
                 }
                 break;
