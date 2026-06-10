@@ -390,25 +390,86 @@ public:
         code << "}\n\n";
     }
     
+    void visit(FieldDeclNode* node) override {
+    }
+    
     void visit(ClassNode* node) override {
         code << "class " << node->name << " {\n";
         indentLevel++;
         
-        AccessModifier currentAccess = AccessModifier::PUBLIC;
-        code << "public:\n";
+        // Check if we need a constructor (any field with initializer)
+        bool hasInit = false;
+        for (auto& field : node->fields) {
+            if (field->initializer) { hasInit = true; break; }
+        }
         
-        // Generate methods with access labels
+        // Gather methods by access
+        std::vector<FunctionNode*> publicMethods, privateMethods;
         for (auto& method : node->methods) {
-            if (method->accessModifier != currentAccess) {
-                currentAccess = method->accessModifier;
-                switch (currentAccess) {
-                    case AccessModifier::PUBLIC: code << "public:\n"; break;
-                    case AccessModifier::PRIVATE: code << "private:\n"; break;
-                    default: code << "public:\n"; break;
+            if (method->accessModifier == AccessModifier::PRIVATE)
+                privateMethods.push_back(method);
+            else
+                publicMethods.push_back(method);
+        }
+        
+        // Gather fields by access
+        std::vector<FieldDeclNode*> publicFields, privateFields;
+        for (auto& field : node->fields) {
+            if (field->accessModifier == AccessModifier::PRIVATE)
+                privateFields.push_back(field);
+            else
+                publicFields.push_back(field);
+        }
+        
+        // Generate constructor with initializer list
+        if (hasInit) {
+            indent();
+            code << node->name << "()";
+            bool first = true;
+            for (auto& field : node->fields) {
+                if (field->initializer) {
+                    if (first) { code << " : "; first = false; }
+                    else { code << ", "; }
+                    code << field->name << "(";
+                    field->initializer->accept(this);
+                    code << ")";
                 }
             }
+            code << " {}\n";
+        }
+        
+        // Public section
+        code << "public:\n";
+        for (auto& method : publicMethods) {
             indent();
             method->accept(this);
+        }
+        for (auto& field : publicFields) {
+            indent();
+            code << "auto " << field->name;
+            if (field->initializer) {
+                code << " = ";
+                field->initializer->accept(this);
+            }
+            code << ";\n";
+        }
+        
+        // Private section
+        if (!privateMethods.empty() || !privateFields.empty()) {
+            code << "private:\n";
+            for (auto& method : privateMethods) {
+                indent();
+                method->accept(this);
+            }
+            for (auto& field : privateFields) {
+                indent();
+                code << "auto " << field->name;
+                if (field->initializer) {
+                    code << " = ";
+                    field->initializer->accept(this);
+                }
+                code << ";\n";
+            }
         }
         
         indentLevel--;
