@@ -666,6 +666,12 @@ public:
     void visit(InterfaceNode* node) override {
         emitBytes(static_cast<uint8_t>(OpCode::OP_CLASS), chunk->addConstant(node->name));
         emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), chunk->addConstant(node->name));
+        
+        emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), chunk->addConstant(node->name));
+        for (auto& method : node->methods) {
+            compileMethod(method, nullptr);
+        }
+        emitByte(static_cast<uint8_t>(OpCode::OP_POP));
     }
     void visit(TraitNode* node) override {
         emitBytes(static_cast<uint8_t>(OpCode::OP_CLASS), chunk->addConstant(node->name));
