@@ -144,6 +144,25 @@ public:
 
     void visit(BinaryExpr* node) override {
         currentLine = node->op.line;
+        
+        if (node->op.type == TokenType::AND) {
+            node->left->accept(this);
+            int endJump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE));
+            emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+            node->right->accept(this);
+            patchJump(endJump);
+            return;
+        } else if (node->op.type == TokenType::OR) {
+            node->left->accept(this);
+            int elseJump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE));
+            int endJump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP));
+            patchJump(elseJump);
+            emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+            node->right->accept(this);
+            patchJump(endJump);
+            return;
+        }
+        
         node->left->accept(this);
         node->right->accept(this);
 
