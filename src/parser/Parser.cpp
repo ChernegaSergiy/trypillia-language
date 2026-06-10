@@ -327,8 +327,6 @@ ExprNode* Parser::assignment() {
         }
         
         throw std::runtime_error("Invalid assignment target");
-        
-        throw std::runtime_error("Invalid assignment target");
     }
 
     if (currentToken.type == TokenType::PLUS_EQUAL ||
