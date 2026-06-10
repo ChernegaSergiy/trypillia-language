@@ -5,6 +5,7 @@
 #include "json/Json.h"
 #include "string/String.h"
 #include "time/Time.h"
+#include "list/List.h"
 
 namespace StdLib {
     void registerAll(VM* vm) {
@@ -15,6 +16,7 @@ namespace StdLib {
         Json::registerAll(vm);
         StringModule::registerAll(vm);
         TimeModule::registerAll(vm);
+        ListModule::registerAll(vm);
     }
 
     void registerSymbols(SymbolTable* scope) {
@@ -25,6 +27,7 @@ namespace StdLib {
         Json::registerSymbols(scope);
         StringModule::registerSymbols(scope);
         TimeModule::registerSymbols(scope);
+        ListModule::registerSymbols(scope);
     }
 
     VMValue makeResultOk(VM* vm, VMValue value) {
