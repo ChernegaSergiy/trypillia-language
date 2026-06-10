@@ -252,10 +252,25 @@ public:
     DictExpr(std::vector<std::pair<ExprNode*, ExprNode*>> elements) : elements(elements) {}
 
     ~DictExpr() {
-        for (auto& pair : elements) {
-            delete pair.first;
-            delete pair.second;
+        for (auto& s : elements) {
+            delete s.first;
+            delete s.second;
         }
+    }
+
+    void accept(ASTVisitor* visitor) override;
+};
+
+class LambdaExpr : public ExprNode {
+public:
+    std::vector<std::string> params;
+    std::vector<StmtNode*> body;
+
+    LambdaExpr(std::vector<std::string> params, std::vector<StmtNode*> body)
+        : params(params), body(body) {}
+
+    ~LambdaExpr() {
+        for (auto stmt : body) delete stmt;
     }
 
     void accept(ASTVisitor* visitor) override;
@@ -677,6 +692,7 @@ public:
     virtual void visit(ForeachStmt* node) = 0;
     virtual void visit(SwitchStmt* node) = 0;
     virtual void visit(UsingStmt* node) = 0;
+    virtual void visit(LambdaExpr* node) = 0;
     virtual void visit(UnaryExpr* node) = 0;
     virtual void visit(ThisExpr* node) = 0;
     virtual void visit(SuperExpr* node) = 0;

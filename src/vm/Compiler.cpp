@@ -522,6 +522,35 @@ public:
         
         endScope();
     }
+    void visit(LambdaExpr* node) override {
+        auto func = std::make_shared<ObjFunction>();
+        func->name = "lambda";
+        func->arity = node->params.size();
+        func->chunk = std::make_shared<Chunk>();
+        func->filename = compiler_filename;
+
+        CompilerVisitor funcCompiler(func->chunk.get(), compiler_filename, this);
+        
+        funcCompiler.beginScope();
+        for (const auto& param : node->params) {
+            funcCompiler.locals.push_back({param, 1, false});
+        }
+        
+        for (auto& stmt : node->body) {
+            stmt->accept(&funcCompiler);
+        }
+        
+        funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_NIL));
+        funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_RETURN));
+        
+        func->upvalueCount = funcCompiler.upvalues.size();
+
+        emitBytes(static_cast<uint8_t>(OpCode::OP_CLOSURE), chunk->addConstant(func));
+        for (const auto& upval : funcCompiler.upvalues) {
+            emitByte(upval.isLocal ? 1 : 0);
+            emitByte(upval.index);
+        }
+    }
     void visit(UnaryExpr* node) override {
         currentLine = node->op.line;
         node->right->accept(this);

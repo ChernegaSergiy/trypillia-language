@@ -1,4 +1,4 @@
-﻿#ifndef SEMANTIC_ANALYZER_H
+#ifndef SEMANTIC_ANALYZER_H
 #define SEMANTIC_ANALYZER_H
 
 #include "../ast/AST.h"

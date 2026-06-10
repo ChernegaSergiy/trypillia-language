@@ -280,6 +280,27 @@ public:
         delete previous;
     }
 
+    void visit(LambdaExpr* node) override {
+        SymbolTable* enclosingScope = currentScope;
+        currentScope = new SymbolTable(enclosingScope);
+        
+        for (const auto& param : node->params) {
+            Symbol symbol;
+            symbol.name = param;
+            symbol.type = "";
+            symbol.isConst = false;
+            currentScope->define(symbol);
+        }
+        
+        for (auto& stmt : node->body) {
+            stmt->accept(this);
+        }
+        
+        SymbolTable* previous = currentScope;
+        currentScope = currentScope->getParent();
+        delete previous;
+    }
+
     void visit(FunctionNode* node) override {
         Symbol functionSymbol;
         functionSymbol.name = node->name;

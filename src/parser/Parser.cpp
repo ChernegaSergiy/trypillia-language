@@ -127,6 +127,28 @@ ExprNode* Parser::primary() {
         consume(TokenType::RBRACE);
         return new DictExpr(elements);
     }
+    
+    if (match(TokenType::FN)) {
+        consume(TokenType::LPAREN);
+        std::vector<std::string> parameters;
+        if (currentToken.type != TokenType::RPAREN) {
+            do {
+                Token param = currentToken;
+                consume(TokenType::IDENTIFIER);
+                parameters.push_back(param.lexeme);
+            } while (match(TokenType::COMMA));
+        }
+        consume(TokenType::RPAREN);
+        
+        consume(TokenType::LBRACE);
+        std::vector<StmtNode*> body;
+        while (currentToken.type != TokenType::RBRACE && currentToken.type != TokenType::END_OF_FILE) {
+            body.push_back(dynamic_cast<StmtNode*>(declaration()));
+        }
+        consume(TokenType::RBRACE);
+        
+        return new LambdaExpr(parameters, body);
+    }
 
     throw std::runtime_error("Unexpected token in expression: " + currentToken.lexeme);
 }
