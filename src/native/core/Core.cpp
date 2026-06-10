@@ -40,26 +40,6 @@ namespace Core {
         return nullptr;
     }
 
-    static VMValue lenNative(int argCount, VMValue* args) {
-        if (argCount != 1) return nullptr;
-        if (std::holds_alternative<std::shared_ptr<ObjList>>(args[0])) {
-            return (double)std::get<std::shared_ptr<ObjList>>(args[0])->elements.size();
-        } else if (std::holds_alternative<std::string>(args[0])) {
-            return (double)std::get<std::string>(args[0]).length();
-        }
-        return nullptr;
-    }
-
-    static VMValue pushNative(int argCount, VMValue* args) {
-        if (argCount != 2) return nullptr;
-        if (std::holds_alternative<std::shared_ptr<ObjList>>(args[0])) {
-            auto list = std::get<std::shared_ptr<ObjList>>(args[0]);
-            list->elements.push_back(args[1]);
-            return args[0];
-        }
-        return nullptr;
-    }
-
     // --- Error ---
     static VMValue errorInit(int argCount, VMValue* args) {
         VMValue receiver = args[-1];
@@ -125,8 +105,6 @@ namespace Core {
     void registerAll(VM* vm) {
         currentVM = vm;
         vm->defineNative("print", -1, printNative);
-        vm->defineNative("len", 1, lenNative);
-        vm->defineNative("push", 2, pushNative);
 
         auto errorClass = std::make_shared<ObjClass>("Error");
         errorClass->methods["init"] = std::make_shared<ObjNative>("init", -1, errorInit);
@@ -151,8 +129,6 @@ namespace Core {
             scope->define(sym);
         };
         addFunc("print");
-        addFunc("len");
-        addFunc("push");
 
         auto addClass = [&](const std::string& name) {
             Symbol sym;
