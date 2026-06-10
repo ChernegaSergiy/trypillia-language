@@ -481,6 +481,9 @@ InterpretResult VM::run() {
                 auto subclass = std::get<std::shared_ptr<ObjClass>>(subclassVal);
                 auto superclass = std::get<std::shared_ptr<ObjClass>>(superclassVal);
                 subclass->superclass = superclass;
+                for (auto const& [name, mod] : superclass->fieldModifiers) {
+                    subclass->fieldModifiers[name] = mod;
+                }
                 for (auto const& [name, method] : superclass->methods) {
                     subclass->methods[name] = method;
                 }
