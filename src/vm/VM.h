@@ -13,7 +13,7 @@ enum class InterpretResult {
 };
 
 struct CallFrame {
-    std::shared_ptr<ObjFunction> function;
+    std::shared_ptr<ObjClosure> closure;
     uint8_t* ip;
     int stackStart;
 };
@@ -23,11 +23,15 @@ private:
     std::vector<CallFrame> frames;
     std::vector<VMValue> stack;
     std::unordered_map<std::string, VMValue> globals_private_removed;
+    std::shared_ptr<ObjUpvalue> openUpvalues;
 
     void resetStack();
     void push(VMValue value);
     VMValue pop();
     VMValue peek(int distance);
+    
+    std::shared_ptr<ObjUpvalue> captureUpvalue(VMValue* local);
+    void closeUpvalues(VMValue* last);
     
     InterpretResult runtimeError(const std::string& message);
     InterpretResult run();

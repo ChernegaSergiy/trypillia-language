@@ -4,25 +4,25 @@
 
 
 static bool isMethodAbstract(const VMValue& method) {
-    if (std::holds_alternative<std::shared_ptr<ObjFunction>>(method)) return std::get<std::shared_ptr<ObjFunction>>(method)->isAbstract;
+    if (std::holds_alternative<std::shared_ptr<ObjClosure>>(method)) return std::get<std::shared_ptr<ObjClosure>>(method)->function->isAbstract;
     if (std::holds_alternative<std::shared_ptr<ObjNative>>(method)) return std::get<std::shared_ptr<ObjNative>>(method)->isAbstract;
     return false;
 }
 
 static VMAccessModifier getMethodAccessModifier(const VMValue& method) {
-    if (std::holds_alternative<std::shared_ptr<ObjFunction>>(method)) return std::get<std::shared_ptr<ObjFunction>>(method)->accessModifier;
+    if (std::holds_alternative<std::shared_ptr<ObjClosure>>(method)) return std::get<std::shared_ptr<ObjClosure>>(method)->function->accessModifier;
     if (std::holds_alternative<std::shared_ptr<ObjNative>>(method)) return std::get<std::shared_ptr<ObjNative>>(method)->accessModifier;
     return VMAccessModifier::PUBLIC;
 }
 
 static std::string getMethodName(const VMValue& method) {
-    if (std::holds_alternative<std::shared_ptr<ObjFunction>>(method)) return std::get<std::shared_ptr<ObjFunction>>(method)->name;
+    if (std::holds_alternative<std::shared_ptr<ObjClosure>>(method)) return std::get<std::shared_ptr<ObjClosure>>(method)->function->name;
     if (std::holds_alternative<std::shared_ptr<ObjNative>>(method)) return std::get<std::shared_ptr<ObjNative>>(method)->name;
     return "";
 }
 
 static int getMethodArity(const VMValue& method) {
-    if (std::holds_alternative<std::shared_ptr<ObjFunction>>(method)) return std::get<std::shared_ptr<ObjFunction>>(method)->arity;
+    if (std::holds_alternative<std::shared_ptr<ObjClosure>>(method)) return std::get<std::shared_ptr<ObjClosure>>(method)->function->arity;
     if (std::holds_alternative<std::shared_ptr<ObjNative>>(method)) return std::get<std::shared_ptr<ObjNative>>(method)->arity;
     return -1;
 }
@@ -100,13 +100,49 @@ VMValue VM::peek(int distance) {
     return stack[stack.size() - 1 - distance];
 }
 
+std::shared_ptr<ObjUpvalue> VM::captureUpvalue(VMValue* local) {
+    std::shared_ptr<ObjUpvalue> prevUpvalue = nullptr;
+    std::shared_ptr<ObjUpvalue> upvalue = openUpvalues;
+    while (upvalue != nullptr && upvalue->location > local) {
+        prevUpvalue = upvalue;
+        upvalue = upvalue->next;
+    }
+
+    if (upvalue != nullptr && upvalue->location == local) {
+        return upvalue;
+    }
+
+    auto createdUpvalue = std::make_shared<ObjUpvalue>(local);
+    createdUpvalue->next = upvalue;
+
+    if (prevUpvalue == nullptr) {
+        openUpvalues = createdUpvalue;
+    } else {
+        prevUpvalue->next = createdUpvalue;
+    }
+
+    return createdUpvalue;
+}
+
+void VM::closeUpvalues(VMValue* last) {
+    while (openUpvalues != nullptr && openUpvalues->location >= last) {
+        auto upvalue = openUpvalues;
+        upvalue->closed = *upvalue->location;
+        upvalue->location = &upvalue->closed;
+        openUpvalues = upvalue->next;
+    }
+}
+
 InterpretResult VM::interpret(std::shared_ptr<ObjFunction> function) {
     stack.clear();
     frames.clear();
+    openUpvalues = nullptr;
     
-    push(function);
+    auto closure = std::make_shared<ObjClosure>(function);
+    push(closure);
+    
     CallFrame frame;
-    frame.function = function;
+    frame.closure = closure;
     frame.ip = function->chunk->code.data();
     frame.stackStart = 0;
     frames.push_back(frame);
@@ -115,7 +151,7 @@ InterpretResult VM::interpret(std::shared_ptr<ObjFunction> function) {
 }
 
 #define READ_BYTE() (*frame->ip++)
-#define READ_CONSTANT() (frame->function->chunk->constants[READ_BYTE()])
+#define READ_CONSTANT() (frame->closure->function->chunk->constants[READ_BYTE()])
 #define READ_SHORT() \
     (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
 
@@ -127,7 +163,7 @@ InterpretResult VM::runtimeError(const std::string& message) {
     
     for (int i = frames.size() - 1; i >= 0; i--) {
         CallFrame* frame = &frames[i];
-        std::shared_ptr<ObjFunction> function = frame->function;
+        std::shared_ptr<ObjFunction> function = frame->closure->function;
         size_t instruction = frame->ip - function->chunk->code.data() - 1;
         int line = function->chunk->lines[instruction];
         
@@ -287,6 +323,37 @@ InterpretResult VM::run() {
             case static_cast<uint8_t>(OpCode::OP_SET_LOCAL): {
                 uint8_t slot = READ_BYTE();
                 stack[frame->stackStart + slot] = peek(0);
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_GET_UPVALUE): {
+                uint8_t slot = READ_BYTE();
+                push(*frame->closure->upvalues[slot]->location);
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_SET_UPVALUE): {
+                uint8_t slot = READ_BYTE();
+                *frame->closure->upvalues[slot]->location = peek(0);
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_CLOSE_UPVALUE): {
+                closeUpvalues(&stack.back());
+                pop();
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_CLOSURE): {
+                VMValue funcVal = READ_CONSTANT();
+                auto function = std::get<std::shared_ptr<ObjFunction>>(funcVal);
+                auto closure = std::make_shared<ObjClosure>(function);
+                push(closure);
+                for (int i = 0; i < function->upvalueCount; i++) {
+                    uint8_t isLocal = READ_BYTE();
+                    uint8_t index = READ_BYTE();
+                    if (isLocal) {
+                        closure->upvalues.push_back(captureUpvalue(&stack[frame->stackStart + index]));
+                    } else {
+                        closure->upvalues.push_back(frame->closure->upvalues[index]);
+                    }
+                }
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_LOOP): {
@@ -509,7 +576,7 @@ InterpretResult VM::run() {
                 VMValue methodVal = pop();
                 VMValue classVal = peek(0);
                 auto method = methodVal;
-                if (std::holds_alternative<std::shared_ptr<ObjFunction>>(method)) std::get<std::shared_ptr<ObjFunction>>(method)->isAbstract = true;
+                if (std::holds_alternative<std::shared_ptr<ObjClosure>>(method)) std::get<std::shared_ptr<ObjClosure>>(method)->function->isAbstract = true;
                 else std::get<std::shared_ptr<ObjNative>>(method)->isAbstract = true;
                 auto klass = std::get<std::shared_ptr<ObjClass>>(classVal);
                 klass->methods[name] = method;
@@ -534,7 +601,7 @@ InterpretResult VM::run() {
             case static_cast<uint8_t>(OpCode::OP_PROPERTY_GET): {
                 std::string name = std::get<std::string>(READ_CONSTANT());
                 VMValue instanceVal = peek(0);
-                std::string callerClass = frame->function ? frame->function->enclosingClassName : "";
+                std::string callerClass = frame->closure ? frame->closure->function->enclosingClassName : "";
 
                 if (std::holds_alternative<std::shared_ptr<ObjInstance>>(instanceVal)) {
                     auto instance = std::get<std::shared_ptr<ObjInstance>>(instanceVal);
@@ -560,8 +627,8 @@ InterpretResult VM::run() {
                     auto klass = std::get<std::shared_ptr<ObjClass>>(instanceVal);
                     if (klass->statics.count(name)) {
                         auto methodVal = klass->statics[name];
-                        if (std::holds_alternative<std::shared_ptr<ObjFunction>>(methodVal)) {
-                            auto func = std::get<std::shared_ptr<ObjFunction>>(methodVal);
+                        if (std::holds_alternative<std::shared_ptr<ObjClosure>>(methodVal)) {
+                            auto func = std::get<std::shared_ptr<ObjClosure>>(methodVal)->function;
                             if (!checkAccess(func->accessModifier, klass, callerClass)) {
                                 return runtimeError(std::string("Access error: Cannot access static method '") + name + "'.");
                             }
@@ -581,7 +648,7 @@ InterpretResult VM::run() {
                 std::string name = std::get<std::string>(READ_CONSTANT());
                 VMValue value = pop();
                 VMValue instanceVal = pop();
-                std::string callerClass = frame->function ? frame->function->enclosingClassName : "";
+                std::string callerClass = frame->closure ? frame->closure->function->enclosingClassName : "";
 
                 if (std::holds_alternative<std::shared_ptr<ObjInstance>>(instanceVal)) {
                     auto instance = std::get<std::shared_ptr<ObjInstance>>(instanceVal);
@@ -604,8 +671,9 @@ InterpretResult VM::run() {
             case static_cast<uint8_t>(OpCode::OP_CALL): {
                 uint8_t argCount = READ_BYTE();
                 VMValue callee = peek(argCount);
-                if (std::holds_alternative<std::shared_ptr<ObjFunction>>(callee)) {
-                    auto function = std::get<std::shared_ptr<ObjFunction>>(callee);
+                if (std::holds_alternative<std::shared_ptr<ObjClosure>>(callee)) {
+                    auto closure = std::get<std::shared_ptr<ObjClosure>>(callee);
+                    auto function = closure->function;
                     if (argCount != function->arity) {
                         return runtimeError(std::string("Expected ") + std::to_string(function->arity) + " arguments but got " + std::to_string(argCount) + ".");
                     }
@@ -613,7 +681,7 @@ InterpretResult VM::run() {
                         return runtimeError(std::string("Stack overflow."));
                     }
                     CallFrame newFrame;
-                    newFrame.function = function;
+                    newFrame.closure = closure;
                     newFrame.ip = function->chunk->code.data();
                     newFrame.stackStart = stack.size() - argCount - 1;
                     frames.push_back(newFrame);
@@ -646,10 +714,11 @@ InterpretResult VM::run() {
                             return runtimeError(std::string("Expected ") + std::to_string(getMethodArity(initMethod)) + " arguments but got " + std::to_string(argCount) + ".");
                         }
                         
-                        if (std::holds_alternative<std::shared_ptr<ObjFunction>>(initMethod)) {
-                            auto func = std::get<std::shared_ptr<ObjFunction>>(initMethod);
+                        if (std::holds_alternative<std::shared_ptr<ObjClosure>>(initMethod)) {
+                            auto closure = std::get<std::shared_ptr<ObjClosure>>(initMethod);
+                            auto func = closure->function;
                             CallFrame newFrame;
-                            newFrame.function = func;
+                            newFrame.closure = closure;
                             newFrame.ip = func->chunk->code.data();
                             newFrame.stackStart = stack.size() - argCount - 1;
                             frames.push_back(newFrame);
@@ -676,10 +745,11 @@ InterpretResult VM::run() {
                     }
                     stack[stack.size() - argCount - 1] = bound->receiver;
                     
-                    if (std::holds_alternative<std::shared_ptr<ObjFunction>>(function)) {
-                        auto func = std::get<std::shared_ptr<ObjFunction>>(function);
+                    if (std::holds_alternative<std::shared_ptr<ObjClosure>>(function)) {
+                        auto closure = std::get<std::shared_ptr<ObjClosure>>(function);
+                        auto func = closure->function;
                         CallFrame newFrame;
-                        newFrame.function = func;
+                        newFrame.closure = closure;
                         newFrame.ip = func->chunk->code.data();
                         newFrame.stackStart = stack.size() - argCount - 1;
                         frames.push_back(newFrame);
@@ -697,6 +767,7 @@ InterpretResult VM::run() {
             }
             case static_cast<uint8_t>(OpCode::OP_RETURN): {
                 VMValue result = pop();
+                closeUpvalues(&stack[frame->stackStart]);
                 int newStackSize = frame->stackStart;
                 frames.pop_back();
                 if (frames.empty()) {
