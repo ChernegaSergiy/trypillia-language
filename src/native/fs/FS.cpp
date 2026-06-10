@@ -1,6 +1,7 @@
 #include "FS.h"
 #include <fstream>
 #include <sstream>
+#include <filesystem>
 
 namespace StdLib {
 namespace FS {
@@ -84,10 +85,27 @@ namespace FS {
         return true;
     }
 
+    static VMValue fileExists(int argCount, VMValue* args) {
+        if (argCount != 1 || !std::holds_alternative<std::string>(args[0])) return false;
+        std::string path = std::get<std::string>(args[0]);
+        return std::filesystem::exists(path);
+    }
+
+    static VMValue fileRemove(int argCount, VMValue* args) {
+        if (argCount != 1 || !std::holds_alternative<std::string>(args[0])) return false;
+        std::string path = std::get<std::string>(args[0]);
+        if (std::filesystem::exists(path)) {
+            return std::filesystem::remove(path);
+        }
+        return false;
+    }
+
     void registerAll(VM* vm) {
         currentVM = vm;
         auto fileClass = std::make_shared<ObjClass>("File");
         fileClass->statics["open"] = std::make_shared<ObjNative>("open", -1, fileOpen);
+        fileClass->statics["exists"] = std::make_shared<ObjNative>("exists", 1, fileExists);
+        fileClass->statics["remove"] = std::make_shared<ObjNative>("remove", 1, fileRemove);
         
         fileClass->methods["read"] = std::make_shared<ObjNative>("read", 0, fileRead);
         fileClass->methods["write"] = std::make_shared<ObjNative>("write", 1, fileWrite);
