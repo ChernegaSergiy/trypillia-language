@@ -139,7 +139,13 @@ public:
         }
     }
     void visit(CompoundAssignExpr* node) override {}
-    void visit(CallExpr* node) override {}
+    void visit(CallExpr* node) override {
+        node->callee->accept(this);
+        for (auto& arg : node->arguments) {
+            arg->accept(this);
+        }
+        emitBytes(static_cast<uint8_t>(OpCode::OP_CALL), node->arguments.size());
+    }
     void visit(VarStmt* node) override {
         if (node->initializer) {
             node->initializer->accept(this);
@@ -200,7 +206,14 @@ public:
         patchJump(exitJump);
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
     }
-    void visit(ReturnStmt* node) override {}
+    void visit(ReturnStmt* node) override {
+        if (node->value) {
+            node->value->accept(this);
+        } else {
+            emitByte(static_cast<uint8_t>(OpCode::OP_NIL));
+        }
+        emitByte(static_cast<uint8_t>(OpCode::OP_RETURN));
+    }
     void visit(BreakStmt* node) override {}
     void visit(ContinueStmt* node) override {}
     void visit(ForStmt* node) override {
@@ -282,7 +295,29 @@ public:
     void visit(ListExpr* node) override {}
     void visit(IndexGetExpr* node) override {}
     void visit(IndexSetExpr* node) override {}
-    void visit(FunctionNode* node) override {}
+    void visit(FunctionNode* node) override {
+        auto func = std::make_shared<ObjFunction>();
+        func->name = node->name;
+        func->arity = node->params.size();
+        func->chunk = std::make_shared<Chunk>();
+
+        CompilerVisitor funcCompiler(func->chunk.get());
+        
+        funcCompiler.beginScope();
+        for (const auto& param : node->params) {
+            funcCompiler.locals.push_back({param, 1});
+        }
+        
+        for (auto& stmt : node->body) {
+            stmt->accept(&funcCompiler);
+        }
+        
+        funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_NIL));
+        funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_RETURN));
+        
+        emitConstant(func);
+        emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), chunk->addConstant(node->name));
+    }
     void visit(FieldDeclNode* node) override {}
     void visit(ClassNode* node) override {}
     void visit(InterfaceNode* node) override {}
