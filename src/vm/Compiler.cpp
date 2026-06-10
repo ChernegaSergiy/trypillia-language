@@ -35,6 +35,9 @@ private:
     }
 
 public:
+    std::string currentClassName = "";
+    std::string currentParentName = "";
+
     CompilerVisitor(Chunk* chunk) : chunk(chunk) {
         locals.push_back({"", 0});
     }
@@ -296,7 +299,20 @@ public:
             }
         }
     }
-    void visit(SuperExpr* node) override {}
+    void visit(SuperExpr* node) override {
+        if (currentParentName.empty()) {
+            std::cerr << "Cannot use 'super' in a class with no superclass." << std::endl;
+            return;
+        }
+        for (int i = locals.size() - 1; i >= 0; i--) {
+            if (locals[i].name == "this") {
+                emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), i);
+                break;
+            }
+        }
+        emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), chunk->addConstant(currentParentName));
+        emitBytes(static_cast<uint8_t>(OpCode::OP_GET_SUPER), chunk->addConstant(node->method.lexeme));
+    }
     void visit(GetExpr* node) override {
         node->object->accept(this);
         emitBytes(static_cast<uint8_t>(OpCode::OP_PROPERTY_GET), chunk->addConstant(node->name.lexeme));
@@ -357,6 +373,9 @@ public:
 
         CompilerVisitor funcCompiler(func->chunk.get());
         
+        funcCompiler.currentClassName = currentClassName;
+        funcCompiler.currentParentName = currentParentName;
+        
         funcCompiler.locals[0].name = "this";
         
         funcCompiler.beginScope();
@@ -377,6 +396,11 @@ public:
     }
 
     void visit(ClassNode* node) override {
+        std::string enclosingClassName = currentClassName;
+        std::string enclosingParentName = currentParentName;
+        currentClassName = node->name;
+        currentParentName = node->parentName;
+
         emitBytes(static_cast<uint8_t>(OpCode::OP_CLASS), chunk->addConstant(node->name));
         emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), chunk->addConstant(node->name));
         
@@ -391,6 +415,9 @@ public:
             compileMethod(method);
         }
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+        
+        currentClassName = enclosingClassName;
+        currentParentName = enclosingParentName;
     }
     void visit(InterfaceNode* node) override {}
     void visit(TraitNode* node) override {}

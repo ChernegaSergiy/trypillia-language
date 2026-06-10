@@ -402,6 +402,21 @@ InterpretResult VM::run() {
                 }
                 break;
             }
+            case static_cast<uint8_t>(OpCode::OP_GET_SUPER): {
+                std::string methodName = std::get<std::string>(READ_CONSTANT());
+                VMValue superclassVal = pop();
+                VMValue receiverVal = pop();
+                auto superclass = std::get<std::shared_ptr<ObjClass>>(superclassVal);
+                auto receiver = std::get<std::shared_ptr<ObjInstance>>(receiverVal);
+                if (superclass->methods.count(methodName)) {
+                    auto method = superclass->methods[methodName];
+                    push(std::make_shared<ObjBoundMethod>(receiver, method));
+                } else {
+                    std::cerr << "Undefined superclass method '" << methodName << "'." << std::endl;
+                    return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                }
+                break;
+            }
             case static_cast<uint8_t>(OpCode::OP_METHOD): {
                 std::string name = std::get<std::string>(READ_CONSTANT());
                 VMValue methodVal = pop();
