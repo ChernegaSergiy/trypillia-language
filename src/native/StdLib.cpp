@@ -20,4 +20,25 @@ namespace StdLib {
         Net::registerSymbols(scope);
         Json::registerSymbols(scope);
     }
+
+    VMValue makeResultOk(VM* vm, VMValue value) {
+        auto klass = std::get<std::shared_ptr<ObjClass>>(vm->globals["Result"]);
+        auto instance = std::make_shared<ObjInstance>(klass);
+        instance->fields["value"] = value;
+        instance->fields["isOk"] = true;
+        return instance;
+    }
+
+    VMValue makeResultErr(VM* vm, const std::string& message, double code) {
+        auto errClass = std::get<std::shared_ptr<ObjClass>>(vm->globals["Error"]);
+        auto errInst = std::make_shared<ObjInstance>(errClass);
+        errInst->fields["message"] = message;
+        errInst->fields["code"] = code;
+        
+        auto resClass = std::get<std::shared_ptr<ObjClass>>(vm->globals["Result"]);
+        auto resInst = std::make_shared<ObjInstance>(resClass);
+        resInst->fields["error"] = errInst;
+        resInst->fields["isOk"] = false;
+        return resInst;
+    }
 }

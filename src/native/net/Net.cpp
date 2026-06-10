@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <cstring>
 #include <vector>
+#include "../StdLib.h"
 
 namespace StdLib {
 namespace Net {
@@ -93,12 +94,12 @@ namespace Net {
         int port = std::get<double>(args[1]);
 
         int sock = socket(AF_INET, SOCK_STREAM, 0);
-        if (sock < 0) return nullptr;
+        if (sock < 0) return makeResultErr(currentVM, "Failed to create socket");
 
         struct hostent* server = gethostbyname(host.c_str());
         if (server == nullptr) {
             close(sock);
-            return nullptr;
+            return makeResultErr(currentVM, "Failed to resolve host: " + host);
         }
 
         struct sockaddr_in serv_addr;
@@ -109,7 +110,7 @@ namespace Net {
 
         if (connect(sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
             close(sock);
-            return nullptr;
+            return makeResultErr(currentVM, "Failed to connect to host");
         }
 
         SocketData* data = new SocketData{sock};
@@ -117,7 +118,7 @@ namespace Net {
         auto instance = std::make_shared<ObjInstance>(socketClass);
         instance->nativeData = data;
         instance->freeFn = freeSocket;
-        return instance;
+        return makeResultOk(currentVM, instance);
     }
 
     static VMValue socketSend(int argCount, VMValue* args) {
@@ -127,11 +128,12 @@ namespace Net {
 
         auto instance = std::get<std::shared_ptr<ObjInstance>>(receiver);
         SocketData* data = static_cast<SocketData*>(instance->nativeData);
-        if (!data || data->fd == -1) return false;
+        if (!data || data->fd == -1) return makeResultErr(currentVM, "Socket is closed");
 
         std::string payload = std::get<std::string>(args[0]);
         ssize_t n = write(data->fd, payload.c_str(), payload.length());
-        return (n >= 0);
+        if (n < 0) return makeResultErr(currentVM, "Failed to send data");
+        return makeResultOk(currentVM, true);
     }
 
     static VMValue socketRecv(int argCount, VMValue* args) {
@@ -145,13 +147,13 @@ namespace Net {
 
         auto instance = std::get<std::shared_ptr<ObjInstance>>(receiver);
         SocketData* data = static_cast<SocketData*>(instance->nativeData);
-        if (!data || data->fd == -1) return nullptr;
+        if (!data || data->fd == -1) return makeResultErr(currentVM, "Socket is closed");
 
         std::vector<char> buffer(maxLen);
         ssize_t n = read(data->fd, buffer.data(), maxLen);
-        if (n < 0) return nullptr;
+        if (n < 0) return makeResultErr(currentVM, "Failed to receive data");
 
-        return std::string(buffer.data(), n);
+        return makeResultOk(currentVM, std::string(buffer.data(), n));
     }
 
     static VMValue socketClose(int argCount, VMValue* args) {
@@ -165,7 +167,7 @@ namespace Net {
             close(data->fd);
             data->fd = -1;
         }
-        return true;
+        return makeResultOk(currentVM, true);
     }
 
     void registerAll(VM* vm) {

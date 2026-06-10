@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <filesystem>
+#include "../StdLib.h"
 
 namespace StdLib {
 namespace FS {
@@ -32,7 +33,7 @@ namespace FS {
         std::fstream* file = new std::fstream(path, fmode);
         if (!file->is_open()) {
             delete file;
-            return nullptr; // Later return Error object
+            return makeResultErr(currentVM, "Failed to open file: " + path);
         }
 
         auto fileClass = std::get<std::shared_ptr<ObjClass>>(currentVM->globals["File"]);
@@ -40,7 +41,7 @@ namespace FS {
         instance->nativeData = file;
         instance->freeFn = freeFile;
 
-        return instance;
+        return makeResultOk(currentVM, instance);
     }
 
     static VMValue fileRead(int argCount, VMValue* args) {
@@ -51,11 +52,11 @@ namespace FS {
         
         auto instance = std::get<std::shared_ptr<ObjInstance>>(receiver);
         std::fstream* file = static_cast<std::fstream*>(instance->nativeData);
-        if (!file || !file->is_open()) return nullptr;
+        if (!file || !file->is_open()) return makeResultErr(currentVM, "File is not open");
         
         std::stringstream buffer;
         buffer << file->rdbuf();
-        return buffer.str();
+        return makeResultOk(currentVM, buffer.str());
     }
 
     static VMValue fileWrite(int argCount, VMValue* args) {
@@ -65,11 +66,11 @@ namespace FS {
         
         auto instance = std::get<std::shared_ptr<ObjInstance>>(receiver);
         std::fstream* file = static_cast<std::fstream*>(instance->nativeData);
-        if (!file || !file->is_open()) return false;
+        if (!file || !file->is_open()) return makeResultErr(currentVM, "File is not open");
         
         std::string content = std::get<std::string>(args[0]);
         *file << content;
-        return true;
+        return makeResultOk(currentVM, true);
     }
 
     static VMValue fileClose(int argCount, VMValue* args) {
@@ -82,7 +83,7 @@ namespace FS {
         if (file && file->is_open()) {
             file->close();
         }
-        return true;
+        return makeResultOk(currentVM, true);
     }
 
     static VMValue fileExists(int argCount, VMValue* args) {

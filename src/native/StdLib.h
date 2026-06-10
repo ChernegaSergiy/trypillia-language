@@ -10,6 +10,10 @@ namespace StdLib {
     
     // Registers symbol names in the compiler's semantic analyzer scope
     void registerSymbols(SymbolTable* scope);
+
+    // Helpers for returning Result objects
+    VMValue makeResultOk(VM* vm, VMValue value);
+    VMValue makeResultErr(VM* vm, const std::string& message, double code = 0.0);
 }
 
 #endif
