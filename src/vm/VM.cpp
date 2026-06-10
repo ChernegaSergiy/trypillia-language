@@ -342,6 +342,38 @@ InterpretResult VM::run() {
                 push(std::make_shared<ObjClass>(name));
                 break;
             }
+            case static_cast<uint8_t>(OpCode::OP_PROPERTY_GET): {
+                std::string name = std::get<std::string>(READ_CONSTANT());
+                VMValue instanceVal = peek(0);
+                if (std::holds_alternative<std::shared_ptr<ObjInstance>>(instanceVal)) {
+                    auto instance = std::get<std::shared_ptr<ObjInstance>>(instanceVal);
+                    if (instance->fields.count(name)) {
+                        pop();
+                        push(instance->fields[name]);
+                    } else {
+                        std::cerr << "Undefined property '" << name << "'." << std::endl;
+                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                    }
+                } else {
+                    std::cerr << "Only instances have properties." << std::endl;
+                    return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                }
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_PROPERTY_SET): {
+                std::string name = std::get<std::string>(READ_CONSTANT());
+                VMValue value = pop();
+                VMValue instanceVal = pop();
+                if (std::holds_alternative<std::shared_ptr<ObjInstance>>(instanceVal)) {
+                    auto instance = std::get<std::shared_ptr<ObjInstance>>(instanceVal);
+                    instance->fields[name] = value;
+                    push(value);
+                } else {
+                    std::cerr << "Only instances have properties." << std::endl;
+                    return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                }
+                break;
+            }
             case static_cast<uint8_t>(OpCode::OP_CALL): {
                 uint8_t argCount = READ_BYTE();
                 VMValue callee = peek(argCount);

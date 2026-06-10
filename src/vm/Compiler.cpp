@@ -288,8 +288,15 @@ public:
     }
     void visit(ThisExpr* node) override {}
     void visit(SuperExpr* node) override {}
-    void visit(GetExpr* node) override {}
-    void visit(SetExpr* node) override {}
+    void visit(GetExpr* node) override {
+        node->object->accept(this);
+        emitBytes(static_cast<uint8_t>(OpCode::OP_PROPERTY_GET), chunk->addConstant(node->name.lexeme));
+    }
+    void visit(SetExpr* node) override {
+        node->object->accept(this);
+        node->value->accept(this);
+        emitBytes(static_cast<uint8_t>(OpCode::OP_PROPERTY_SET), chunk->addConstant(node->name.lexeme));
+    }
     void visit(PostfixExpr* node) override {}
     void visit(TernaryExpr* node) override {}
     void visit(ListExpr* node) override {
