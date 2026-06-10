@@ -882,6 +882,20 @@ public:
         }
     }
 
+    void visit(DoWhileStmt* node) override {
+        do {
+            try {
+                node->body->accept(this);
+            } catch (const BreakException&) {
+                break;
+            } catch (const ContinueException&) {
+                // continue to condition check
+            }
+            
+            node->condition->accept(this);
+        } while (isTruthy(lastValue));
+    }
+
     void visit(ReturnStmt* node) override {
         Value value = nullptr;
         if (node->value != nullptr) {

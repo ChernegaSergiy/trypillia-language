@@ -94,6 +94,10 @@ void WhileStmt::accept(ASTVisitor* visitor) {
     visitor->visit(this);
 }
 
+void DoWhileStmt::accept(ASTVisitor* visitor) {
+    visitor->visit(this);
+}
+
 void ReturnStmt::accept(ASTVisitor* visitor) {
     visitor->visit(this);
 }

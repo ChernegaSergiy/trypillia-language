@@ -23,6 +23,7 @@ static std::unordered_map<std::string, TokenType> keywords = {
     {"return", TokenType::RETURN},
     {"break", TokenType::BREAK},
     {"continue", TokenType::CONTINUE},
+    {"do", TokenType::DO},
     {"switch", TokenType::SWITCH},
     {"case", TokenType::CASE},
     {"default", TokenType::DEFAULT},

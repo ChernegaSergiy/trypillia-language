@@ -322,6 +322,16 @@ public:
         node->body->accept(this);
     }
 
+    void visit(DoWhileStmt* node) override {
+        indent();
+        code << "do ";
+        node->body->accept(this);
+        indent();
+        code << "while (";
+        node->condition->accept(this);
+        code << ");\n";
+    }
+
     void visit(ReturnStmt* node) override {
         indent();
         code << "return";

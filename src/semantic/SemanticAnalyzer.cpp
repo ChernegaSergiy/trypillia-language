@@ -209,6 +209,11 @@ public:
         node->body->accept(this);
     }
 
+    void visit(DoWhileStmt* node) override {
+        node->body->accept(this);
+        node->condition->accept(this);
+    }
+
     void visit(ReturnStmt* node) override {
         if (node->value != nullptr) {
             node->value->accept(this);

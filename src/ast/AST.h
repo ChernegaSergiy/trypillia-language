@@ -425,6 +425,22 @@ public:
     void accept(ASTVisitor* visitor) override;
 };
 
+class DoWhileStmt : public StmtNode {
+public:
+    ExprNode* condition;
+    StmtNode* body;
+
+    DoWhileStmt(ExprNode* condition, StmtNode* body)
+        : condition(condition), body(body) {}
+
+    ~DoWhileStmt() {
+        delete condition;
+        delete body;
+    }
+
+    void accept(ASTVisitor* visitor) override;
+};
+
 class SwitchStmt : public StmtNode {
 public:
     ExprNode* expression;
@@ -524,6 +540,7 @@ public:
     virtual void visit(BlockStmt* node) = 0;
     virtual void visit(IfStmt* node) = 0;
     virtual void visit(WhileStmt* node) = 0;
+    virtual void visit(DoWhileStmt* node) = 0;
     virtual void visit(ReturnStmt* node) = 0;
     virtual void visit(BreakStmt* node) = 0;
     virtual void visit(ContinueStmt* node) = 0;

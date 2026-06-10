@@ -44,6 +44,7 @@ private:
     StmtNode* block();
     StmtNode* ifStatement();
     StmtNode* whileStatement();
+    StmtNode* doWhileStatement();
     StmtNode* forStatement();
     StmtNode* finishForLoop(StmtNode* initializer);
     StmtNode* returnStatement();

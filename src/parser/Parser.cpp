@@ -377,6 +377,17 @@ StmtNode* Parser::whileStatement() {
     return new WhileStmt(condition, body);
 }
 
+StmtNode* Parser::doWhileStatement() {
+    StmtNode* body = statement();
+    consume(TokenType::WHILE);
+    consume(TokenType::LPAREN);
+    ExprNode* condition = expression();
+    consume(TokenType::RPAREN);
+    consume(TokenType::SEMICOLON);
+    
+    return new DoWhileStmt(condition, body);
+}
+
 StmtNode* Parser::returnStatement() {
     Token keyword = currentToken;
     advance();
@@ -518,6 +529,10 @@ StmtNode* Parser::statement() {
     
     if (match(TokenType::WHILE)) {
         return whileStatement();
+    }
+    
+    if (match(TokenType::DO)) {
+        return doWhileStatement();
     }
     
     if (currentToken.type == TokenType::RETURN) {
