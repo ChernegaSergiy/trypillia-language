@@ -21,13 +21,30 @@ class Chunk;
 struct ObjFunction;
 struct ObjNative;
 struct ObjList;
+struct ObjMap;
 struct ObjClass;
 struct ObjInstance;
 struct ObjBoundMethod;
 
-using VMValue = std::variant<std::nullptr_t, bool, double, std::string, std::shared_ptr<ObjFunction>, std::shared_ptr<ObjNative>, std::shared_ptr<ObjList>, std::shared_ptr<ObjClass>, std::shared_ptr<ObjInstance>, std::shared_ptr<ObjBoundMethod>>;
+using VMValue = std::variant<std::nullptr_t, bool, double, std::string, std::shared_ptr<ObjFunction>, std::shared_ptr<ObjNative>, std::shared_ptr<ObjList>, std::shared_ptr<ObjMap>, std::shared_ptr<ObjClass>, std::shared_ptr<ObjInstance>, std::shared_ptr<ObjBoundMethod>>;
 
 using NativeFn = VMValue(*)(int argCount, VMValue* args);
+
+struct VMValueHash {
+    std::size_t operator()(const VMValue& v) const {
+        if (std::holds_alternative<double>(v)) return std::hash<double>{}(std::get<double>(v));
+        if (std::holds_alternative<std::string>(v)) return std::hash<std::string>{}(std::get<std::string>(v));
+        if (std::holds_alternative<bool>(v)) return std::hash<bool>{}(std::get<bool>(v));
+        if (std::holds_alternative<std::nullptr_t>(v)) return 0;
+        return 0;
+    }
+};
+
+struct VMValueEqual {
+    bool operator()(const VMValue& a, const VMValue& b) const {
+        return a == b;
+    }
+};
 
 struct ObjClass {
     std::string name;
@@ -54,6 +71,10 @@ struct ObjBoundMethod {
 struct ObjList {
     std::vector<VMValue> elements;
     ObjList(const std::vector<VMValue>& e) : elements(e) {}
+};
+
+struct ObjMap {
+    std::unordered_map<VMValue, VMValue, VMValueHash, VMValueEqual> values;
 };
 
 struct ObjNative {
