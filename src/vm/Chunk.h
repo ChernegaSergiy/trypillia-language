@@ -19,6 +19,8 @@ enum class VMAccessModifier {
 class Chunk;
 
 struct ObjFunction;
+struct ObjClosure;
+struct ObjUpvalue;
 struct ObjNative;
 struct ObjList;
 struct ObjMap;
@@ -26,7 +28,7 @@ struct ObjClass;
 struct ObjInstance;
 struct ObjBoundMethod;
 
-using VMValue = std::variant<std::nullptr_t, bool, double, std::string, std::shared_ptr<ObjFunction>, std::shared_ptr<ObjNative>, std::shared_ptr<ObjList>, std::shared_ptr<ObjMap>, std::shared_ptr<ObjClass>, std::shared_ptr<ObjInstance>, std::shared_ptr<ObjBoundMethod>>;
+using VMValue = std::variant<std::nullptr_t, bool, double, std::string, std::shared_ptr<ObjFunction>, std::shared_ptr<ObjClosure>, std::shared_ptr<ObjNative>, std::shared_ptr<ObjList>, std::shared_ptr<ObjMap>, std::shared_ptr<ObjClass>, std::shared_ptr<ObjInstance>, std::shared_ptr<ObjBoundMethod>>;
 
 using NativeFn = VMValue(*)(int argCount, VMValue* args);
 
@@ -108,8 +110,24 @@ struct ObjFunction {
     VMAccessModifier accessModifier = VMAccessModifier::PUBLIC;
     std::string enclosingClassName = "";
     std::string filename = "";
+    int upvalueCount = 0;
 
-    ObjFunction() : arity(0) {}
+    ObjFunction() : arity(0), upvalueCount(0) {}
+};
+
+struct ObjUpvalue {
+    VMValue* location;
+    VMValue closed;
+    std::shared_ptr<ObjUpvalue> next;
+    
+    ObjUpvalue(VMValue* slot) : location(slot), closed(nullptr), next(nullptr) {}
+};
+
+struct ObjClosure {
+    std::shared_ptr<ObjFunction> function;
+    std::vector<std::shared_ptr<ObjUpvalue>> upvalues;
+    
+    ObjClosure(std::shared_ptr<ObjFunction> f) : function(f) {}
 };
 
 class Chunk {
