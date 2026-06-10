@@ -583,7 +583,9 @@ public:
         funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_RETURN));
         
         emitConstant(func);
-        if (node->isAbstract) {
+        if (node->isStatic) {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_STATIC_METHOD), chunk->addConstant(node->name));
+        } else if (node->isAbstract) {
             emitBytes(static_cast<uint8_t>(OpCode::OP_ABSTRACT_METHOD), chunk->addConstant(node->name));
         } else {
             emitBytes(static_cast<uint8_t>(OpCode::OP_METHOD), chunk->addConstant(node->name));

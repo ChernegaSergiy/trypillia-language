@@ -519,6 +519,14 @@ InterpretResult VM::run() {
                 klass->methods[name] = method;
                 break;
             }
+            case static_cast<uint8_t>(OpCode::OP_STATIC_METHOD): {
+                std::string name = std::get<std::string>(READ_CONSTANT());
+                VMValue methodVal = pop();
+                VMValue classVal = peek(0);
+                auto klass = std::get<std::shared_ptr<ObjClass>>(classVal);
+                klass->statics[name] = methodVal;
+                break;
+            }
             case static_cast<uint8_t>(OpCode::OP_PROPERTY_GET): {
                 std::string name = std::get<std::string>(READ_CONSTANT());
                 VMValue instanceVal = peek(0);
