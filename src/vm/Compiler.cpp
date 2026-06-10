@@ -16,6 +16,7 @@ private:
     };
     std::vector<Local> locals;
     int scopeDepth = 0;
+    int currentLine = 1;
 
     void beginScope() {
         scopeDepth++;
@@ -55,7 +56,7 @@ public:
     }
 
     void emitByte(uint8_t byte) {
-        chunk->write(byte, 1);
+        chunk->write(byte, currentLine);
     }
 
     void emitBytes(uint8_t byte1, uint8_t byte2) {
@@ -98,6 +99,7 @@ public:
     }
 
     void visit(BinaryExpr* node) override {
+        currentLine = node->op.line;
         node->left->accept(this);
         node->right->accept(this);
 
@@ -139,6 +141,7 @@ public:
     }
 
     void visit(VariableExpr* node) override {
+        currentLine = node->name.line;
         int arg = resolveLocal(node->name.lexeme);
         if (arg != -1) {
             emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), (uint8_t)arg);
@@ -147,6 +150,7 @@ public:
         }
     }
     void visit(AssignExpr* node) override {
+        currentLine = node->name.line;
         node->value->accept(this);
         int arg = resolveLocal(node->name.lexeme);
         if (arg != -1) {
@@ -180,6 +184,7 @@ public:
         }
     }
     void visit(CallExpr* node) override {
+        currentLine = node->paren.line;
         node->callee->accept(this);
         for (auto& arg : node->arguments) {
             arg->accept(this);
@@ -439,6 +444,7 @@ public:
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
     }
     void visit(UnaryExpr* node) override {
+        currentLine = node->op.line;
         node->right->accept(this);
         switch (node->op.type) {
             case TokenType::BANG: emitByte(static_cast<uint8_t>(OpCode::OP_NOT)); break;
@@ -469,10 +475,12 @@ public:
         emitBytes(static_cast<uint8_t>(OpCode::OP_GET_SUPER), chunk->addConstant(node->method.lexeme));
     }
     void visit(GetExpr* node) override {
+        currentLine = node->name.line;
         node->object->accept(this);
         emitBytes(static_cast<uint8_t>(OpCode::OP_PROPERTY_GET), chunk->addConstant(node->name.lexeme));
     }
     void visit(SetExpr* node) override {
+        currentLine = node->name.line;
         node->object->accept(this);
         node->value->accept(this);
         emitBytes(static_cast<uint8_t>(OpCode::OP_PROPERTY_SET), chunk->addConstant(node->name.lexeme));
@@ -690,6 +698,7 @@ public:
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
     }
     void visit(StaticGetExpr* node) override {
+        currentLine = node->memberName.line;
         int arg = resolveLocal(node->className.lexeme);
         if (arg != -1) {
             emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), (uint8_t)arg);
@@ -699,6 +708,7 @@ public:
         emitBytes(static_cast<uint8_t>(OpCode::OP_PROPERTY_GET), chunk->addConstant(node->memberName.lexeme));
     }
     void visit(StaticCallExpr* node) override {
+        currentLine = node->paren.line;
         int arg = resolveLocal(node->className.lexeme);
         if (arg != -1) {
             emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), (uint8_t)arg);
@@ -713,6 +723,7 @@ public:
         emitBytes(static_cast<uint8_t>(OpCode::OP_CALL), node->arguments.size());
     }
     void visit(StaticSetExpr* node) override {
+        currentLine = node->memberName.line;
         node->value->accept(this);
         int arg = resolveLocal(node->className.lexeme);
         if (arg != -1) {
