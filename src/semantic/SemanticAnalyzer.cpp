@@ -357,6 +357,18 @@ public:
         currentScope = currentScope->getParent();
         delete previous;
     }
+
+    void visit(InterfaceNode* node) override {
+        Symbol ifaceSymbol;
+        ifaceSymbol.name = node->name;
+        ifaceSymbol.type = "interface";
+        ifaceSymbol.isConst = true;
+        currentScope->define(ifaceSymbol);
+        
+        for (auto& method : node->methods) {
+            method->accept(this);
+        }
+    }
 };
 
 void SemanticAnalyzer::analyze(ASTNode* ast) {

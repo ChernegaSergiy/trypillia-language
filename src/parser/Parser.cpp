@@ -610,7 +610,7 @@ FieldDeclNode* Parser::parseFieldDecl(AccessModifier accessModifier) {
     return new FieldDeclNode(name.lexeme, initializer, accessModifier, isConst);
 }
 
-FunctionNode* Parser::parseFunction(AccessModifier accessModifier) {
+FunctionNode* Parser::parseFunction(AccessModifier accessModifier, bool isAbstract) {
     consume(TokenType::FN);
     
     Token name = currentToken;
@@ -628,6 +628,14 @@ FunctionNode* Parser::parseFunction(AccessModifier accessModifier) {
     }
     
     consume(TokenType::RPAREN);
+    
+    if (isAbstract) {
+        consume(TokenType::SEMICOLON);
+        FunctionNode* node = new FunctionNode(name.lexeme, parameters, {});
+        node->accessModifier = accessModifier;
+        node->isAbstract = true;
+        return node;
+    }
     
     // Parse function body
     consume(TokenType::LBRACE);
@@ -659,6 +667,17 @@ ClassNode* Parser::parseClass() {
         parentName = parent.lexeme;
     }
     
+    // Parse optional implements clause
+    std::vector<std::string> interfaceNames;
+    if (currentToken.type == TokenType::IMPLEMENTS) {
+        advance();
+        do {
+            Token iface = currentToken;
+            consume(TokenType::IDENTIFIER);
+            interfaceNames.push_back(iface.lexeme);
+        } while (match(TokenType::COMMA));
+    }
+    
     // Parse class body
     consume(TokenType::LBRACE);
     std::vector<FunctionNode*> methods;
@@ -676,6 +695,9 @@ ClassNode* Parser::parseClass() {
         } else if (currentToken.type == TokenType::PROTECTED) {
             advance();
             currentAccess = AccessModifier::PROTECTED;
+        } else if (currentToken.type == TokenType::ABSTRACT) {
+            advance();
+            methods.push_back(parseFunction(currentAccess, true));
         } else if (currentToken.type == TokenType::FN) {
             methods.push_back(parseFunction(currentAccess));
         } else if (currentToken.type == TokenType::LET || currentToken.type == TokenType::IDENTIFIER || currentToken.type == TokenType::CONST) {
@@ -687,10 +709,76 @@ ClassNode* Parser::parseClass() {
     
     consume(TokenType::RBRACE);
     
-    return new ClassNode(name.lexeme, parentName, methods, fields);
+    auto node = new ClassNode(name.lexeme, parentName, methods, fields);
+    node->interfaceNames = interfaceNames;
+    return node;
+}
+
+InterfaceNode* Parser::parseInterface() {
+    Token name = currentToken;
+    consume(TokenType::IDENTIFIER);
+    
+    // Parse optional parent interfaces (< Parent1, Parent2)
+    std::vector<std::string> parentNames;
+    if (currentToken.type == TokenType::LESS) {
+        advance();
+        do {
+            Token parent = currentToken;
+            consume(TokenType::IDENTIFIER);
+            parentNames.push_back(parent.lexeme);
+        } while (match(TokenType::COMMA));
+    }
+    
+    consume(TokenType::LBRACE);
+    std::vector<FunctionNode*> methods;
+    
+    while (currentToken.type != TokenType::RBRACE && currentToken.type != TokenType::END_OF_FILE) {
+        if (currentToken.type == TokenType::FN) {
+            advance();
+            
+            Token methodName = currentToken;
+            consume(TokenType::IDENTIFIER);
+            
+            consume(TokenType::LPAREN);
+            std::vector<std::string> parameters;
+            if (currentToken.type != TokenType::RPAREN) {
+                do {
+                    Token param = currentToken;
+                    consume(TokenType::IDENTIFIER);
+                    parameters.push_back(param.lexeme);
+                } while (match(TokenType::COMMA));
+            }
+            consume(TokenType::RPAREN);
+            consume(TokenType::SEMICOLON);
+            
+            auto method = new FunctionNode(methodName.lexeme, parameters, {});
+            method->isAbstract = true;
+            methods.push_back(method);
+        } else {
+            advance();
+        }
+    }
+    
+    consume(TokenType::RBRACE);
+    return new InterfaceNode(name.lexeme, methods, parentNames);
 }
 
 ASTNode* Parser::declaration() {
+    if (currentToken.type == TokenType::ABSTRACT) {
+        advance();
+        if (currentToken.type == TokenType::CLASS) {
+            auto node = parseClass();
+            node->isAbstract = true;
+            return node;
+        }
+        throw std::runtime_error("Expected 'class' after 'abstract'");
+    }
+    
+    if (currentToken.type == TokenType::INTERFACE) {
+        advance();
+        return parseInterface();
+    }
+    
     if (currentToken.type == TokenType::CLASS) {
         return parseClass();
     }

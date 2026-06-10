@@ -133,3 +133,7 @@ void FieldDeclNode::accept(ASTVisitor* visitor) {
 void ClassNode::accept(ASTVisitor* visitor) {
     visitor->visit(this);
 }
+
+void InterfaceNode::accept(ASTVisitor* visitor) {
+    visitor->visit(this);
+}

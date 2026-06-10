@@ -470,11 +470,12 @@ public:
     std::vector<std::string> params;
     std::vector<StmtNode*> body;
     AccessModifier accessModifier;
+    bool isAbstract;
     
     FunctionNode(std::string name, std::vector<std::string> params, std::vector<StmtNode*> body)
-        : name(name), params(params), body(body), accessModifier(AccessModifier::PUBLIC) {}
+        : name(name), params(params), body(body), accessModifier(AccessModifier::PUBLIC), isAbstract(false) {}
     
-    FunctionNode() : name(""), params(), body(), accessModifier(AccessModifier::PUBLIC) {}
+    FunctionNode() : name(""), params(), body(), accessModifier(AccessModifier::PUBLIC), isAbstract(false) {}
     
     ~FunctionNode() {
         for (auto stmt : body) {
@@ -508,9 +509,11 @@ public:
     std::string parentName;
     std::vector<FunctionNode*> methods;
     std::vector<FieldDeclNode*> fields;
+    bool isAbstract;
+    std::vector<std::string> interfaceNames;
     
     ClassNode(std::string name, std::string parentName, std::vector<FunctionNode*> methods, std::vector<FieldDeclNode*> fields = {})
-        : name(name), parentName(parentName), methods(methods), fields(fields) {}
+        : name(name), parentName(parentName), methods(methods), fields(fields), isAbstract(false) {}
     
     ~ClassNode() {
         for (auto method : methods) {
@@ -521,6 +524,24 @@ public:
         }
     }
     
+    void accept(ASTVisitor* visitor) override;
+};
+
+class InterfaceNode : public StmtNode {
+public:
+    std::string name;
+    std::vector<FunctionNode*> methods;
+    std::vector<std::string> parentNames;
+
+    InterfaceNode(std::string name, std::vector<FunctionNode*> methods, std::vector<std::string> parentNames = {})
+        : name(name), methods(methods), parentNames(parentNames) {}
+
+    ~InterfaceNode() {
+        for (auto method : methods) {
+            delete method;
+        }
+    }
+
     void accept(ASTVisitor* visitor) override;
 };
 
@@ -560,6 +581,7 @@ public:
     virtual void visit(FunctionNode* node) = 0;
     virtual void visit(FieldDeclNode* node) = 0;
     virtual void visit(ClassNode* node) = 0;
+    virtual void visit(InterfaceNode* node) = 0;
 };
 
 #endif // AST_H

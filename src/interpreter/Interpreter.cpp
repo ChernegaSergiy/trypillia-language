@@ -1037,6 +1037,10 @@ public:
         
         environment->assign(node->name, klass);
     }
+
+    void visit(InterfaceNode* node) override {
+        environment->define(node->name, nullptr);
+    }
 };
 
 // Implementation of Function::call that depends on InterpreterVisitor
