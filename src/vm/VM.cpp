@@ -2,6 +2,35 @@
 #include <iostream>
 #include <ctime>
 
+namespace {
+    int utf8_length(const std::string& str) {
+        int length = 0;
+        for (size_t i = 0; i < str.length(); i++) {
+            if ((str[i] & 0xC0) != 0x80) {
+                length++;
+            }
+        }
+        return length;
+    }
+
+    std::string utf8_char_at(const std::string& str, int index) {
+        int current_index = 0;
+        for (size_t i = 0; i < str.length(); i++) {
+            if ((str[i] & 0xC0) != 0x80) {
+                if (current_index == index) {
+                    size_t j = i + 1;
+                    while (j < str.length() && (str[j] & 0xC0) == 0x80) {
+                        j++;
+                    }
+                    return str.substr(i, j - i);
+                }
+                current_index++;
+            }
+        }
+        return "";
+    }
+}
+
 VM::VM() {
     auto printNative = [](int argCount, VMValue* args) -> VMValue {
         for (int i = 0; i < argCount; i++) {
@@ -292,7 +321,7 @@ InterpretResult VM::run() {
                         break;
                     } else if (std::holds_alternative<std::string>(iterableVal)) {
                         auto str = std::get<std::string>(iterableVal);
-                        push(index < str.length());
+                        push(index < utf8_length(str));
                         break;
                     }
                 }
@@ -373,8 +402,9 @@ InterpretResult VM::run() {
                     auto str = std::get<std::string>(listVal);
                     if (std::holds_alternative<double>(index)) {
                         int i = std::get<double>(index);
-                        if (i >= 0 && i < str.length()) {
-                            push(std::string(1, str[i]));
+                        int len = utf8_length(str);
+                        if (i >= 0 && i < len) {
+                            push(utf8_char_at(str, i));
                         } else {
                             std::cerr << "String index out of bounds." << std::endl;
                             return InterpretResult::INTERPRET_RUNTIME_ERROR;
