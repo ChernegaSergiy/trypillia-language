@@ -1,6 +1,10 @@
 #ifndef TRYPILLIA_STDLIB_H
 #define TRYPILLIA_STDLIB_H
 
+#include "string/String.h"
+#include "list/List.h"
+#include "os/OS.h"
+#include "terminal/Terminal.h"
 #include "../vm/VM.h"
 #include "../symbol/SymbolTable.h"
 
