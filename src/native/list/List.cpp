@@ -80,6 +80,57 @@ namespace ListModule {
         return result;
     }
 
+    static VMValue listMap(int argCount, VMValue* args) {
+        if (argCount != 2 || !std::holds_alternative<std::shared_ptr<ObjList>>(args[0])) return nullptr;
+        auto list = std::get<std::shared_ptr<ObjList>>(args[0]);
+        VMValue closure = args[1];
+        
+        std::vector<VMValue> result;
+        result.reserve(list->elements.size());
+        
+        for (size_t i = 0; i < list->elements.size(); i++) {
+            VMValue arg = list->elements[i];
+            VMValue res = currentVM->callClosure(closure, 1, &arg);
+            result.push_back(res);
+        }
+        return std::make_shared<ObjList>(result);
+    }
+
+    static VMValue listFilter(int argCount, VMValue* args) {
+        if (argCount != 2 || !std::holds_alternative<std::shared_ptr<ObjList>>(args[0])) return nullptr;
+        auto list = std::get<std::shared_ptr<ObjList>>(args[0]);
+        VMValue closure = args[1];
+        
+        std::vector<VMValue> result;
+        
+        for (size_t i = 0; i < list->elements.size(); i++) {
+            VMValue arg = list->elements[i];
+            VMValue res = currentVM->callClosure(closure, 1, &arg);
+            bool isTruthy = false;
+            if (std::holds_alternative<bool>(res)) {
+                isTruthy = std::get<bool>(res);
+            } else if (!std::holds_alternative<std::nullptr_t>(res)) {
+                isTruthy = true;
+            }
+            if (isTruthy) {
+                result.push_back(arg);
+            }
+        }
+        return std::make_shared<ObjList>(result);
+    }
+
+    static VMValue listForEach(int argCount, VMValue* args) {
+        if (argCount != 2 || !std::holds_alternative<std::shared_ptr<ObjList>>(args[0])) return nullptr;
+        auto list = std::get<std::shared_ptr<ObjList>>(args[0]);
+        VMValue closure = args[1];
+        
+        for (size_t i = 0; i < list->elements.size(); i++) {
+            VMValue arg = list->elements[i];
+            currentVM->callClosure(closure, 1, &arg);
+        }
+        return nullptr;
+    }
+
     void registerAll(VM* vm) {
         currentVM = vm;
         auto listClass = std::make_shared<ObjClass>("List");
@@ -91,6 +142,9 @@ namespace ListModule {
         listClass->statics["remove"] = std::make_shared<ObjNative>("remove", 2, listRemove);
         listClass->statics["reverse"] = std::make_shared<ObjNative>("reverse", 1, listReverse);
         listClass->statics["join"] = std::make_shared<ObjNative>("join", 2, listJoin);
+        listClass->statics["map"] = std::make_shared<ObjNative>("map", 2, listMap);
+        listClass->statics["filter"] = std::make_shared<ObjNative>("filter", 2, listFilter);
+        listClass->statics["forEach"] = std::make_shared<ObjNative>("forEach", 2, listForEach);
 
         vm->globals["List"] = listClass;
     }
