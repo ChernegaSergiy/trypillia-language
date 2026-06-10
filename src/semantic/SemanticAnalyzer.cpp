@@ -21,6 +21,9 @@ public:
         addNative("clock");
         addNative("len");
         addNative("push");
+        addNative("substring");
+        addNative("toUpper");
+        addNative("toLower");
     }
     
     ~SemanticVisitor() {

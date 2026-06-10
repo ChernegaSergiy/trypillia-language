@@ -52,10 +52,46 @@ VM::VM() {
         return nullptr;
     };
 
+    auto substringNative = [](int argCount, VMValue* args) -> VMValue {
+        if (argCount != 3) return nullptr;
+        if (std::holds_alternative<std::string>(args[0]) && std::holds_alternative<double>(args[1]) && std::holds_alternative<double>(args[2])) {
+            std::string str = std::get<std::string>(args[0]);
+            int start = std::get<double>(args[1]);
+            int len = std::get<double>(args[2]);
+            if (start >= 0 && start < str.length()) {
+                return str.substr(start, len);
+            }
+        }
+        return nullptr;
+    };
+    
+    auto toUpperNative = [](int argCount, VMValue* args) -> VMValue {
+        if (argCount != 1) return nullptr;
+        if (std::holds_alternative<std::string>(args[0])) {
+            std::string str = std::get<std::string>(args[0]);
+            for (char& c : str) c = std::toupper(c);
+            return str;
+        }
+        return nullptr;
+    };
+    
+    auto toLowerNative = [](int argCount, VMValue* args) -> VMValue {
+        if (argCount != 1) return nullptr;
+        if (std::holds_alternative<std::string>(args[0])) {
+            std::string str = std::get<std::string>(args[0]);
+            for (char& c : str) c = std::tolower(c);
+            return str;
+        }
+        return nullptr;
+    };
+
     defineNative("print", -1, printNative);
     defineNative("clock", 0, clockNative);
     defineNative("len", 1, lenNative);
     defineNative("push", 2, pushNative);
+    defineNative("substring", 3, substringNative);
+    defineNative("toUpper", 1, toUpperNative);
+    defineNative("toLower", 1, toLowerNative);
 }
 
 VM::~VM() {
@@ -130,6 +166,11 @@ InterpretResult VM::run() {
                 VMValue a = pop();
                 if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
                     push(std::get<double>(a) + std::get<double>(b));
+                } else if (std::holds_alternative<std::string>(a) && std::holds_alternative<std::string>(b)) {
+                    push(std::get<std::string>(a) + std::get<std::string>(b));
+                } else {
+                    std::cerr << "Operands must be two numbers or two strings." << std::endl;
+                    return InterpretResult::INTERPRET_RUNTIME_ERROR;
                 }
                 break;
             }
@@ -162,6 +203,8 @@ InterpretResult VM::run() {
                 VMValue a = pop();
                 if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
                     push(std::get<double>(a) == std::get<double>(b));
+                } else if (std::holds_alternative<std::string>(a) && std::holds_alternative<std::string>(b)) {
+                    push(std::get<std::string>(a) == std::get<std::string>(b));
                 } else if (std::holds_alternative<bool>(a) && std::holds_alternative<bool>(b)) {
                     push(std::get<bool>(a) == std::get<bool>(b));
                 } else {
