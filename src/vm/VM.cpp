@@ -29,6 +29,21 @@ namespace {
         }
         return "";
     }
+
+    bool checkAccess(VMAccessModifier modifier, std::shared_ptr<ObjClass> klass, const std::string& callerClass) {
+        if (modifier == VMAccessModifier::PUBLIC) return true;
+        if (modifier == VMAccessModifier::PRIVATE) return klass->name == callerClass;
+        if (modifier == VMAccessModifier::PROTECTED) {
+            if (klass->name == callerClass) return true;
+            auto current = klass;
+            while (current) {
+                if (current->name == callerClass) return true;
+                current = current->superclass;
+            }
+            return false;
+        }
+        return true;
+    }
 }
 
 VM::VM() {
@@ -527,16 +542,36 @@ InterpretResult VM::run() {
                 klass->statics[name] = methodVal;
                 break;
             }
+            case static_cast<uint8_t>(OpCode::OP_FIELD_MODIFIER): {
+                std::string name = std::get<std::string>(READ_CONSTANT());
+                VMAccessModifier modifier = static_cast<VMAccessModifier>(READ_BYTE());
+                VMValue classVal = peek(0);
+                auto klass = std::get<std::shared_ptr<ObjClass>>(classVal);
+                klass->fieldModifiers[name] = modifier;
+                break;
+            }
             case static_cast<uint8_t>(OpCode::OP_PROPERTY_GET): {
                 std::string name = std::get<std::string>(READ_CONSTANT());
                 VMValue instanceVal = peek(0);
+                std::string callerClass = frame->function ? frame->function->enclosingClassName : "";
+
                 if (std::holds_alternative<std::shared_ptr<ObjInstance>>(instanceVal)) {
                     auto instance = std::get<std::shared_ptr<ObjInstance>>(instanceVal);
                     if (instance->fields.count(name)) {
+                        VMAccessModifier mod = VMAccessModifier::PUBLIC;
+                        if (instance->klass->fieldModifiers.count(name)) mod = instance->klass->fieldModifiers[name];
+                        if (!checkAccess(mod, instance->klass, callerClass)) {
+                            std::cerr << "Access error: Cannot access '" << name << "'." << std::endl;
+                            return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                        }
                         pop();
                         push(instance->fields[name]);
                     } else if (instance->klass->methods.count(name)) {
                         auto method = instance->klass->methods[name];
+                        if (!checkAccess(method->accessModifier, instance->klass, callerClass)) {
+                            std::cerr << "Access error: Cannot access method '" << name << "'." << std::endl;
+                            return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                        }
                         pop();
                         push(std::make_shared<ObjBoundMethod>(instance, method));
                     } else {
@@ -546,6 +581,15 @@ InterpretResult VM::run() {
                 } else if (std::holds_alternative<std::shared_ptr<ObjClass>>(instanceVal)) {
                     auto klass = std::get<std::shared_ptr<ObjClass>>(instanceVal);
                     if (klass->statics.count(name)) {
+                        auto methodVal = klass->statics[name];
+                        if (std::holds_alternative<std::shared_ptr<ObjFunction>>(methodVal)) {
+                            auto func = std::get<std::shared_ptr<ObjFunction>>(methodVal);
+                            if (!checkAccess(func->accessModifier, klass, callerClass)) {
+                                std::cerr << "Access error: Cannot access static method '" << name << "'." << std::endl;
+                                return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                            }
+                        }
+                        // statics (fields) access modifier check can be added here if static fields have modifiers.
                         pop();
                         push(klass->statics[name]);
                     } else {
@@ -562,8 +606,16 @@ InterpretResult VM::run() {
                 std::string name = std::get<std::string>(READ_CONSTANT());
                 VMValue value = pop();
                 VMValue instanceVal = pop();
+                std::string callerClass = frame->function ? frame->function->enclosingClassName : "";
+
                 if (std::holds_alternative<std::shared_ptr<ObjInstance>>(instanceVal)) {
                     auto instance = std::get<std::shared_ptr<ObjInstance>>(instanceVal);
+                    VMAccessModifier mod = VMAccessModifier::PUBLIC;
+                    if (instance->klass->fieldModifiers.count(name)) mod = instance->klass->fieldModifiers[name];
+                    if (!checkAccess(mod, instance->klass, callerClass)) {
+                        std::cerr << "Access error: Cannot set '" << name << "'." << std::endl;
+                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                    }
                     instance->fields[name] = value;
                     push(value);
                 } else if (std::holds_alternative<std::shared_ptr<ObjClass>>(instanceVal)) {
