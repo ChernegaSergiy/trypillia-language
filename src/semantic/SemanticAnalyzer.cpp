@@ -336,6 +336,18 @@ public:
             }
         }
         
+        // Resolve implemented interfaces
+        for (auto& ifaceName : node->interfaceNames) {
+            Symbol* ifaceSymbol = currentScope->resolve(ifaceName);
+            if (!ifaceSymbol) {
+                std::string error = "Interface '" + ifaceName + "' not found";
+                ErrorHandling::reportError(error);
+            } else if (ifaceSymbol->type != "interface") {
+                std::string error = "'" + ifaceName + "' is not an interface";
+                ErrorHandling::reportError(error);
+            }
+        }
+        
         SymbolTable* enclosingScope = currentScope;
         currentScope = new SymbolTable(enclosingScope);
 

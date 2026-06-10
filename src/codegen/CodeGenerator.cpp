@@ -407,6 +407,16 @@ public:
     }
 
     void visit(FunctionNode* node) override {
+        if (node->isAbstract) {
+            code << "virtual auto " << node->name << "(";
+            for (size_t i = 0; i < node->params.size(); i++) {
+                if (i > 0) code << ", ";
+                code << "auto " << node->params[i];
+            }
+            code << ") = 0;\n";
+            return;
+        }
+        
         // In a real compiler, we would determine the return type
         // For now, we'll just use 'auto'
         code << "auto " << node->name << "(";
@@ -436,8 +446,15 @@ public:
     
     void visit(ClassNode* node) override {
         code << "class " << node->name;
+        bool hasBase = false;
         if (!node->parentName.empty()) {
             code << " : public " << node->parentName;
+            hasBase = true;
+        }
+        for (auto& ifaceName : node->interfaceNames) {
+            if (hasBase) code << ", ";
+            else { code << " : "; hasBase = true; }
+            code << "public " << ifaceName;
         }
         code << " {\n";
         indentLevel++;
