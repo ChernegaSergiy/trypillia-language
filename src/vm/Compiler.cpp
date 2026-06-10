@@ -392,7 +392,11 @@ public:
         funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_RETURN));
         
         emitConstant(func);
-        emitBytes(static_cast<uint8_t>(OpCode::OP_METHOD), chunk->addConstant(node->name));
+        if (node->isAbstract) {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_ABSTRACT_METHOD), chunk->addConstant(node->name));
+        } else {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_METHOD), chunk->addConstant(node->name));
+        }
     }
 
     void visit(ClassNode* node) override {
@@ -401,7 +405,11 @@ public:
         currentClassName = node->name;
         currentParentName = node->parentName;
 
-        emitBytes(static_cast<uint8_t>(OpCode::OP_CLASS), chunk->addConstant(node->name));
+        if (node->isAbstract) {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_ABSTRACT_CLASS), chunk->addConstant(node->name));
+        } else {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_CLASS), chunk->addConstant(node->name));
+        }
         emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), chunk->addConstant(node->name));
         
         if (!node->parentName.empty()) {

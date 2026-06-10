@@ -387,6 +387,13 @@ InterpretResult VM::run() {
                 push(std::make_shared<ObjClass>(name));
                 break;
             }
+            case static_cast<uint8_t>(OpCode::OP_ABSTRACT_CLASS): {
+                std::string name = std::get<std::string>(READ_CONSTANT());
+                auto klass = std::make_shared<ObjClass>(name);
+                klass->isAbstract = true;
+                push(klass);
+                break;
+            }
             case static_cast<uint8_t>(OpCode::OP_INHERIT): {
                 VMValue superclassVal = pop();
                 VMValue subclassVal = pop();
@@ -435,8 +442,19 @@ InterpretResult VM::run() {
                 std::string name = std::get<std::string>(READ_CONSTANT());
                 VMValue methodVal = pop();
                 VMValue classVal = peek(0);
+                auto method = std::get<std::shared_ptr<ObjFunction>>(methodVal);
                 auto klass = std::get<std::shared_ptr<ObjClass>>(classVal);
-                klass->methods[name] = std::get<std::shared_ptr<ObjFunction>>(methodVal);
+                klass->methods[name] = method;
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_ABSTRACT_METHOD): {
+                std::string name = std::get<std::string>(READ_CONSTANT());
+                VMValue methodVal = pop();
+                VMValue classVal = peek(0);
+                auto method = std::get<std::shared_ptr<ObjFunction>>(methodVal);
+                method->isAbstract = true;
+                auto klass = std::get<std::shared_ptr<ObjClass>>(classVal);
+                klass->methods[name] = method;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_PROPERTY_GET): {
@@ -505,12 +523,20 @@ InterpretResult VM::run() {
                     push(result);
                 } else if (std::holds_alternative<std::shared_ptr<ObjClass>>(callee)) {
                     auto klass = std::get<std::shared_ptr<ObjClass>>(callee);
+                    if (klass->isAbstract) {
+                        std::cerr << "Cannot instantiate abstract class '" << klass->name << "'." << std::endl;
+                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                    }
                     auto instance = std::make_shared<ObjInstance>(klass);
                     stack.resize(stack.size() - argCount - 1);
                     push(instance);
                 } else if (std::holds_alternative<std::shared_ptr<ObjBoundMethod>>(callee)) {
                     auto bound = std::get<std::shared_ptr<ObjBoundMethod>>(callee);
                     auto function = bound->method;
+                    if (function->isAbstract) {
+                        std::cerr << "Cannot call abstract method '" << function->name << "'." << std::endl;
+                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                    }
                     if (argCount != function->arity) {
                         std::cerr << "Expected " << function->arity << " arguments but got " << (int)argCount << "." << std::endl;
                         return InterpretResult::INTERPRET_RUNTIME_ERROR;
