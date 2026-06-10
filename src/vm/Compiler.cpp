@@ -286,7 +286,14 @@ public:
             default: break;
         }
     }
-    void visit(ThisExpr* node) override {}
+    void visit(ThisExpr* node) override {
+        for (int i = locals.size() - 1; i >= 0; i--) {
+            if (locals[i].name == "this") {
+                emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), i);
+                return;
+            }
+        }
+    }
     void visit(SuperExpr* node) override {}
     void visit(GetExpr* node) override {
         node->object->accept(this);
@@ -349,6 +356,7 @@ public:
         CompilerVisitor funcCompiler(func->chunk.get());
         
         funcCompiler.beginScope();
+        funcCompiler.locals.push_back({"this", 1});
         
         for (const auto& param : node->params) {
             funcCompiler.locals.push_back({param, 1});
