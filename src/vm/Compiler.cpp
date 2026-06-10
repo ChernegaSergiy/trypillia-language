@@ -340,9 +340,40 @@ public:
         emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), chunk->addConstant(node->name));
     }
     void visit(FieldDeclNode* node) override {}
+    void compileMethod(FunctionNode* node) {
+        auto func = std::make_shared<ObjFunction>();
+        func->name = node->name;
+        func->arity = node->params.size();
+        func->chunk = std::make_shared<Chunk>();
+
+        CompilerVisitor funcCompiler(func->chunk.get());
+        
+        funcCompiler.beginScope();
+        
+        for (const auto& param : node->params) {
+            funcCompiler.locals.push_back({param, 1});
+        }
+        
+        for (auto& stmt : node->body) {
+            stmt->accept(&funcCompiler);
+        }
+        
+        funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_NIL));
+        funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_RETURN));
+        
+        emitConstant(func);
+        emitBytes(static_cast<uint8_t>(OpCode::OP_METHOD), chunk->addConstant(node->name));
+    }
+
     void visit(ClassNode* node) override {
         emitBytes(static_cast<uint8_t>(OpCode::OP_CLASS), chunk->addConstant(node->name));
         emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), chunk->addConstant(node->name));
+        
+        emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), chunk->addConstant(node->name));
+        for (auto& method : node->methods) {
+            compileMethod(method);
+        }
+        emitByte(static_cast<uint8_t>(OpCode::OP_POP));
     }
     void visit(InterfaceNode* node) override {}
     void visit(TraitNode* node) override {}

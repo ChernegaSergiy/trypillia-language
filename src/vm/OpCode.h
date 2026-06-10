@@ -33,6 +33,7 @@ enum class OpCode : uint8_t {
     OP_CLASS,
     OP_PROPERTY_GET,
     OP_PROPERTY_SET,
+    OP_METHOD,
     OP_PRINT,
     OP_RETURN,
     OP_DUP
