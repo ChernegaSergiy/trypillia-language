@@ -37,7 +37,11 @@ public:
             case TokenType::MINUS: emitByte(static_cast<uint8_t>(OpCode::OP_SUBTRACT)); break;
             case TokenType::STAR: emitByte(static_cast<uint8_t>(OpCode::OP_MULTIPLY)); break;
             case TokenType::SLASH: emitByte(static_cast<uint8_t>(OpCode::OP_DIVIDE)); break;
-            default: break; // TODO: інші оператори
+            case TokenType::EQUAL_EQUAL: emitByte(static_cast<uint8_t>(OpCode::OP_EQUAL)); break;
+            case TokenType::LESS: emitByte(static_cast<uint8_t>(OpCode::OP_LESS)); break;
+            case TokenType::GREATER: emitByte(static_cast<uint8_t>(OpCode::OP_GREATER)); break;
+            // TODO: <=, >=, != 
+            default: break; 
         }
     }
 
@@ -81,7 +85,14 @@ public:
     void visit(ForStmt* node) override {}
     void visit(ForeachStmt* node) override {}
     void visit(SwitchStmt* node) override {}
-    void visit(UnaryExpr* node) override {}
+    void visit(UnaryExpr* node) override {
+        node->right->accept(this);
+        switch (node->op.type) {
+            case TokenType::BANG: emitByte(static_cast<uint8_t>(OpCode::OP_NOT)); break;
+            case TokenType::MINUS: emitByte(static_cast<uint8_t>(OpCode::OP_NEGATE)); break;
+            default: break;
+        }
+    }
     void visit(ThisExpr* node) override {}
     void visit(SuperExpr* node) override {}
     void visit(GetExpr* node) override {}
