@@ -1,8 +1,11 @@
 #include "SemanticAnalyzer.h"
 #include "../symbol/SymbolTable.h"
 #include "../utils/ErrorHandling.h"
+#include "../lexer/Lexer.h"
+#include "../parser/Parser.h"
 #include <stdexcept>
 #include <iostream>
+#include <fstream>
 
 class SemanticVisitor : public ASTVisitor {
 private:
@@ -412,7 +415,30 @@ public:
     void visit(StaticGetExpr* node) override {}
     void visit(StaticCallExpr* node) override {}
     void visit(StaticSetExpr* node) override {}
-    void visit(LoadStmt* node) override {}
+    void visit(LoadStmt* node) override {
+        std::string path = node->filename.lexeme;
+        if (path.size() >= 2 && path.front() == '"' && path.back() == '"') {
+            path = path.substr(1, path.size() - 2);
+        }
+        
+        std::ifstream file(path);
+        if (!file.is_open()) {
+            std::cerr << "Semantic error: Could not load file '" << path << "'" << std::endl;
+            return;
+        }
+        
+        std::string source((std::istreambuf_iterator<char>(file)),
+                            std::istreambuf_iterator<char>());
+                            
+        Lexer lexer(source);
+        Parser parser(lexer);
+        ASTNode* ast = parser.parse();
+        
+        if (ast) {
+            ast->accept(this);
+            delete ast;
+        }
+    }
 
     void visit(DictExpr* node) override {
         for (auto& pair : node->elements) {
