@@ -143,6 +143,34 @@ InterpretResult VM::run() {
                 }
                 break;
             }
+            case static_cast<uint8_t>(OpCode::OP_LOOP): {
+                uint16_t offset = READ_SHORT();
+                ip -= offset;
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL): {
+                std::string name = std::get<std::string>(READ_CONSTANT());
+                globals[name] = pop();
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_GET_GLOBAL): {
+                std::string name = std::get<std::string>(READ_CONSTANT());
+                if (globals.find(name) == globals.end()) {
+                    std::cerr << "Undefined variable '" << name << "'." << std::endl;
+                    return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                }
+                push(globals[name]);
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_SET_GLOBAL): {
+                std::string name = std::get<std::string>(READ_CONSTANT());
+                if (globals.find(name) == globals.end()) {
+                    std::cerr << "Undefined variable '" << name << "'." << std::endl;
+                    return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                }
+                globals[name] = peek(0);
+                break;
+            }
             case static_cast<uint8_t>(OpCode::OP_POP): {
                 pop();
                 break;

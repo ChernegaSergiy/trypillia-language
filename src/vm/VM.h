@@ -3,6 +3,8 @@
 
 #include "Chunk.h"
 #include <vector>
+#include <unordered_map>
+#include <string>
 
 // Результат виконання віртуальної машини
 enum class InterpretResult {
@@ -16,6 +18,7 @@ private:
     Chunk* chunk;
     uint8_t* ip; // Instruction Pointer (вказівник на поточну інструкцію)
     std::vector<VMValue> stack; // Стек для зберігання тимчасових значень
+    std::unordered_map<std::string, VMValue> globals;
 
     void resetStack();
     void push(VMValue value);

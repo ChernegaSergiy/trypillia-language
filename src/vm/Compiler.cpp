@@ -35,6 +35,14 @@ private:
         chunk->code[offset + 1] = jump & 0xff;
     }
 
+    void emitLoop(int loopStart) {
+        emitByte(static_cast<uint8_t>(OpCode::OP_LOOP));
+        int offset = chunk->code.size() - loopStart + 2;
+        if (offset > 65535) ErrorHandling::reportError("Loop body too large.");
+        emitByte((offset >> 8) & 0xff);
+        emitByte(offset & 0xff);
+    }
+
 public:
     CompilerVisitor(Chunk* chunk) : chunk(chunk) {}
 
@@ -86,11 +94,23 @@ public:
     }
 
     // Заглушки для всіх інших методів ASTVisitor
-    void visit(VariableExpr* node) override {}
-    void visit(AssignExpr* node) override {}
+    void visit(VariableExpr* node) override {
+        emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), chunk->addConstant(node->name.lexeme));
+    }
+    void visit(AssignExpr* node) override {
+        node->value->accept(this);
+        emitBytes(static_cast<uint8_t>(OpCode::OP_SET_GLOBAL), chunk->addConstant(node->name.lexeme));
+    }
     void visit(CompoundAssignExpr* node) override {}
     void visit(CallExpr* node) override {}
-    void visit(VarStmt* node) override {}
+    void visit(VarStmt* node) override {
+        if (node->initializer) {
+            node->initializer->accept(this);
+        } else {
+            emitByte(static_cast<uint8_t>(OpCode::OP_NIL));
+        }
+        emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), chunk->addConstant(node->name.lexeme));
+    }
     void visit(BlockStmt* node) override {
         for (auto& stmt : node->statements) {
             stmt->accept(this);
@@ -114,12 +134,57 @@ public:
         }
         patchJump(elseJump);
     }
-    void visit(WhileStmt* node) override {}
-    void visit(DoWhileStmt* node) override {}
+    void visit(WhileStmt* node) override {
+        int loopStart = chunk->code.size();
+        node->condition->accept(this);
+        int exitJump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE));
+        emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+        
+        node->body->accept(this);
+        
+        emitLoop(loopStart);
+        patchJump(exitJump);
+        emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+    }
+    void visit(DoWhileStmt* node) override {
+        int loopStart = chunk->code.size();
+        node->body->accept(this);
+        node->condition->accept(this);
+        int exitJump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE));
+        emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+        emitLoop(loopStart);
+        patchJump(exitJump);
+        emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+    }
     void visit(ReturnStmt* node) override {}
     void visit(BreakStmt* node) override {}
     void visit(ContinueStmt* node) override {}
-    void visit(ForStmt* node) override {}
+    void visit(ForStmt* node) override {
+        if (node->initializer) node->initializer->accept(this);
+        
+        int loopStart = chunk->code.size();
+        int exitJump = -1;
+        
+        if (node->condition) {
+            node->condition->accept(this);
+            exitJump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE));
+            emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+        }
+        
+        node->body->accept(this);
+        
+        if (node->increment) {
+            node->increment->accept(this);
+            emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+        }
+        
+        emitLoop(loopStart);
+        
+        if (exitJump != -1) {
+            patchJump(exitJump);
+            emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+        }
+    }
     void visit(ForeachStmt* node) override {}
     void visit(SwitchStmt* node) override {}
     void visit(UnaryExpr* node) override {
