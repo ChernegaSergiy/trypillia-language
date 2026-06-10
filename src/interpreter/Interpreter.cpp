@@ -155,13 +155,30 @@ public:
 
 // Class implementation
 class Class : public Callable, public std::enable_shared_from_this<Class> {
+public:
+    struct FieldDecl {
+        std::string name;
+        ExprNode* initializer;
+        AccessModifier accessModifier;
+    };
+
 private:
     std::string name;
     std::unordered_map<std::string, std::shared_ptr<Function>> methods;
+    std::vector<FieldDecl> fieldDecls;
+    std::shared_ptr<Environment> closure;
+    std::unordered_map<std::string, AccessModifier> fieldAccess;
     
 public:
-    Class(const std::string& name, const std::unordered_map<std::string, std::shared_ptr<Function>>& methods)
-        : name(name), methods(methods) {}
+    Class(const std::string& name, 
+          const std::unordered_map<std::string, std::shared_ptr<Function>>& methods,
+          const std::vector<FieldDecl>& fieldDecls = {},
+          std::shared_ptr<Environment> closure = nullptr)
+        : name(name), methods(methods), fieldDecls(fieldDecls), closure(closure) {
+        for (auto& fd : fieldDecls) {
+            fieldAccess[fd.name] = fd.accessModifier;
+        }
+    }
     
     int arity() const override {
         auto initMethod = findMethod("init");
@@ -180,6 +197,15 @@ public:
         }
         return nullptr;
     }
+    
+    AccessModifier getFieldAccess(const std::string& fieldName) const {
+        auto it = fieldAccess.find(fieldName);
+        if (it != fieldAccess.end()) return it->second;
+        return AccessModifier::PUBLIC;
+    }
+    
+    const std::vector<FieldDecl>& getFieldDecls() const { return fieldDecls; }
+    std::shared_ptr<Environment> getClosure() const { return closure; }
     
     std::string toString() const {
         return "<class " + name + ">";
@@ -300,6 +326,22 @@ public:
         } catch (...) {
             environment = previous;
             throw;
+        }
+        
+        environment = previous;
+    }
+    
+    void executeFieldInitializers(std::shared_ptr<Instance> instance,
+                                   const std::vector<Class::FieldDecl>& fieldDecls,
+                                   std::shared_ptr<Environment> env) {
+        std::shared_ptr<Environment> previous = environment;
+        environment = env;
+        
+        for (auto& field : fieldDecls) {
+            if (field.initializer) {
+                field.initializer->accept(this);
+                instance->set(field.name, lastValue);
+            }
         }
         
         environment = previous;
@@ -598,30 +640,40 @@ public:
 
         if (std::holds_alternative<std::shared_ptr<Instance>>(object)) {
             auto instance = std::get<std::shared_ptr<Instance>>(object);
+            
+            // Check field access BEFORE get() to avoid leaking private field values
+            if (instance->getClass()->getFieldAccess(node->name.lexeme) == AccessModifier::PRIVATE) {
+                checkAccess(instance, node->name.lexeme);
+            }
+            
             lastValue = instance->get(node->name.lexeme);
             
             // Enforce access control for private methods
             if (std::holds_alternative<std::shared_ptr<BoundMethod>>(lastValue)) {
                 auto bound = std::get<std::shared_ptr<BoundMethod>>(lastValue);
                 if (bound->getMethod()->getAccessModifier() == AccessModifier::PRIVATE) {
-                    bool fromInside = false;
-                    try {
-                        Value thisVal = environment->get("this");
-                        if (std::holds_alternative<std::shared_ptr<Instance>>(thisVal)) {
-                            auto thisInstance = std::get<std::shared_ptr<Instance>>(thisVal);
-                            fromInside = (thisInstance->getClass() == instance->getClass());
-                        }
-                    } catch (...) {}
-                    if (!fromInside) {
-                        throw std::runtime_error("Cannot access private method '" + node->name.lexeme + "' from outside the class");
-                    }
+                    checkAccess(instance, node->name.lexeme);
                 }
             }
         } else {
             throw std::runtime_error("Only instances have properties");
         }
     }
-
+    
+    void checkAccess(std::shared_ptr<Instance> instance, const std::string& name) {
+        bool fromInside = false;
+        try {
+            Value thisVal = environment->get("this");
+            if (std::holds_alternative<std::shared_ptr<Instance>>(thisVal)) {
+                auto thisInstance = std::get<std::shared_ptr<Instance>>(thisVal);
+                fromInside = (thisInstance->getClass() == instance->getClass());
+            }
+        } catch (...) {}
+        if (!fromInside) {
+            throw std::runtime_error("Cannot access private member '" + name + "' from outside the class");
+        }
+    }
+    
     void visit(SetExpr* node) override {
         node->object->accept(this);
         Value object = lastValue;
@@ -631,7 +683,15 @@ public:
         }
 
         node->value->accept(this);
-        std::get<std::shared_ptr<Instance>>(object)->set(node->name.lexeme, lastValue);
+        
+        auto instance = std::get<std::shared_ptr<Instance>>(object);
+        
+        // Enforce access control for private fields
+        if (instance->getClass()->getFieldAccess(node->name.lexeme) == AccessModifier::PRIVATE) {
+            checkAccess(instance, node->name.lexeme);
+        }
+        
+        instance->set(node->name.lexeme, lastValue);
     }
 
     void visit(CallExpr* node) override {
@@ -807,6 +867,9 @@ public:
         environment->define(node->name, function);
     }
     
+    void visit(FieldDeclNode* node) override {
+    }
+    
     void visit(ClassNode* node) override {
         environment->define(node->name, nullptr);
         
@@ -816,7 +879,12 @@ public:
             methods[method->name] = function;
         }
         
-        std::shared_ptr<Class> klass = std::make_shared<Class>(node->name, methods);
+        std::vector<Class::FieldDecl> fieldDecls;
+        for (auto& field : node->fields) {
+            fieldDecls.push_back({field->name, field->initializer, field->accessModifier});
+        }
+        
+        std::shared_ptr<Class> klass = std::make_shared<Class>(node->name, methods, fieldDecls, environment);
         environment->assign(node->name, klass);
     }
 };
@@ -859,6 +927,13 @@ Value BoundMethod::call(InterpreterVisitor* interpreter, const std::vector<Value
 // Implementation of Class::call that depends on InterpreterVisitor
 Value Class::call(InterpreterVisitor* interpreter, const std::vector<Value>& arguments) {
     std::shared_ptr<Instance> instance = std::make_shared<Instance>(shared_from_this());
+    
+    // Evaluate field initializers
+    if (!fieldDecls.empty() && closure) {
+        auto env = std::make_shared<Environment>(closure);
+        env->define("this", instance);
+        interpreter->executeFieldInitializers(instance, fieldDecls, env);
+    }
     
     // Call the initializer if it exists
     std::shared_ptr<Function> initializer = findMethod("init");
