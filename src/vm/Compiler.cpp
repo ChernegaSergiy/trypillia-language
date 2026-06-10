@@ -13,8 +13,17 @@ private:
     struct Local {
         std::string name;
         int depth;
+        bool isCaptured = false;
     };
     std::vector<Local> locals;
+    
+    struct Upvalue {
+        uint8_t index;
+        bool isLocal;
+    };
+    std::vector<Upvalue> upvalues;
+    CompilerVisitor* enclosing = nullptr;
+
     int scopeDepth = 0;
     int currentLine = 1;
 
@@ -25,7 +34,11 @@ private:
     void endScope() {
         scopeDepth--;
         while (locals.size() > 0 && locals.back().depth > scopeDepth) {
-            emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+            if (locals.back().isCaptured) {
+                emitByte(static_cast<uint8_t>(OpCode::OP_CLOSE_UPVALUE));
+            } else {
+                emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+            }
             locals.pop_back();
         }
     }
@@ -37,6 +50,37 @@ private:
             }
         }
         return -1;
+    }
+
+    int resolveUpvalue(const std::string& name) {
+        if (enclosing == nullptr) return -1;
+
+        int local = enclosing->resolveLocal(name);
+        if (local != -1) {
+            enclosing->locals[local].isCaptured = true;
+            return addUpvalue((uint8_t)local, true);
+        }
+
+        int upvalue = enclosing->resolveUpvalue(name);
+        if (upvalue != -1) {
+            return addUpvalue((uint8_t)upvalue, false);
+        }
+
+        return -1;
+    }
+
+    int addUpvalue(uint8_t index, bool isLocal) {
+        for (size_t i = 0; i < upvalues.size(); i++) {
+            if (upvalues[i].index == index && upvalues[i].isLocal == isLocal) {
+                return i;
+            }
+        }
+        if (upvalues.size() == 255) {
+            ErrorHandling::reportError("Too many closure variables in function.");
+            return 0;
+        }
+        upvalues.push_back({index, isLocal});
+        return upvalues.size() - 1;
     }
 
 public:
@@ -51,8 +95,8 @@ public:
     };
     std::vector<LoopContext> loops;
 
-    CompilerVisitor(Chunk* chunk, const std::string& fname) : chunk(chunk), compiler_filename(fname) {
-        locals.push_back({"", 0});
+    CompilerVisitor(Chunk* chunk, const std::string& fname, CompilerVisitor* enc = nullptr) : chunk(chunk), compiler_filename(fname), enclosing(enc) {
+        locals.push_back({"", 0, false});
     }
 
     void emitByte(uint8_t byte) {
@@ -146,6 +190,8 @@ public:
         int arg = resolveLocal(node->name.lexeme);
         if (arg != -1) {
             emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), (uint8_t)arg);
+        } else if ((arg = resolveUpvalue(node->name.lexeme)) != -1) {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_UPVALUE), (uint8_t)arg);
         } else {
             emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), chunk->addConstant(node->name.lexeme));
         }
@@ -156,14 +202,19 @@ public:
         int arg = resolveLocal(node->name.lexeme);
         if (arg != -1) {
             emitBytes(static_cast<uint8_t>(OpCode::OP_SET_LOCAL), (uint8_t)arg);
+        } else if ((arg = resolveUpvalue(node->name.lexeme)) != -1) {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_SET_UPVALUE), (uint8_t)arg);
         } else {
             emitBytes(static_cast<uint8_t>(OpCode::OP_SET_GLOBAL), chunk->addConstant(node->name.lexeme));
         }
     }
     void visit(CompoundAssignExpr* node) override {
         int arg = resolveLocal(node->name.lexeme);
+        int upArg = -1;
         if (arg != -1) {
             emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), (uint8_t)arg);
+        } else if ((upArg = resolveUpvalue(node->name.lexeme)) != -1) {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_UPVALUE), (uint8_t)upArg);
         } else {
             emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), chunk->addConstant(node->name.lexeme));
         }
@@ -180,6 +231,8 @@ public:
         
         if (arg != -1) {
             emitBytes(static_cast<uint8_t>(OpCode::OP_SET_LOCAL), (uint8_t)arg);
+        } else if (upArg != -1) {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_SET_UPVALUE), (uint8_t)upArg);
         } else {
             emitBytes(static_cast<uint8_t>(OpCode::OP_SET_GLOBAL), chunk->addConstant(node->name.lexeme));
         }
@@ -200,7 +253,7 @@ public:
         }
         
         if (scopeDepth > 0) {
-            locals.push_back({node->name.lexeme, scopeDepth});
+            locals.push_back({node->name.lexeme, scopeDepth, false});
         } else {
             emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), chunk->addConstant(node->name.lexeme));
         }
@@ -552,11 +605,11 @@ public:
         func->chunk = std::make_shared<Chunk>();
         func->filename = compiler_filename;
 
-        CompilerVisitor funcCompiler(func->chunk.get(), compiler_filename);
+        CompilerVisitor funcCompiler(func->chunk.get(), compiler_filename, this);
         
         funcCompiler.beginScope();
         for (const auto& param : node->params) {
-            funcCompiler.locals.push_back({param, 1});
+            funcCompiler.locals.push_back({param, 1, false});
         }
         
         for (auto& stmt : node->body) {
@@ -566,7 +619,14 @@ public:
         funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_NIL));
         funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_RETURN));
         
-        emitConstant(func);
+        func->upvalueCount = funcCompiler.upvalues.size();
+
+        emitBytes(static_cast<uint8_t>(OpCode::OP_CLOSURE), chunk->addConstant(func));
+        for (const auto& upval : funcCompiler.upvalues) {
+            emitByte(upval.isLocal ? 1 : 0);
+            emitByte(upval.index);
+        }
+
         emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), chunk->addConstant(node->name));
     }
     void visit(FieldDeclNode* node) override {}
@@ -623,7 +683,14 @@ public:
             funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_RETURN));
         }
         
-        emitConstant(func);
+        func->upvalueCount = funcCompiler.upvalues.size();
+
+        emitBytes(static_cast<uint8_t>(OpCode::OP_CLOSURE), chunk->addConstant(func));
+        for (const auto& upval : funcCompiler.upvalues) {
+            emitByte(upval.isLocal ? 1 : 0);
+            emitByte(upval.index);
+        }
+
         if (node->isStatic) {
             emitBytes(static_cast<uint8_t>(OpCode::OP_STATIC_METHOD), chunk->addConstant(node->name));
         } else if (node->isAbstract) {
