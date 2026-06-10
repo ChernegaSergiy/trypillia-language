@@ -100,6 +100,31 @@ VMValue VM::peek(int distance) {
     return stack[stack.size() - 1 - distance];
 }
 
+VMValue VM::callClosure(VMValue closureVal, int argCount, VMValue* args) {
+    if (!std::holds_alternative<std::shared_ptr<ObjClosure>>(closureVal)) return nullptr;
+    auto closure = std::get<std::shared_ptr<ObjClosure>>(closureVal);
+    
+    int initialFrameCount = frames.size();
+    
+    push(closureVal);
+    for (int i = 0; i < argCount; i++) {
+        push(args[i]);
+    }
+    
+    CallFrame newFrame;
+    newFrame.closure = closure;
+    newFrame.ip = closure->function->chunk->code.data();
+    newFrame.stackStart = stack.size() - argCount - 1;
+    frames.push_back(newFrame);
+    
+    InterpretResult result = run(initialFrameCount);
+    if (result == InterpretResult::INTERPRET_RUNTIME_ERROR) {
+        return nullptr;
+    }
+    
+    return pop();
+}
+
 std::shared_ptr<ObjUpvalue> VM::captureUpvalue(VMValue* local) {
     std::shared_ptr<ObjUpvalue> prevUpvalue = nullptr;
     std::shared_ptr<ObjUpvalue> upvalue = openUpvalues;
@@ -147,7 +172,7 @@ InterpretResult VM::interpret(std::shared_ptr<ObjFunction> function) {
     frame.stackStart = 0;
     frames.push_back(frame);
     
-    return run();
+    return run(0);
 }
 
 #define READ_BYTE() (*frame->ip++)
@@ -188,7 +213,7 @@ InterpretResult VM::runtimeError(const std::string& message) {
     return InterpretResult::INTERPRET_RUNTIME_ERROR;
 }
 
-InterpretResult VM::run() {
+InterpretResult VM::run(int targetFrameDepth) {
     CallFrame* frame = &frames.back();
     
     for (;;) {
@@ -770,10 +795,13 @@ InterpretResult VM::run() {
                 closeUpvalues(&stack[frame->stackStart]);
                 int newStackSize = frame->stackStart;
                 frames.pop_back();
-                if (frames.empty()) {
-                    pop();
+                
+                if (frames.size() == targetFrameDepth) {
+                    stack.resize(newStackSize);
+                    push(result);
                     return InterpretResult::INTERPRET_OK;
                 }
+                
                 stack.resize(newStackSize);
                 push(result);
                 frame = &frames.back();

@@ -34,11 +34,12 @@ private:
     void closeUpvalues(VMValue* last);
     
     InterpretResult runtimeError(const std::string& message);
-    InterpretResult run();
+    InterpretResult run(int targetFrameDepth = 0);
 
 public:
     std::unordered_map<std::string, VMValue> globals;
     void defineNative(const std::string& name, int arity, NativeFn function);
+    VMValue callClosure(VMValue closureVal, int argCount, VMValue* args);
     
     VM();
     ~VM();
