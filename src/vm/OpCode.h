@@ -41,7 +41,8 @@ enum class OpCode : uint8_t {
     OP_ABSTRACT_METHOD,
     OP_PRINT,
     OP_RETURN,
-    OP_DUP
+    OP_DUP,
+    OP_ITER_HAS_NEXT
 };
 
 #endif // TRYPILLIA_OPCODE_H
