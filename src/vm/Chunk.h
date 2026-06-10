@@ -9,6 +9,12 @@
 #include <memory>
 #include <unordered_map>
 #include "OpCode.h"
+enum class VMAccessModifier {
+    PUBLIC,
+    PRIVATE,
+    PROTECTED
+};
+
 
 class Chunk;
 
@@ -29,6 +35,7 @@ struct ObjClass {
     std::shared_ptr<ObjClass> superclass;
     bool isAbstract = false;
     std::unordered_map<std::string, VMValue> statics;
+    std::unordered_map<std::string, VMAccessModifier> fieldModifiers;
     ObjClass(std::string name) : name(name), superclass(nullptr) {}
 };
 
@@ -63,6 +70,8 @@ struct ObjFunction {
     std::shared_ptr<Chunk> chunk;
     bool isAbstract = false;
     std::unordered_map<std::string, VMValue> statics;
+    VMAccessModifier accessModifier = VMAccessModifier::PUBLIC;
+    std::string enclosingClassName = "";
 
     ObjFunction() : arity(0) {}
 };
