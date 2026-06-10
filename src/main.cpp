@@ -1,10 +1,12 @@
-﻿#include <iostream>
+#include <iostream>
 #include <fstream>
 #include "lexer/Lexer.h"
 #include "parser/Parser.h"
 #include "semantic/SemanticAnalyzer.h"
 #include "codegen/CodeGenerator.h"
 #include "interpreter/Interpreter.h"
+#include "vm/Compiler.h"
+#include "vm/VM.h"
 
 int main(int argc, char** argv) {
     if (argc < 2) {
@@ -29,10 +31,20 @@ int main(int argc, char** argv) {
     semanticAnalyzer.analyze(ast);
 
     CodeGenerator codegen;
-    codegen.generate(ast);
+    // codegen.generate(ast);
 
     Interpreter interpreter;
-    interpreter.execute(ast);
+    // interpreter.execute(ast);
+
+    std::cout << "\n--- Bytecode VM Execution ---\n";
+    Compiler compiler;
+    Chunk* chunk = compiler.compile(ast);
+    
+    if (chunk) {
+        VM vm;
+        vm.interpret(chunk);
+        delete chunk;
+    }
 
     return 0;
 }
