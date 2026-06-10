@@ -366,6 +366,13 @@ StmtNode* Parser::printStatement() {
     return new PrintStmt(value);
 }
 
+StmtNode* Parser::loadStatement() {
+    Token filename = currentToken;
+    consume(TokenType::STRING);
+    consume(TokenType::SEMICOLON);
+    return new LoadStmt(filename);
+}
+
 StmtNode* Parser::block() {
     std::vector<StmtNode*> statements;
     
@@ -549,6 +556,10 @@ StmtNode* Parser::statement() {
     
     if (match(TokenType::PRINT)) {
         return printStatement();
+    }
+    
+    if (match(TokenType::LOAD)) {
+        return loadStatement();
     }
     
     if (match(TokenType::WHILE)) {
@@ -915,6 +926,7 @@ void Parser::synchronize() {
             case TokenType::IF:
             case TokenType::WHILE:
             case TokenType::PRINT:
+            case TokenType::LOAD:
                 return;
             default:
                 break;

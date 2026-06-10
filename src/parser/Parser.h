@@ -41,6 +41,7 @@ private:
     StmtNode* statement();
     StmtNode* expressionStatement();
     StmtNode* printStatement();
+    StmtNode* loadStatement();
     StmtNode* block();
     StmtNode* ifStatement();
     StmtNode* whileStatement();
