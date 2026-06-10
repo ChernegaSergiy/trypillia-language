@@ -25,9 +25,31 @@ VM::VM() {
     auto clockNative = [](int argCount, VMValue* args) -> VMValue {
         return (double)clock() / CLOCKS_PER_SEC;
     };
+    
+    auto lenNative = [](int argCount, VMValue* args) -> VMValue {
+        if (argCount != 1) return nullptr;
+        if (std::holds_alternative<std::shared_ptr<ObjList>>(args[0])) {
+            return (double)std::get<std::shared_ptr<ObjList>>(args[0])->elements.size();
+        } else if (std::holds_alternative<std::string>(args[0])) {
+            return (double)std::get<std::string>(args[0]).length();
+        }
+        return (double)0;
+    };
+    
+    auto pushNative = [](int argCount, VMValue* args) -> VMValue {
+        if (argCount != 2) return nullptr;
+        if (std::holds_alternative<std::shared_ptr<ObjList>>(args[0])) {
+            auto list = std::get<std::shared_ptr<ObjList>>(args[0]);
+            list->elements.push_back(args[1]);
+            return args[1];
+        }
+        return nullptr;
+    };
 
     defineNative("print", -1, printNative);
     defineNative("clock", 0, clockNative);
+    defineNative("len", 1, lenNative);
+    defineNative("push", 2, pushNative);
 }
 
 VM::~VM() {
