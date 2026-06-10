@@ -370,7 +370,23 @@ public:
         }
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
     }
-    void visit(TernaryExpr* node) override {}
+    void visit(TernaryExpr* node) override {
+        node->condition->accept(this);
+
+        int thenJump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE));
+        emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+
+        node->thenBranch->accept(this);
+
+        int elseJump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP));
+
+        patchJump(thenJump);
+        emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+
+        node->elseBranch->accept(this);
+        
+        patchJump(elseJump);
+    }
     void visit(ListExpr* node) override {
         for (auto& el : node->elements) {
             el->accept(this);
