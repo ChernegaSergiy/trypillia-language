@@ -17,11 +17,13 @@ class Class;
 class Instance;
 class BoundMethod;
 class ListValue;
+class Interface;
 
 // Value type for the interpreter
 using Value = std::variant<std::nullptr_t, bool, double, std::string, std::shared_ptr<ListValue>,
                            std::shared_ptr<Function>, std::shared_ptr<Class>, 
-                           std::shared_ptr<Instance>, std::shared_ptr<BoundMethod>>;
+                           std::shared_ptr<Instance>, std::shared_ptr<BoundMethod>,
+                           std::shared_ptr<Interface>>;
 
 // List value implementation (after Value is defined)
 class ListValue {
@@ -182,6 +184,8 @@ private:
     std::unordered_map<std::string, AccessModifier> fieldAccess;
     std::unordered_set<std::string> fieldConst;
     std::shared_ptr<Class> parent;
+    bool isAbstract;
+    std::vector<std::shared_ptr<Interface>> interfaces;
     
 public:
     Class(const std::string& name, 
@@ -189,7 +193,7 @@ public:
           const std::vector<FieldDecl>& fieldDecls = {},
           std::shared_ptr<Environment> closure = nullptr,
           std::shared_ptr<Class> parent = nullptr)
-        : name(name), methods(methods), fieldDecls(fieldDecls), closure(closure), parent(parent) {
+        : name(name), methods(methods), fieldDecls(fieldDecls), closure(closure), parent(parent), isAbstract(false) {
         for (auto& fd : fieldDecls) {
             fieldAccess[fd.name] = fd.accessModifier;
             if (fd.isConst) fieldConst.insert(fd.name);
@@ -206,16 +210,7 @@ public:
     
     Value call(InterpreterVisitor* interpreter, const std::vector<Value>& arguments) override;
     
-    std::shared_ptr<Function> findMethod(const std::string& name) const {
-        auto it = methods.find(name);
-        if (it != methods.end()) {
-            return it->second;
-        }
-        if (parent) {
-            return parent->findMethod(name);
-        }
-        return nullptr;
-    }
+    std::shared_ptr<Function> findMethod(const std::string& methodName) const;
     
     std::pair<AccessModifier, std::shared_ptr<Class>> getFieldAccess(const std::string& fieldName) {
         auto it = fieldAccess.find(fieldName);
@@ -237,6 +232,12 @@ public:
         }
     }
     
+    void setAbstract(bool abs) { isAbstract = abs; }
+    bool getAbstract() const { return isAbstract; }
+    
+    void setInterfaces(const std::vector<std::shared_ptr<Interface>>& ifaces) { interfaces = ifaces; }
+    std::vector<std::shared_ptr<Interface>> getInterfaces() const { return interfaces; }
+    
     bool isFieldConst(const std::string& fieldName) {
         if (fieldConst.find(fieldName) != fieldConst.end()) return true;
         if (parent) return parent->isFieldConst(fieldName);
@@ -248,6 +249,41 @@ public:
     
     std::string toString() const {
         return "<class " + name + ">";
+    }
+};
+
+// Interface runtime type
+class Interface : public std::enable_shared_from_this<Interface> {
+private:
+    std::string name;
+    std::unordered_map<std::string, std::shared_ptr<Function>> methods;
+    std::vector<std::shared_ptr<Interface>> parents;
+
+public:
+    Interface(const std::string& name,
+              const std::unordered_map<std::string, std::shared_ptr<Function>>& methods,
+              std::vector<std::shared_ptr<Interface>> parents = {})
+        : name(name), methods(methods), parents(parents) {}
+
+    std::shared_ptr<Function> findMethod(const std::string& methodName) const {
+        auto it = methods.find(methodName);
+        if (it != methods.end()) return it->second;
+        for (auto& parent : parents) {
+            auto result = parent->findMethod(methodName);
+            if (result) return result;
+        }
+        return nullptr;
+    }
+
+    const std::unordered_map<std::string, std::shared_ptr<Function>>& getMethods() const {
+        return methods;
+    }
+
+    std::string getName() const { return name; }
+    std::vector<std::shared_ptr<Interface>> getParents() const { return parents; }
+
+    std::string toString() const {
+        return "<interface " + name + ">";
     }
 };
 
@@ -1020,6 +1056,8 @@ public:
             std::unordered_map<std::string, std::shared_ptr<Function>>(),
             std::vector<Class::FieldDecl>(), environment, parentClass);
         
+        klass->setAbstract(node->isAbstract);
+        
         std::unordered_map<std::string, std::shared_ptr<Function>> methods;
         for (auto& method : node->methods) {
             std::shared_ptr<Function> function = std::make_shared<Function>(method, environment, method->accessModifier, klass);
@@ -1031,15 +1069,46 @@ public:
             fieldDecls.push_back({field->name, field->initializer, field->accessModifier, field->isConst});
         }
         
-        // Update the class with methods and fields
+        // Resolve interfaces
+        std::vector<std::shared_ptr<Interface>> interfaces;
+        for (auto& ifaceName : node->interfaceNames) {
+            Value ifaceVal = environment->get(ifaceName);
+            if (!std::holds_alternative<std::shared_ptr<Interface>>(ifaceVal)) {
+                throw std::runtime_error("'" + ifaceName + "' is not an interface");
+            }
+            interfaces.push_back(std::get<std::shared_ptr<Interface>>(ifaceVal));
+        }
+        
+        // Update the class with methods, fields, and interfaces
         klass->setMethods(methods);
         klass->setFieldDecls(fieldDecls);
+        klass->setInterfaces(interfaces);
         
         environment->assign(node->name, klass);
     }
 
     void visit(InterfaceNode* node) override {
+        // Resolve parent interfaces
+        std::vector<std::shared_ptr<Interface>> parentIfaces;
+        for (auto& parentName : node->parentNames) {
+            Value parentVal = environment->get(parentName);
+            if (!std::holds_alternative<std::shared_ptr<Interface>>(parentVal)) {
+                throw std::runtime_error("'" + parentName + "' is not an interface");
+            }
+            parentIfaces.push_back(std::get<std::shared_ptr<Interface>>(parentVal));
+        }
+        
         environment->define(node->name, nullptr);
+        
+        // Create the interface
+        std::unordered_map<std::string, std::shared_ptr<Function>> methods;
+        for (auto& method : node->methods) {
+            auto func = std::make_shared<Function>(method, environment);
+            methods[method->name] = func;
+        }
+        
+        auto iface = std::make_shared<Interface>(node->name, methods, parentIfaces);
+        environment->assign(node->name, iface);
     }
 };
 
@@ -1083,16 +1152,59 @@ Value BoundMethod::call(InterpreterVisitor* interpreter, const std::vector<Value
     return nullptr;
 }
 
+// Implementation of Class::findMethod that depends on Interface (defined above)
+std::shared_ptr<Function> Class::findMethod(const std::string& methodName) const {
+    auto it = methods.find(methodName);
+    if (it != methods.end()) {
+        return it->second;
+    }
+    if (parent) {
+        return parent->findMethod(methodName);
+    }
+    for (auto& iface : interfaces) {
+        auto result = iface->findMethod(methodName);
+        if (result) return result;
+    }
+    return nullptr;
+}
+
 // Implementation of Class::call that depends on InterpreterVisitor
 Value Class::call(InterpreterVisitor* interpreter, const std::vector<Value>& arguments) {
+    if (isAbstract) {
+        throw std::runtime_error("Cannot instantiate abstract class '" + name + "'");
+    }
+    
+    // Verify all abstract methods from parent chain are implemented
+    auto klass = shared_from_this();
+    while (klass) {
+        for (auto& [methodName, method] : klass->methods) {
+            if (method->getDeclaration()->isAbstract) {
+                if (!findMethod(methodName) || findMethod(methodName)->getDeclaration()->isAbstract) {
+                    throw std::runtime_error("Class '" + name + "' must implement abstract method '" + methodName + "'");
+                }
+            }
+        }
+        klass = klass->parent;
+    }
+    
+    // Verify all interface methods are implemented
+    for (auto& iface : interfaces) {
+        for (auto& [methodName, method] : iface->getMethods()) {
+            auto impl = findMethod(methodName);
+            if (!impl || impl->getDeclaration()->isAbstract) {
+                throw std::runtime_error("Class '" + name + "' must implement interface method '" + methodName + "'");
+            }
+        }
+    }
+    
     std::shared_ptr<Instance> instance = std::make_shared<Instance>(shared_from_this());
     
     // Evaluate field initializers from the whole hierarchy
     std::vector<std::shared_ptr<Class>> hierarchy;
-    auto klass = shared_from_this();
-    while (klass) {
-        hierarchy.push_back(klass);
-        klass = klass->getParent();
+    auto hierarchyKlass = shared_from_this();
+    while (hierarchyKlass) {
+        hierarchy.push_back(hierarchyKlass);
+        hierarchyKlass = hierarchyKlass->getParent();
     }
     // Walk from topmost parent to most derived
     for (auto it = hierarchy.rbegin(); it != hierarchy.rend(); ++it) {
