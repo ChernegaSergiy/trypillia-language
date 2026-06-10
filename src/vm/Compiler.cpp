@@ -91,7 +91,11 @@ public:
     void visit(CompoundAssignExpr* node) override {}
     void visit(CallExpr* node) override {}
     void visit(VarStmt* node) override {}
-    void visit(BlockStmt* node) override {}
+    void visit(BlockStmt* node) override {
+        for (auto& stmt : node->statements) {
+            stmt->accept(this);
+        }
+    }
     void visit(IfStmt* node) override {
         node->condition->accept(this);
 
