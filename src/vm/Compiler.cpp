@@ -38,6 +38,14 @@ public:
     std::string currentClassName = "";
     std::string currentParentName = "";
 
+    struct LoopContext {
+        int startOffset;
+        int scopeDepth;
+        std::vector<int> breakJumps;
+        std::vector<int> continueJumps;
+    };
+    std::vector<LoopContext> loops;
+
     CompilerVisitor(Chunk* chunk) : chunk(chunk) {
         locals.push_back({"", 0});
     }
@@ -214,25 +222,52 @@ public:
     }
     void visit(WhileStmt* node) override {
         int loopStart = chunk->code.size();
+        loops.push_back({loopStart, scopeDepth, {}, {}});
+
         node->condition->accept(this);
         int exitJump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE));
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
         
         node->body->accept(this);
         
+        LoopContext loop = loops.back();
+        loops.pop_back();
+
+        for (int continueJump : loop.continueJumps) {
+            patchJump(continueJump);
+        }
+
         emitLoop(loopStart);
         patchJump(exitJump);
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+
+        for (int breakJump : loop.breakJumps) {
+            patchJump(breakJump);
+        }
     }
     void visit(DoWhileStmt* node) override {
         int loopStart = chunk->code.size();
+        loops.push_back({loopStart, scopeDepth, {}, {}});
+
         node->body->accept(this);
+
+        LoopContext loop = loops.back();
+        loops.pop_back();
+
+        for (int continueJump : loop.continueJumps) {
+            patchJump(continueJump);
+        }
+
         node->condition->accept(this);
         int exitJump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE));
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
         emitLoop(loopStart);
         patchJump(exitJump);
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+
+        for (int breakJump : loop.breakJumps) {
+            patchJump(breakJump);
+        }
     }
     void visit(ReturnStmt* node) override {
         if (node->value) {
@@ -242,12 +277,37 @@ public:
         }
         emitByte(static_cast<uint8_t>(OpCode::OP_RETURN));
     }
-    void visit(BreakStmt* node) override {}
-    void visit(ContinueStmt* node) override {}
+    void visit(BreakStmt* node) override {
+        if (loops.empty()) {
+            std::cerr << "Cannot 'break' outside of a loop." << std::endl;
+            return;
+        }
+        int loopScopeDepth = loops.back().scopeDepth;
+        for (int i = locals.size() - 1; i >= 0 && locals[i].depth > loopScopeDepth; i--) {
+            emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+        }
+        int jump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP));
+        loops.back().breakJumps.push_back(jump);
+    }
+    void visit(ContinueStmt* node) override {
+        if (loops.empty()) {
+            std::cerr << "Cannot 'continue' outside of a loop." << std::endl;
+            return;
+        }
+        int loopScopeDepth = loops.back().scopeDepth;
+        for (int i = locals.size() - 1; i >= 0 && locals[i].depth > loopScopeDepth; i--) {
+            emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+        }
+        int jump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP));
+        loops.back().continueJumps.push_back(jump);
+    }
     void visit(ForStmt* node) override {
+        beginScope();
         if (node->initializer) node->initializer->accept(this);
         
         int loopStart = chunk->code.size();
+        loops.push_back({loopStart, scopeDepth, {}, {}});
+
         int exitJump = -1;
         
         if (node->condition) {
@@ -257,6 +317,13 @@ public:
         }
         
         node->body->accept(this);
+        
+        LoopContext loop = loops.back();
+        loops.pop_back();
+
+        for (int continueJump : loop.continueJumps) {
+            patchJump(continueJump);
+        }
         
         if (node->increment) {
             node->increment->accept(this);
@@ -269,6 +336,12 @@ public:
             patchJump(exitJump);
             emitByte(static_cast<uint8_t>(OpCode::OP_POP));
         }
+
+        for (int breakJump : loop.breakJumps) {
+            patchJump(breakJump);
+        }
+        
+        endScope();
     }
     void visit(ForeachStmt* node) override {}
     void visit(SwitchStmt* node) override {
