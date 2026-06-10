@@ -556,7 +556,7 @@ public:
         emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), chunk->addConstant(node->name));
     }
     void visit(FieldDeclNode* node) override {}
-    void compileMethod(FunctionNode* node) {
+    void compileMethod(FunctionNode* node, ClassNode* classNode = nullptr) {
         auto func = std::make_shared<ObjFunction>();
         func->name = node->name;
         func->arity = node->params.size();
@@ -574,13 +574,31 @@ public:
         for (const auto& param : node->params) {
             funcCompiler.locals.push_back({param, 1});
         }
+
+        if (node->name == "init" && classNode) {
+            for (auto field : classNode->fields) {
+                if (field->initializer) {
+                    field->initializer->accept(&funcCompiler);
+                } else {
+                    funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_NIL));
+                }
+                funcCompiler.emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), 0);
+                funcCompiler.emitBytes(static_cast<uint8_t>(OpCode::OP_PROPERTY_SET), funcCompiler.chunk->addConstant(field->name));
+                funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+            }
+        }
         
         for (auto& stmt : node->body) {
             stmt->accept(&funcCompiler);
         }
         
-        funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_NIL));
-        funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_RETURN));
+        if (node->name == "init") {
+            funcCompiler.emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), 0);
+            funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_RETURN));
+        } else {
+            funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_NIL));
+            funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_RETURN));
+        }
         
         emitConstant(func);
         if (node->isStatic) {
@@ -618,8 +636,15 @@ public:
         }
         
         emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), chunk->addConstant(node->name));
+        bool hasInit = false;
         for (auto& method : node->methods) {
-            compileMethod(method);
+            if (method->name == "init") hasInit = true;
+            compileMethod(method, node);
+        }
+        if (!hasInit) {
+            auto dummyInit = new FunctionNode("init", {}, {});
+            compileMethod(dummyInit, node);
+            delete dummyInit;
         }
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
         
