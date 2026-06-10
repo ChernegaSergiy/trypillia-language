@@ -435,17 +435,37 @@ public:
     void accept(ASTVisitor* visitor) override;
 };
 
+class FieldDeclNode : public StmtNode {
+public:
+    std::string name;
+    ExprNode* initializer;
+    AccessModifier accessModifier;
+
+    FieldDeclNode(std::string name, ExprNode* initializer, AccessModifier accessModifier = AccessModifier::PUBLIC)
+        : name(name), initializer(initializer), accessModifier(accessModifier) {}
+
+    ~FieldDeclNode() {
+        delete initializer;
+    }
+
+    void accept(ASTVisitor* visitor) override;
+};
+
 class ClassNode : public StmtNode {
 public:
     std::string name;
     std::vector<FunctionNode*> methods;
+    std::vector<FieldDeclNode*> fields;
     
-    ClassNode(std::string name, std::vector<FunctionNode*> methods)
-        : name(name), methods(methods) {}
+    ClassNode(std::string name, std::vector<FunctionNode*> methods, std::vector<FieldDeclNode*> fields = {})
+        : name(name), methods(methods), fields(fields) {}
     
     ~ClassNode() {
         for (auto method : methods) {
             delete method;
+        }
+        for (auto field : fields) {
+            delete field;
         }
     }
     
@@ -483,6 +503,7 @@ public:
     virtual void visit(IndexGetExpr* node) = 0;
     virtual void visit(IndexSetExpr* node) = 0;
     virtual void visit(FunctionNode* node) = 0;
+    virtual void visit(FieldDeclNode* node) = 0;
     virtual void visit(ClassNode* node) = 0;
 };
 

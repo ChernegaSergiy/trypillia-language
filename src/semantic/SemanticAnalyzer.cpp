@@ -275,6 +275,18 @@ public:
         delete previous;
     }
     
+    void visit(FieldDeclNode* node) override {
+        Symbol fieldSymbol;
+        fieldSymbol.name = node->name;
+        fieldSymbol.type = "field";
+        fieldSymbol.isConst = false;
+        currentScope->define(fieldSymbol);
+        
+        if (node->initializer) {
+            node->initializer->accept(this);
+        }
+    }
+    
     void visit(ClassNode* node) override {
         Symbol classSymbol;
         classSymbol.name = node->name;
@@ -295,6 +307,10 @@ public:
         thisSymbol.isConst = true;
         currentScope->define(thisSymbol);
         
+        for (auto& field : node->fields) {
+            field->accept(this);
+        }
+
         for (auto& method : node->methods) {
             method->accept(this);
         }

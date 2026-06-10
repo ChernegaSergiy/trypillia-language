@@ -114,6 +114,10 @@ void FunctionNode::accept(ASTVisitor* visitor) {
     visitor->visit(this);
 }
 
+void FieldDeclNode::accept(ASTVisitor* visitor) {
+    visitor->visit(this);
+}
+
 void ClassNode::accept(ASTVisitor* visitor) {
     visitor->visit(this);
 }

@@ -506,6 +506,25 @@ StmtNode* Parser::varDeclaration() {
     return new VarStmt(name, initializer);
 }
 
+FieldDeclNode* Parser::parseFieldDecl(AccessModifier accessModifier) {
+    // Optionally consume 'let'
+    if (currentToken.type == TokenType::LET) {
+        advance();
+    }
+    
+    Token name = currentToken;
+    consume(TokenType::IDENTIFIER);
+    
+    ExprNode* initializer = nullptr;
+    if (currentToken.type == TokenType::ASSIGN) {
+        advance();
+        initializer = expression();
+    }
+    
+    consume(TokenType::SEMICOLON);
+    return new FieldDeclNode(name.lexeme, initializer, accessModifier);
+}
+
 FunctionNode* Parser::parseFunction(AccessModifier accessModifier) {
     consume(TokenType::FN);
     
@@ -549,6 +568,7 @@ ClassNode* Parser::parseClass() {
     // Parse class body
     consume(TokenType::LBRACE);
     std::vector<FunctionNode*> methods;
+    std::vector<FieldDeclNode*> fields;
     
     AccessModifier currentAccess = AccessModifier::PUBLIC;
     
@@ -561,6 +581,8 @@ ClassNode* Parser::parseClass() {
             currentAccess = AccessModifier::PRIVATE;
         } else if (currentToken.type == TokenType::FN) {
             methods.push_back(parseFunction(currentAccess));
+        } else if (currentToken.type == TokenType::LET || currentToken.type == TokenType::IDENTIFIER) {
+            fields.push_back(parseFieldDecl(currentAccess));
         } else {
             advance();
         }
@@ -568,7 +590,7 @@ ClassNode* Parser::parseClass() {
     
     consume(TokenType::RBRACE);
     
-    return new ClassNode(name.lexeme, methods);
+    return new ClassNode(name.lexeme, methods, fields);
 }
 
 ASTNode* Parser::declaration() {
