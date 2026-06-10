@@ -6,6 +6,8 @@
 namespace StdLib {
 namespace Core {
 
+    static VM* currentVM = nullptr;
+
     static VMValue printNative(int argCount, VMValue* args) {
         for (int i = 0; i < argCount; i++) {
             if (std::holds_alternative<double>(args[i])) {
@@ -90,7 +92,70 @@ namespace Core {
         return str;
     }
 
+    // --- Error ---
+    static VMValue errorInit(int argCount, VMValue* args) {
+        VMValue receiver = args[-1];
+        if (!std::holds_alternative<std::shared_ptr<ObjInstance>>(receiver)) return nullptr;
+        auto instance = std::get<std::shared_ptr<ObjInstance>>(receiver);
+        
+        instance->fields["message"] = argCount > 0 ? args[0] : VMValue(std::string("Unknown Error"));
+        instance->fields["code"] = argCount > 1 ? args[1] : VMValue(0.0);
+        return nullptr;
+    }
+
+    // --- Result ---
+    static VMValue resultOk(int argCount, VMValue* args) {
+        if (argCount != 1) return nullptr;
+        auto klass = std::get<std::shared_ptr<ObjClass>>(currentVM->globals["Result"]);
+        auto instance = std::make_shared<ObjInstance>(klass);
+        instance->fields["value"] = args[0];
+        instance->fields["isOk"] = true;
+        return instance;
+    }
+
+    static VMValue resultErr(int argCount, VMValue* args) {
+        if (argCount != 1) return nullptr;
+        auto klass = std::get<std::shared_ptr<ObjClass>>(currentVM->globals["Result"]);
+        auto instance = std::make_shared<ObjInstance>(klass);
+        instance->fields["error"] = args[0];
+        instance->fields["isOk"] = false;
+        return instance;
+    }
+
+    static VMValue resultIsOk(int argCount, VMValue* args) {
+        VMValue receiver = args[-1];
+        auto instance = std::get<std::shared_ptr<ObjInstance>>(receiver);
+        return instance->fields["isOk"];
+    }
+
+    static VMValue resultIsErr(int argCount, VMValue* args) {
+        VMValue receiver = args[-1];
+        auto instance = std::get<std::shared_ptr<ObjInstance>>(receiver);
+        return !std::get<bool>(instance->fields["isOk"]);
+    }
+
+    static VMValue resultUnwrap(int argCount, VMValue* args) {
+        VMValue receiver = args[-1];
+        auto instance = std::get<std::shared_ptr<ObjInstance>>(receiver);
+        if (!std::get<bool>(instance->fields["isOk"])) {
+            std::cerr << "Called unwrap() on an Err value!" << std::endl;
+            exit(1); // Panic
+        }
+        return instance->fields["value"];
+    }
+
+    static VMValue resultUnwrapErr(int argCount, VMValue* args) {
+        VMValue receiver = args[-1];
+        auto instance = std::get<std::shared_ptr<ObjInstance>>(receiver);
+        if (std::get<bool>(instance->fields["isOk"])) {
+            std::cerr << "Called unwrapErr() on an Ok value!" << std::endl;
+            exit(1); // Panic
+        }
+        return instance->fields["error"];
+    }
+
     void registerAll(VM* vm) {
+        currentVM = vm;
         vm->defineNative("print", -1, printNative);
         vm->defineNative("clock", 0, clockNative);
         vm->defineNative("len", 1, lenNative);
@@ -98,6 +163,19 @@ namespace Core {
         vm->defineNative("substring", 3, substringNative);
         vm->defineNative("toUpper", 1, toUpperNative);
         vm->defineNative("toLower", 1, toLowerNative);
+
+        auto errorClass = std::make_shared<ObjClass>("Error");
+        errorClass->methods["init"] = std::make_shared<ObjNative>("init", -1, errorInit);
+        vm->globals["Error"] = errorClass;
+
+        auto resultClass = std::make_shared<ObjClass>("Result");
+        resultClass->statics["ok"] = std::make_shared<ObjNative>("ok", 1, resultOk);
+        resultClass->statics["err"] = std::make_shared<ObjNative>("err", 1, resultErr);
+        resultClass->methods["isOk"] = std::make_shared<ObjNative>("isOk", 0, resultIsOk);
+        resultClass->methods["isErr"] = std::make_shared<ObjNative>("isErr", 0, resultIsErr);
+        resultClass->methods["unwrap"] = std::make_shared<ObjNative>("unwrap", 0, resultUnwrap);
+        resultClass->methods["unwrapErr"] = std::make_shared<ObjNative>("unwrapErr", 0, resultUnwrapErr);
+        vm->globals["Result"] = resultClass;
     }
 
     void registerSymbols(SymbolTable* scope) {
@@ -115,6 +193,16 @@ namespace Core {
         addFunc("substring");
         addFunc("toUpper");
         addFunc("toLower");
+
+        auto addClass = [&](const std::string& name) {
+            Symbol sym;
+            sym.name = name;
+            sym.type = "class";
+            sym.isConst = true;
+            scope->define(sym);
+        };
+        addClass("Error");
+        addClass("Result");
     }
 
 }
