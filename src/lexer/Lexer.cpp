@@ -35,7 +35,8 @@ static std::unordered_map<std::string, TokenType> keywords = {
     {"false", TokenType::FALSE},
     {"nil", TokenType::NIL},
     {"this", TokenType::THIS},
-    {"super", TokenType::SUPER}
+    {"super", TokenType::SUPER},
+    {"static", TokenType::STATIC}
 };
 
 Lexer::Lexer(const std::string &source) : source(source), currentIndex(0), line(1) {}
@@ -128,7 +129,11 @@ Token Lexer::nextToken() {
             }
         case '"': return string();
         case '?': return {TokenType::QUESTION, "?", line};
-        case ':': return {TokenType::COLON, ":", line};
+        case ':':
+            if (match(':')) {
+                return {TokenType::COLON_COLON, "::", line};
+            }
+            return {TokenType::COLON, ":", line};
         case '&':
             if (match('&')) {
                 return {TokenType::AND, "&&", line};

@@ -141,3 +141,15 @@ void InterfaceNode::accept(ASTVisitor* visitor) {
 void TraitNode::accept(ASTVisitor* visitor) {
     visitor->visit(this);
 }
+
+void StaticGetExpr::accept(ASTVisitor* visitor) {
+    visitor->visit(this);
+}
+
+void StaticCallExpr::accept(ASTVisitor* visitor) {
+    visitor->visit(this);
+}
+
+void StaticSetExpr::accept(ASTVisitor* visitor) {
+    visitor->visit(this);
+}

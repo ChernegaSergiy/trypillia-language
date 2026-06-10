@@ -145,6 +145,26 @@ ExprNode* Parser::call() {
             ExprNode* index = expression();
             consume(TokenType::RBRACKET);
             expr = new IndexGetExpr(expr, index);
+        } else if (match(TokenType::COLON_COLON)) {
+            if (!dynamic_cast<VariableExpr*>(expr)) {
+                throw std::runtime_error("Static access requires a class name");
+            }
+            Token className = dynamic_cast<VariableExpr*>(expr)->name;
+            Token member = currentToken;
+            consume(TokenType::IDENTIFIER);
+            if (match(TokenType::LPAREN)) {
+                std::vector<ExprNode*> arguments;
+                if (currentToken.type != TokenType::RPAREN) {
+                    do {
+                        arguments.push_back(expression());
+                    } while (match(TokenType::COMMA));
+                }
+                Token paren = currentToken;
+                consume(TokenType::RPAREN);
+                return new StaticCallExpr(className, member, paren, arguments);
+            } else {
+                return new StaticGetExpr(className, member);
+            }
         } else if (currentToken.type == TokenType::PLUS_PLUS ||
                    currentToken.type == TokenType::MINUS_MINUS) {
             Token op = currentToken;
@@ -301,6 +321,12 @@ ExprNode* Parser::assignment() {
         if (IndexGetExpr* indexGetExpr = dynamic_cast<IndexGetExpr*>(expr)) {
             return new IndexSetExpr(indexGetExpr->object, indexGetExpr->index, value);
         }
+        
+        if (StaticGetExpr* staticGetExpr = dynamic_cast<StaticGetExpr*>(expr)) {
+            return new StaticSetExpr(staticGetExpr->className, staticGetExpr->memberName, value);
+        }
+        
+        throw std::runtime_error("Invalid assignment target");
         
         throw std::runtime_error("Invalid assignment target");
     }
@@ -610,7 +636,7 @@ FieldDeclNode* Parser::parseFieldDecl(AccessModifier accessModifier) {
     return new FieldDeclNode(name.lexeme, initializer, accessModifier, isConst);
 }
 
-FunctionNode* Parser::parseFunction(AccessModifier accessModifier, bool isAbstract) {
+FunctionNode* Parser::parseFunction(AccessModifier accessModifier, bool isAbstract, bool isStatic) {
     consume(TokenType::FN);
     
     Token name = currentToken;
@@ -634,6 +660,7 @@ FunctionNode* Parser::parseFunction(AccessModifier accessModifier, bool isAbstra
         FunctionNode* node = new FunctionNode(name.lexeme, parameters, {});
         node->accessModifier = accessModifier;
         node->isAbstract = true;
+        node->isStatic = isStatic;
         return node;
     }
     
@@ -649,6 +676,7 @@ FunctionNode* Parser::parseFunction(AccessModifier accessModifier, bool isAbstra
     
     FunctionNode* node = new FunctionNode(name.lexeme, parameters, body);
     node->accessModifier = accessModifier;
+    node->isStatic = isStatic;
     return node;
 }
 
@@ -700,6 +728,17 @@ ClassNode* Parser::parseClass() {
             methods.push_back(parseFunction(currentAccess, true));
         } else if (currentToken.type == TokenType::FN) {
             methods.push_back(parseFunction(currentAccess));
+        } else if (currentToken.type == TokenType::STATIC) {
+            advance();
+            if (currentToken.type == TokenType::FN) {
+                methods.push_back(parseFunction(currentAccess, false, true));
+            } else if (currentToken.type == TokenType::LET || currentToken.type == TokenType::IDENTIFIER || currentToken.type == TokenType::CONST) {
+                auto field = parseFieldDecl(currentAccess);
+                field->isStatic = true;
+                fields.push_back(field);
+            } else {
+                throw std::runtime_error("Expected 'fn' or field declaration after 'static'");
+            }
         } else if (currentToken.type == TokenType::LET || currentToken.type == TokenType::IDENTIFIER || currentToken.type == TokenType::CONST) {
             fields.push_back(parseFieldDecl(currentAccess));
         } else {

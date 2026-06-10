@@ -56,7 +56,7 @@ private:
     ASTNode* declaration();
     StmtNode* varDeclaration();
     FieldDeclNode* parseFieldDecl(AccessModifier accessModifier = AccessModifier::PUBLIC);
-    FunctionNode* parseFunction(AccessModifier accessModifier = AccessModifier::PUBLIC, bool isAbstract = false);
+    FunctionNode* parseFunction(AccessModifier accessModifier = AccessModifier::PUBLIC, bool isAbstract = false, bool isStatic = false);
     ClassNode* parseClass();
     InterfaceNode* parseInterface();
     TraitNode* parseTrait();

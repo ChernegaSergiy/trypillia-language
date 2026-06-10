@@ -471,11 +471,12 @@ public:
     std::vector<StmtNode*> body;
     AccessModifier accessModifier;
     bool isAbstract;
-    
+    bool isStatic;
+
     FunctionNode(std::string name, std::vector<std::string> params, std::vector<StmtNode*> body)
-        : name(name), params(params), body(body), accessModifier(AccessModifier::PUBLIC), isAbstract(false) {}
+        : name(name), params(params), body(body), accessModifier(AccessModifier::PUBLIC), isAbstract(false), isStatic(false) {}
     
-    FunctionNode() : name(""), params(), body(), accessModifier(AccessModifier::PUBLIC), isAbstract(false) {}
+    FunctionNode() : name(""), params(), body(), accessModifier(AccessModifier::PUBLIC), isAbstract(false), isStatic(false) {}
     
     ~FunctionNode() {
         for (auto stmt : body) {
@@ -492,9 +493,10 @@ public:
     ExprNode* initializer;
     AccessModifier accessModifier;
     bool isConst;
+    bool isStatic;
 
     FieldDeclNode(std::string name, ExprNode* initializer, AccessModifier accessModifier = AccessModifier::PUBLIC, bool isConst = false)
-        : name(name), initializer(initializer), accessModifier(accessModifier), isConst(isConst) {}
+        : name(name), initializer(initializer), accessModifier(accessModifier), isConst(isConst), isStatic(false) {}
 
     ~FieldDeclNode() {
         delete initializer;
@@ -563,6 +565,52 @@ public:
     void accept(ASTVisitor* visitor) override;
 };
 
+class StaticGetExpr : public ExprNode {
+public:
+    Token className;
+    Token memberName;
+
+    StaticGetExpr(Token className, Token memberName)
+        : className(className), memberName(memberName) {}
+
+    void accept(ASTVisitor* visitor) override;
+};
+
+class StaticCallExpr : public ExprNode {
+public:
+    Token className;
+    Token memberName;
+    Token paren;
+    std::vector<ExprNode*> arguments;
+
+    StaticCallExpr(Token className, Token memberName, Token paren, std::vector<ExprNode*> arguments)
+        : className(className), memberName(memberName), paren(paren), arguments(arguments) {}
+
+    ~StaticCallExpr() {
+        for (auto arg : arguments) {
+            delete arg;
+        }
+    }
+
+    void accept(ASTVisitor* visitor) override;
+};
+
+class StaticSetExpr : public ExprNode {
+public:
+    Token className;
+    Token memberName;
+    ExprNode* value;
+
+    StaticSetExpr(Token className, Token memberName, ExprNode* value)
+        : className(className), memberName(memberName), value(value) {}
+
+    ~StaticSetExpr() {
+        delete value;
+    }
+
+    void accept(ASTVisitor* visitor) override;
+};
+
 class ASTVisitor {
 public:
     virtual ~ASTVisitor() = default;
@@ -601,6 +649,9 @@ public:
     virtual void visit(ClassNode* node) = 0;
     virtual void visit(InterfaceNode* node) = 0;
     virtual void visit(TraitNode* node) = 0;
+    virtual void visit(StaticGetExpr* node) = 0;
+    virtual void visit(StaticCallExpr* node) = 0;
+    virtual void visit(StaticSetExpr* node) = 0;
 };
 
 #endif // AST_H
