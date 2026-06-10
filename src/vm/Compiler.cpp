@@ -409,6 +409,12 @@ public:
             emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), chunk->addConstant(node->parentName));
             emitByte(static_cast<uint8_t>(OpCode::OP_INHERIT));
         }
+
+        for (auto& traitName : node->interfaceNames) {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), chunk->addConstant(node->name));
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), chunk->addConstant(traitName));
+            emitByte(static_cast<uint8_t>(OpCode::OP_MIXIN));
+        }
         
         emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), chunk->addConstant(node->name));
         for (auto& method : node->methods) {
@@ -419,8 +425,20 @@ public:
         currentClassName = enclosingClassName;
         currentParentName = enclosingParentName;
     }
-    void visit(InterfaceNode* node) override {}
-    void visit(TraitNode* node) override {}
+    void visit(InterfaceNode* node) override {
+        emitBytes(static_cast<uint8_t>(OpCode::OP_CLASS), chunk->addConstant(node->name));
+        emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), chunk->addConstant(node->name));
+    }
+    void visit(TraitNode* node) override {
+        emitBytes(static_cast<uint8_t>(OpCode::OP_CLASS), chunk->addConstant(node->name));
+        emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), chunk->addConstant(node->name));
+        
+        emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), chunk->addConstant(node->name));
+        for (auto& method : node->methods) {
+            compileMethod(method);
+        }
+        emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+    }
     void visit(StaticGetExpr* node) override {}
     void visit(StaticCallExpr* node) override {}
     void visit(StaticSetExpr* node) override {}

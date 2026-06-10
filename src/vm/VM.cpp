@@ -402,6 +402,20 @@ InterpretResult VM::run() {
                 }
                 break;
             }
+            case static_cast<uint8_t>(OpCode::OP_MIXIN): {
+                VMValue mixinVal = pop();
+                VMValue targetVal = pop();
+                if (!std::holds_alternative<std::shared_ptr<ObjClass>>(mixinVal)) {
+                    std::cerr << "Mixin must be a class/trait." << std::endl;
+                    return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                }
+                auto targetClass = std::get<std::shared_ptr<ObjClass>>(targetVal);
+                auto mixinClass = std::get<std::shared_ptr<ObjClass>>(mixinVal);
+                for (auto const& [name, method] : mixinClass->methods) {
+                    targetClass->methods[name] = method;
+                }
+                break;
+            }
             case static_cast<uint8_t>(OpCode::OP_GET_SUPER): {
                 std::string methodName = std::get<std::string>(READ_CONSTANT());
                 VMValue superclassVal = pop();
