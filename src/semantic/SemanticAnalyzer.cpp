@@ -288,7 +288,7 @@ public:
         Symbol fieldSymbol;
         fieldSymbol.name = node->name;
         fieldSymbol.type = "field";
-        fieldSymbol.isConst = false;
+        fieldSymbol.isConst = node->isConst;
         currentScope->define(fieldSymbol);
         
         if (node->initializer) {

@@ -8,6 +8,7 @@
 #include <memory>
 #include <unordered_map>
 #include <functional>
+#include <unordered_set>
 #include <vector>
 
 // Forward declarations
@@ -170,6 +171,7 @@ public:
         std::string name;
         ExprNode* initializer;
         AccessModifier accessModifier;
+        bool isConst;
     };
 
 private:
@@ -178,6 +180,7 @@ private:
     std::vector<FieldDecl> fieldDecls;
     std::shared_ptr<Environment> closure;
     std::unordered_map<std::string, AccessModifier> fieldAccess;
+    std::unordered_set<std::string> fieldConst;
     std::shared_ptr<Class> parent;
     
 public:
@@ -189,6 +192,7 @@ public:
         : name(name), methods(methods), fieldDecls(fieldDecls), closure(closure), parent(parent) {
         for (auto& fd : fieldDecls) {
             fieldAccess[fd.name] = fd.accessModifier;
+            if (fd.isConst) fieldConst.insert(fd.name);
         }
     }
     
@@ -226,9 +230,17 @@ public:
     void setFieldDecls(const std::vector<FieldDecl>& fds) { 
         fieldDecls = fds;
         fieldAccess.clear();
+        fieldConst.clear();
         for (auto& fd : fieldDecls) {
             fieldAccess[fd.name] = fd.accessModifier;
+            if (fd.isConst) fieldConst.insert(fd.name);
         }
+    }
+    
+    bool isFieldConst(const std::string& fieldName) {
+        if (fieldConst.find(fieldName) != fieldConst.end()) return true;
+        if (parent) return parent->isFieldConst(fieldName);
+        return false;
     }
     
     const std::vector<FieldDecl>& getFieldDecls() const { return fieldDecls; }
@@ -732,9 +744,6 @@ public:
         try {
             Value thisVal = environment->get("this");
             if (std::holds_alternative<std::shared_ptr<Instance>>(thisVal)) {
-                auto thisInstance = std::get<std::shared_ptr<Instance>>(thisVal);
-                auto currentClass = thisInstance->getClass();
-                
                 if (modifier == AccessModifier::PRIVATE) {
                     if (currentClass == declaringClass) return;
                 } else if (modifier == AccessModifier::PROTECTED) {
@@ -763,6 +772,11 @@ public:
         auto [fieldMod, fieldDeclClass] = instance->getClass()->getFieldAccess(node->name.lexeme);
         if (fieldMod != AccessModifier::PUBLIC) {
             checkAccess(instance, node->name.lexeme, fieldDeclClass, fieldMod);
+        }
+        
+        // Enforce const fields
+        if (instance->getClass()->isFieldConst(node->name.lexeme)) {
+            throw std::runtime_error("Cannot assign to const field '" + node->name.lexeme + "'");
         }
         
         instance->set(node->name.lexeme, lastValue);
@@ -970,7 +984,7 @@ public:
         
         std::vector<Class::FieldDecl> fieldDecls;
         for (auto& field : node->fields) {
-            fieldDecls.push_back({field->name, field->initializer, field->accessModifier});
+            fieldDecls.push_back({field->name, field->initializer, field->accessModifier, field->isConst});
         }
         
         // Update the class with methods and fields

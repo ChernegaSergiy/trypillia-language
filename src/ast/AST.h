@@ -451,9 +451,10 @@ public:
     std::string name;
     ExprNode* initializer;
     AccessModifier accessModifier;
+    bool isConst;
 
-    FieldDeclNode(std::string name, ExprNode* initializer, AccessModifier accessModifier = AccessModifier::PUBLIC)
-        : name(name), initializer(initializer), accessModifier(accessModifier) {}
+    FieldDeclNode(std::string name, ExprNode* initializer, AccessModifier accessModifier = AccessModifier::PUBLIC, bool isConst = false)
+        : name(name), initializer(initializer), accessModifier(accessModifier), isConst(isConst) {}
 
     ~FieldDeclNode() {
         delete initializer;

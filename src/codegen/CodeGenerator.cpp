@@ -458,7 +458,7 @@ public:
         }
         for (auto& field : publicFields) {
             indent();
-            code << "auto " << field->name;
+            code << (field->isConst ? "const auto " : "auto ") << field->name;
             if (field->initializer) {
                 code << " = ";
                 field->initializer->accept(this);
@@ -475,7 +475,7 @@ public:
             }
             for (auto& field : privateFields) {
                 indent();
-                code << "auto " << field->name;
+                code << (field->isConst ? "const auto " : "auto ") << field->name;
                 if (field->initializer) {
                     code << " = ";
                     field->initializer->accept(this);

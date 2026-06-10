@@ -524,6 +524,11 @@ StmtNode* Parser::varDeclaration() {
 }
 
 FieldDeclNode* Parser::parseFieldDecl(AccessModifier accessModifier) {
+    bool isConst = (currentToken.type == TokenType::CONST);
+    if (isConst) {
+        advance();
+    }
+    
     // Optionally consume 'let'
     if (currentToken.type == TokenType::LET) {
         advance();
@@ -536,10 +541,12 @@ FieldDeclNode* Parser::parseFieldDecl(AccessModifier accessModifier) {
     if (currentToken.type == TokenType::ASSIGN) {
         advance();
         initializer = expression();
+    } else if (isConst) {
+        throw std::runtime_error("Constant field requires an initializer");
     }
     
     consume(TokenType::SEMICOLON);
-    return new FieldDeclNode(name.lexeme, initializer, accessModifier);
+    return new FieldDeclNode(name.lexeme, initializer, accessModifier, isConst);
 }
 
 FunctionNode* Parser::parseFunction(AccessModifier accessModifier) {
@@ -610,7 +617,7 @@ ClassNode* Parser::parseClass() {
             currentAccess = AccessModifier::PROTECTED;
         } else if (currentToken.type == TokenType::FN) {
             methods.push_back(parseFunction(currentAccess));
-        } else if (currentToken.type == TokenType::LET || currentToken.type == TokenType::IDENTIFIER) {
+        } else if (currentToken.type == TokenType::LET || currentToken.type == TokenType::IDENTIFIER || currentToken.type == TokenType::CONST) {
             fields.push_back(parseFieldDecl(currentAccess));
         } else {
             advance();
