@@ -1,0 +1,83 @@
+#include "OS.h"
+#include "../StdLib.h"
+#include <cstdlib>
+#include <unistd.h>
+#include <limits.h>
+#include <array>
+#include <memory>
+#include <stdexcept>
+#include <string>
+
+namespace StdLib {
+namespace OSModule {
+
+    static VM* currentVM = nullptr;
+
+    static VMValue osGetEnv(int argCount, VMValue* args) {
+        if (argCount != 1 || !std::holds_alternative<std::string>(args[0])) return nullptr;
+        std::string name = std::get<std::string>(args[0]);
+        const char* val = std::getenv(name.c_str());
+        if (val == nullptr) {
+            return makeResultErr(currentVM, "Environment variable not found");
+        }
+        return makeResultOk(currentVM, std::string(val));
+    }
+
+    static VMValue osCwd(int argCount, VMValue* args) {
+        char cwd[PATH_MAX];
+        if (getcwd(cwd, sizeof(cwd)) != nullptr) {
+            return makeResultOk(currentVM, std::string(cwd));
+        }
+        return makeResultErr(currentVM, "Failed to get current working directory");
+    }
+
+    static VMValue osExec(int argCount, VMValue* args) {
+        if (argCount != 1 || !std::holds_alternative<std::string>(args[0])) return nullptr;
+        std::string cmd = std::get<std::string>(args[0]);
+        
+        std::array<char, 128> buffer;
+        std::string result;
+        
+        // Use popen to run the command and read its stdout
+        std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
+        if (!pipe) {
+            return makeResultErr(currentVM, "popen() failed!");
+        }
+        
+        while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+            result += buffer.data();
+        }
+        
+        return makeResultOk(currentVM, result);
+    }
+
+    static VMValue osExit(int argCount, VMValue* args) {
+        int exitCode = 0;
+        if (argCount == 1 && std::holds_alternative<double>(args[0])) {
+            exitCode = static_cast<int>(std::get<double>(args[0]));
+        }
+        std::exit(exitCode);
+        return nullptr; // Unreachable
+    }
+
+    void registerAll(VM* vm) {
+        currentVM = vm;
+        auto osClass = std::make_shared<ObjClass>("OS");
+        
+        osClass->statics["getEnv"] = std::make_shared<ObjNative>("getEnv", 1, osGetEnv);
+        osClass->statics["cwd"] = std::make_shared<ObjNative>("cwd", 0, osCwd);
+        osClass->statics["exec"] = std::make_shared<ObjNative>("exec", 1, osExec);
+        osClass->statics["exit"] = std::make_shared<ObjNative>("exit", -1, osExit); // -1 means variable number of args (0 or 1)
+
+        vm->globals["OS"] = osClass;
+    }
+
+    void registerSymbols(SymbolTable* scope) {
+        Symbol sym;
+        sym.name = "OS";
+        sym.type = "class";
+        sym.isConst = true;
+        scope->define(sym);
+    }
+}
+}

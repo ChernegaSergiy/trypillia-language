@@ -6,6 +6,7 @@
 #include "string/String.h"
 #include "time/Time.h"
 #include "list/List.h"
+#include "os/OS.h"
 
 namespace StdLib {
     void registerAll(VM* vm) {
@@ -17,6 +18,7 @@ namespace StdLib {
         StringModule::registerAll(vm);
         TimeModule::registerAll(vm);
         ListModule::registerAll(vm);
+        OSModule::registerAll(vm);
     }
 
     void registerSymbols(SymbolTable* scope) {
@@ -28,6 +30,7 @@ namespace StdLib {
         StringModule::registerSymbols(scope);
         TimeModule::registerSymbols(scope);
         ListModule::registerSymbols(scope);
+        OSModule::registerSymbols(scope);
     }
 
     VMValue makeResultOk(VM* vm, VMValue value) {
