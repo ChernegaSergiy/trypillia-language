@@ -189,6 +189,9 @@ private:
     bool isAbstract;
     std::vector<std::shared_ptr<Interface>> interfaces;
     std::vector<std::shared_ptr<Trait>> traits;
+    std::unordered_map<std::string, std::shared_ptr<Function>> staticMethods;
+    std::unordered_map<std::string, Value> staticFields;
+    std::unordered_set<std::string> staticFieldNames;
     
 public:
     Class(const std::string& name, 
@@ -254,6 +257,30 @@ public:
     
     const std::vector<FieldDecl>& getFieldDecls() const { return fieldDecls; }
     std::shared_ptr<Environment> getClosure() const { return closure; }
+    
+    void setStaticMethods(const std::unordered_map<std::string, std::shared_ptr<Function>>& sm) { staticMethods = sm; }
+    const std::unordered_map<std::string, std::shared_ptr<Function>>& getStaticMethods() const { return staticMethods; }
+    std::shared_ptr<Function> findStaticMethod(const std::string& methodName) const {
+        auto it = staticMethods.find(methodName);
+        if (it != staticMethods.end()) return it->second;
+        if (parent) return parent->findStaticMethod(methodName);
+        return nullptr;
+    }
+    
+    void setStaticFieldNames(const std::unordered_set<std::string>& names) { staticFieldNames = names; }
+    bool isStaticField(const std::string& fieldName) const {
+        if (staticFieldNames.find(fieldName) != staticFieldNames.end()) return true;
+        if (parent) return parent->isStaticField(fieldName);
+        return false;
+    }
+    void setStaticField(const std::string& name, const Value& value) { staticFields[name] = value; }
+    Value getStaticField(const std::string& fieldName) const {
+        auto it = staticFields.find(fieldName);
+        if (it != staticFields.end()) return it->second;
+        if (parent) return parent->getStaticField(fieldName);
+        return nullptr;
+    }
+    const std::unordered_map<std::string, Value>& getStaticFields() const { return staticFields; }
     
     std::string toString() const {
         return "<class " + name + ">";
@@ -1120,14 +1147,33 @@ public:
         klass->setAbstract(node->isAbstract);
         
         std::unordered_map<std::string, std::shared_ptr<Function>> methods;
+        std::unordered_map<std::string, std::shared_ptr<Function>> staticMethods;
         for (auto& method : node->methods) {
             std::shared_ptr<Function> function = std::make_shared<Function>(method, environment, method->accessModifier, klass);
-            methods[method->name] = function;
+            if (method->isStatic) {
+                staticMethods[method->name] = function;
+            } else {
+                methods[method->name] = function;
+            }
         }
         
         std::vector<Class::FieldDecl> fieldDecls;
+        std::unordered_set<std::string> staticFieldNames;
         for (auto& field : node->fields) {
             fieldDecls.push_back({field->name, field->initializer, field->accessModifier, field->isConst});
+            if (field->isStatic) {
+                staticFieldNames.insert(field->name);
+            }
+        }
+        
+        // Initialize static fields
+        for (auto& field : node->fields) {
+            if (field->isStatic && field->initializer) {
+                field->initializer->accept(this);
+                klass->setStaticField(field->name, lastValue);
+            } else if (field->isStatic) {
+                klass->setStaticField(field->name, nullptr);
+            }
         }
         
         // Resolve interfaces and traits
@@ -1146,7 +1192,9 @@ public:
         
         // Update the class with methods, fields, interfaces, and traits
         klass->setMethods(methods);
+        klass->setStaticMethods(staticMethods);
         klass->setFieldDecls(fieldDecls);
+        klass->setStaticFieldNames(staticFieldNames);
         klass->setInterfaces(interfaces);
         klass->setTraits(traits);
         klass->applyTraitMethods();
@@ -1200,6 +1248,65 @@ public:
         
         auto trait = std::make_shared<Trait>(node->name, methods, parentTraits);
         environment->assign(node->name, trait);
+    }
+
+    void visit(StaticGetExpr* node) override {
+        Value classVal = environment->get(node->className.lexeme);
+        if (!std::holds_alternative<std::shared_ptr<Class>>(classVal)) {
+            throw std::runtime_error("'" + node->className.lexeme + "' is not a class");
+        }
+        auto klass = std::get<std::shared_ptr<Class>>(classVal);
+        lastValue = klass->getStaticField(node->memberName.lexeme);
+    }
+
+    void visit(StaticCallExpr* node) override {
+        Value classVal = environment->get(node->className.lexeme);
+        if (!std::holds_alternative<std::shared_ptr<Class>>(classVal)) {
+            throw std::runtime_error("'" + node->className.lexeme + "' is not a class");
+        }
+        auto klass = std::get<std::shared_ptr<Class>>(classVal);
+        
+        auto method = klass->findStaticMethod(node->memberName.lexeme);
+        if (!method) {
+            throw std::runtime_error("Static method '" + node->memberName.lexeme + "' not found in class '" + node->className.lexeme + "'");
+        }
+        
+        std::vector<Value> args;
+        for (auto& arg : node->arguments) {
+            arg->accept(this);
+            args.push_back(lastValue);
+        }
+        
+        // Create environment with static method's closure
+        auto env = std::make_shared<Environment>(method->getClosure());
+        for (size_t i = 0; i < method->getDeclaration()->params.size(); i++) {
+            env->define(method->getDeclaration()->params[i], args[i]);
+        }
+        
+        auto prevEnv = environment;
+        environment = env;
+        
+        try {
+            executeBlock(method->getDeclaration()->body, env);
+        } catch (const ReturnException& returnValue) {
+            lastValue = returnValue.value;
+            environment = prevEnv;
+            return;
+        }
+        
+        lastValue = nullptr;
+        environment = prevEnv;
+    }
+
+    void visit(StaticSetExpr* node) override {
+        Value classVal = environment->get(node->className.lexeme);
+        if (!std::holds_alternative<std::shared_ptr<Class>>(classVal)) {
+            throw std::runtime_error("'" + node->className.lexeme + "' is not a class");
+        }
+        auto klass = std::get<std::shared_ptr<Class>>(classVal);
+        
+        node->value->accept(this);
+        klass->setStaticField(node->memberName.lexeme, lastValue);
     }
 };
 

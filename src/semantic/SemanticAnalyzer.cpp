@@ -393,6 +393,10 @@ public:
             method->accept(this);
         }
     }
+
+    void visit(StaticGetExpr* node) override {}
+    void visit(StaticCallExpr* node) override {}
+    void visit(StaticSetExpr* node) override {}
 };
 
 void SemanticAnalyzer::analyze(ASTNode* ast) {
