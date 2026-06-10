@@ -42,6 +42,18 @@ InterpretResult VM::run() {
                 push(constant);
                 break;
             }
+            case static_cast<uint8_t>(OpCode::OP_TRUE): {
+                push(true);
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_FALSE): {
+                push(false);
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_NIL): {
+                push(nullptr);
+                break;
+            }
             case static_cast<uint8_t>(OpCode::OP_ADD): {
                 VMValue b = pop();
                 VMValue a = pop();
