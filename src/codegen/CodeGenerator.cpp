@@ -258,12 +258,7 @@ public:
     void visit(VarStmt* node) override {
         indent();
         
-        // Determine variable type
-        std::string type = "auto";
-        if (node->initializer) {
-            // In a real compiler, we would do type inference here
-            // For now, we'll just use 'auto'
-        }
+        std::string type = node->isConst ? "const auto" : "auto";
         
         code << type << " " << node->name.lexeme << " = ";
         

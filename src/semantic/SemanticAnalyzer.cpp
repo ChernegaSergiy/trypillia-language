@@ -165,7 +165,7 @@ public:
         Symbol symbol;
         symbol.name = node->name.lexeme;
         symbol.type = ""; // Type inference would go here
-        symbol.isConst = false;
+        symbol.isConst = node->isConst;
         
         if (!currentScope->define(symbol)) {
             std::string error = "Variable '" + node->name.lexeme + "' already defined in this scope";

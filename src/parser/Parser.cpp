@@ -495,8 +495,8 @@ StmtNode* Parser::statement() {
 // Declaration parsers
 StmtNode* Parser::varDeclaration() {
     bool isConst = (currentToken.type == TokenType::CONST);
+    consume(isConst ? TokenType::CONST : TokenType::LET);
     if (isConst) {
-        advance();
         consume(TokenType::LET);
     }
     
