@@ -8,6 +8,7 @@ static std::unordered_map<std::string, TokenType> keywords = {
     {"class", TokenType::CLASS},
     {"fn", TokenType::FN},
     {"let", TokenType::LET},
+    {"const", TokenType::CONST},
     {"virtual", TokenType::VIRTUAL},
     {"override", TokenType::OVERRIDE},
     {"public", TokenType::PUBLIC},

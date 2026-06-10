@@ -284,9 +284,10 @@ class VarStmt : public StmtNode {
 public:
     Token name;
     ExprNode* initializer;
+    bool isConst;
     
-    VarStmt(Token name, ExprNode* initializer) 
-        : name(name), initializer(initializer) {}
+    VarStmt(Token name, ExprNode* initializer, bool isConst = false) 
+        : name(name), initializer(initializer), isConst(isConst) {}
     
     ~VarStmt() {
         delete initializer;

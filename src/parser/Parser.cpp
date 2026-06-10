@@ -494,16 +494,24 @@ StmtNode* Parser::statement() {
 
 // Declaration parsers
 StmtNode* Parser::varDeclaration() {
+    bool isConst = (currentToken.type == TokenType::CONST);
+    if (isConst) {
+        advance();
+        consume(TokenType::LET);
+    }
+    
     Token name = currentToken;
     consume(TokenType::IDENTIFIER);
     
     ExprNode* initializer = nullptr;
     if (match(TokenType::ASSIGN)) {
         initializer = expression();
+    } else if (isConst) {
+        throw std::runtime_error("Constant declaration requires an initializer");
     }
     
     consume(TokenType::SEMICOLON);
-    return new VarStmt(name, initializer);
+    return new VarStmt(name, initializer, isConst);
 }
 
 FieldDeclNode* Parser::parseFieldDecl(AccessModifier accessModifier) {
@@ -602,8 +610,7 @@ ASTNode* Parser::declaration() {
         return parseFunction();
     }
     
-    if (currentToken.type == TokenType::LET) {
-        advance();
+    if (currentToken.type == TokenType::LET || currentToken.type == TokenType::CONST) {
         return varDeclaration();
     }
     
