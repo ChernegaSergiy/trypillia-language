@@ -266,6 +266,8 @@ InterpretResult VM::run(int targetFrameDepth) {
                 VMValue a = pop();
                 if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
                     push(std::get<double>(a) - std::get<double>(b));
+                } else {
+                    return runtimeError("Operands must be numbers.");
                 }
                 break;
             }
@@ -274,6 +276,8 @@ InterpretResult VM::run(int targetFrameDepth) {
                 VMValue a = pop();
                 if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
                     push(std::get<double>(a) * std::get<double>(b));
+                } else {
+                    return runtimeError("Operands must be numbers.");
                 }
                 break;
             }
@@ -282,6 +286,8 @@ InterpretResult VM::run(int targetFrameDepth) {
                 VMValue a = pop();
                 if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
                     push(std::get<double>(a) / std::get<double>(b));
+                } else {
+                    return runtimeError("Operands must be numbers.");
                 }
                 break;
             }
@@ -304,6 +310,8 @@ InterpretResult VM::run(int targetFrameDepth) {
                 VMValue a = pop();
                 if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
                     push(std::get<double>(a) < std::get<double>(b));
+                } else {
+                    return runtimeError("Operands must be numbers.");
                 }
                 break;
             }
@@ -312,6 +320,8 @@ InterpretResult VM::run(int targetFrameDepth) {
                 VMValue a = pop();
                 if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
                     push(std::get<double>(a) > std::get<double>(b));
+                } else {
+                    return runtimeError("Operands must be numbers.");
                 }
                 break;
             }
