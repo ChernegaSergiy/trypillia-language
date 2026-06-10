@@ -35,7 +35,9 @@ private:
     }
 
 public:
-    CompilerVisitor(Chunk* chunk) : chunk(chunk) {}
+    CompilerVisitor(Chunk* chunk) : chunk(chunk) {
+        locals.push_back({"", 0});
+    }
 
     void emitByte(uint8_t byte) {
         chunk->write(byte, 1);
@@ -355,8 +357,9 @@ public:
 
         CompilerVisitor funcCompiler(func->chunk.get());
         
+        funcCompiler.locals[0].name = "this";
+        
         funcCompiler.beginScope();
-        funcCompiler.locals.push_back({"this", 1});
         
         for (const auto& param : node->params) {
             funcCompiler.locals.push_back({param, 1});

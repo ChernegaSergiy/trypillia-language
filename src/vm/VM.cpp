@@ -225,12 +225,12 @@ InterpretResult VM::run() {
             }
             case static_cast<uint8_t>(OpCode::OP_GET_LOCAL): {
                 uint8_t slot = READ_BYTE();
-                push(stack[frame->stackStart + 1 + slot]);
+                push(stack[frame->stackStart + slot]);
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_SET_LOCAL): {
                 uint8_t slot = READ_BYTE();
-                stack[frame->stackStart + 1 + slot] = peek(0);
+                stack[frame->stackStart + slot] = peek(0);
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_LOOP): {
