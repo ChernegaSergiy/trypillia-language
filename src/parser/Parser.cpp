@@ -112,7 +112,23 @@ ExprNode* Parser::primary() {
         return new ListExpr(elements);
     }
     
-    throw std::runtime_error("Expected expression");
+    if (match(TokenType::LBRACE)) {
+        std::vector<std::pair<ExprNode*, ExprNode*>> elements;
+        
+        if (currentToken.type != TokenType::RBRACE) {
+            do {
+                ExprNode* key = expression();
+                consume(TokenType::COLON);
+                ExprNode* value = expression();
+                elements.push_back({key, value});
+            } while (match(TokenType::COMMA));
+        }
+        
+        consume(TokenType::RBRACE);
+        return new DictExpr(elements);
+    }
+
+    throw std::runtime_error("Unexpected token in expression: " + currentToken.lexeme);
 }
 
 // Call expressions and member access

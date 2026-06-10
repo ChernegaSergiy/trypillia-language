@@ -157,3 +157,4 @@ void StaticSetExpr::accept(ASTVisitor* visitor) {
 void LoadStmt::accept(ASTVisitor* visitor) {
     visitor->visit(this);
 }
+void DictExpr::accept(ASTVisitor* visitor) { visitor->visit(this); }

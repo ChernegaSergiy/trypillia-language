@@ -1,4 +1,4 @@
-﻿#ifndef AST_H
+#ifndef AST_H
 #define AST_H
 
 #include <vector>
@@ -239,6 +239,22 @@ public:
 
     ~ListExpr() {
         for (auto* el : elements) delete el;
+    }
+
+    void accept(ASTVisitor* visitor) override;
+};
+
+class DictExpr : public ExprNode {
+public:
+    std::vector<std::pair<ExprNode*, ExprNode*>> elements; // key, value
+
+    DictExpr(std::vector<std::pair<ExprNode*, ExprNode*>> elements) : elements(elements) {}
+
+    ~DictExpr() {
+        for (auto& pair : elements) {
+            delete pair.first;
+            delete pair.second;
+        }
     }
 
     void accept(ASTVisitor* visitor) override;
@@ -662,6 +678,7 @@ public:
     virtual void visit(StaticCallExpr* node) = 0;
     virtual void visit(StaticSetExpr* node) = 0;
     virtual void visit(LoadStmt* node) = 0;
+    virtual void visit(DictExpr* node) = 0;
 };
 
 #endif // AST_H

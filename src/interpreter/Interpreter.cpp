@@ -1369,6 +1369,8 @@ public:
         }
         instancesWithDestroy.clear();
     }
+
+    void visit(DictExpr* node) override {}
 };
 
 // Implementation of Instance destructor

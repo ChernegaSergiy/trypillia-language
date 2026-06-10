@@ -413,6 +413,13 @@ public:
     void visit(StaticCallExpr* node) override {}
     void visit(StaticSetExpr* node) override {}
     void visit(LoadStmt* node) override {}
+
+    void visit(DictExpr* node) override {
+        for (auto& pair : node->elements) {
+            pair.first->accept(this);
+            pair.second->accept(this);
+        }
+    }
 };
 
 void SemanticAnalyzer::analyze(ASTNode* ast) {

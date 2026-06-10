@@ -28,6 +28,7 @@ enum class OpCode : uint8_t {
     OP_LOOP,
     OP_CALL,
     OP_BUILD_LIST,
+    OP_BUILD_MAP,
     OP_INDEX_GET,
     OP_INDEX_SET,
     OP_CLASS,

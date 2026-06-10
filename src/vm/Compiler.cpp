@@ -717,6 +717,14 @@ public:
         emitBytes(static_cast<uint8_t>(OpCode::OP_PROPERTY_SET), chunk->addConstant(node->memberName.lexeme));
     }
     void visit(LoadStmt* node) override {}
+
+    void visit(DictExpr* node) override {
+        for (auto& pair : node->elements) {
+            pair.first->accept(this);
+            pair.second->accept(this);
+        }
+        emitBytes(static_cast<uint8_t>(OpCode::OP_BUILD_MAP), node->elements.size());
+    }
 };
 
 std::shared_ptr<ObjFunction> Compiler::compile(ASTNode* ast) {

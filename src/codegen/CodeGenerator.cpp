@@ -594,6 +594,7 @@ public:
     void visit(StaticCallExpr* node) override {}
     void visit(StaticSetExpr* node) override {}
     void visit(LoadStmt* node) override {}
+    void visit(DictExpr* node) override {}
 };
 
 void CodeGenerator::generate(ASTNode* ast) {
