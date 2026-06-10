@@ -2,6 +2,7 @@
 #include "math/Math.h"
 #include "fs/FS.h"
 #include "net/Net.h"
+#include "json/Json.h"
 
 namespace StdLib {
     void registerAll(VM* vm) {
@@ -9,6 +10,7 @@ namespace StdLib {
         Math::registerAll(vm);
         FS::registerAll(vm);
         Net::registerAll(vm);
+        Json::registerAll(vm);
     }
 
     void registerSymbols(SymbolTable* scope) {
@@ -16,5 +18,6 @@ namespace StdLib {
         Math::registerSymbols(scope);
         FS::registerSymbols(scope);
         Net::registerSymbols(scope);
+        Json::registerSymbols(scope);
     }
 }
