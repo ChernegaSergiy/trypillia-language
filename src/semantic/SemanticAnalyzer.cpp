@@ -397,6 +397,7 @@ public:
     void visit(StaticGetExpr* node) override {}
     void visit(StaticCallExpr* node) override {}
     void visit(StaticSetExpr* node) override {}
+    void visit(LoadStmt* node) override {}
 };
 
 void SemanticAnalyzer::analyze(ASTNode* ast) {

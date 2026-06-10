@@ -1,7 +1,10 @@
 #include "Interpreter.h"
 #include "../utils/ErrorHandling.h"
+#include "../lexer/Lexer.h"
+#include "../parser/Parser.h"
 #include <stdexcept>
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <variant>
 #include <cmath>
@@ -467,6 +470,7 @@ private:
     std::shared_ptr<Environment> globals;
     std::shared_ptr<Environment> environment;
     Value lastValue;
+    std::vector<ASTNode*> loadedASTs;
     
 public:
     std::shared_ptr<Class> currentClass;
@@ -1307,6 +1311,31 @@ public:
         
         node->value->accept(this);
         klass->setStaticField(node->memberName.lexeme, lastValue);
+    }
+
+    void visit(LoadStmt* node) override {
+        std::string path = node->filename.lexeme;
+        // Strip surrounding quotes
+        if (path.size() >= 2 && path.front() == '"' && path.back() == '"') {
+            path = path.substr(1, path.size() - 2);
+        }
+        
+        std::ifstream file(path);
+        if (!file.is_open()) {
+            throw std::runtime_error("Could not load file '" + path + "'");
+        }
+        
+        std::string source((std::istreambuf_iterator<char>(file)),
+                            std::istreambuf_iterator<char>());
+        
+        Lexer lexer(source);
+        Parser parser(lexer);
+        ASTNode* ast = parser.parse();
+        
+        if (ast) {
+            loadedASTs.push_back(ast);
+            ast->accept(this);
+        }
     }
 };
 
