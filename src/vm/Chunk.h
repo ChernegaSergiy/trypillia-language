@@ -26,7 +26,8 @@ using NativeFn = VMValue(*)(int argCount, VMValue* args);
 struct ObjClass {
     std::string name;
     std::unordered_map<std::string, std::shared_ptr<ObjFunction>> methods;
-    ObjClass(std::string name) : name(name) {}
+    std::shared_ptr<ObjClass> superclass;
+    ObjClass(std::string name) : name(name), superclass(nullptr) {}
 };
 
 struct ObjInstance {

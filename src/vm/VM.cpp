@@ -387,6 +387,21 @@ InterpretResult VM::run() {
                 push(std::make_shared<ObjClass>(name));
                 break;
             }
+            case static_cast<uint8_t>(OpCode::OP_INHERIT): {
+                VMValue superclassVal = pop();
+                VMValue subclassVal = pop();
+                if (!std::holds_alternative<std::shared_ptr<ObjClass>>(superclassVal)) {
+                    std::cerr << "Superclass must be a class." << std::endl;
+                    return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                }
+                auto subclass = std::get<std::shared_ptr<ObjClass>>(subclassVal);
+                auto superclass = std::get<std::shared_ptr<ObjClass>>(superclassVal);
+                subclass->superclass = superclass;
+                for (auto const& [name, method] : superclass->methods) {
+                    subclass->methods[name] = method;
+                }
+                break;
+            }
             case static_cast<uint8_t>(OpCode::OP_METHOD): {
                 std::string name = std::get<std::string>(READ_CONSTANT());
                 VMValue methodVal = pop();

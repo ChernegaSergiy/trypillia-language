@@ -31,6 +31,7 @@ enum class OpCode : uint8_t {
     OP_INDEX_GET,
     OP_INDEX_SET,
     OP_CLASS,
+    OP_INHERIT,
     OP_PROPERTY_GET,
     OP_PROPERTY_SET,
     OP_METHOD,
