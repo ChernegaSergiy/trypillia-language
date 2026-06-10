@@ -343,7 +343,62 @@ public:
         
         endScope();
     }
-    void visit(ForeachStmt* node) override {}
+    void visit(ForeachStmt* node) override {
+        beginScope();
+
+        node->iterable->accept(this);
+        locals.push_back({"<iterable>", scopeDepth});
+        int iterableLocal = locals.size() - 1;
+
+        emitBytes(static_cast<uint8_t>(OpCode::OP_CONSTANT), chunk->addConstant(0.0));
+        locals.push_back({"<index>", scopeDepth});
+        int indexLocal = locals.size() - 1;
+        
+        int loopStart = chunk->code.size();
+        loops.push_back({loopStart, scopeDepth, {}, {}});
+
+        emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), iterableLocal);
+        emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), indexLocal);
+        emitByte(static_cast<uint8_t>(OpCode::OP_ITER_HAS_NEXT));
+        
+        int exitJump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE));
+        emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+        
+        beginScope();
+        
+        emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), iterableLocal);
+        emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), indexLocal);
+        emitByte(static_cast<uint8_t>(OpCode::OP_INDEX_GET));
+        
+        locals.push_back({node->name.lexeme, scopeDepth});
+        
+        node->body->accept(this);
+        
+        endScope();
+        
+        LoopContext loop = loops.back();
+        loops.pop_back();
+        for (int continueJump : loop.continueJumps) {
+            patchJump(continueJump);
+        }
+        
+        emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), indexLocal);
+        emitBytes(static_cast<uint8_t>(OpCode::OP_CONSTANT), chunk->addConstant(1.0));
+        emitByte(static_cast<uint8_t>(OpCode::OP_ADD));
+        emitBytes(static_cast<uint8_t>(OpCode::OP_SET_LOCAL), indexLocal);
+        emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+        
+        emitLoop(loopStart);
+        
+        patchJump(exitJump);
+        emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+        
+        for (int breakJump : loop.breakJumps) {
+            patchJump(breakJump);
+        }
+        
+        endScope();
+    }
     void visit(SwitchStmt* node) override {
         node->expression->accept(this);
 

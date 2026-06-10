@@ -281,6 +281,24 @@ InterpretResult VM::run() {
                 frame->ip -= offset;
                 break;
             }
+            case static_cast<uint8_t>(OpCode::OP_ITER_HAS_NEXT): {
+                VMValue indexVal = pop();
+                VMValue iterableVal = pop();
+                if (std::holds_alternative<double>(indexVal)) {
+                    int index = static_cast<int>(std::get<double>(indexVal));
+                    if (std::holds_alternative<std::shared_ptr<ObjList>>(iterableVal)) {
+                        auto list = std::get<std::shared_ptr<ObjList>>(iterableVal);
+                        push(index < list->elements.size());
+                        break;
+                    } else if (std::holds_alternative<std::string>(iterableVal)) {
+                        auto str = std::get<std::string>(iterableVal);
+                        push(index < str.length());
+                        break;
+                    }
+                }
+                std::cerr << "Invalid operand types for iteration." << std::endl;
+                return InterpretResult::INTERPRET_RUNTIME_ERROR;
+            }
             case static_cast<uint8_t>(OpCode::OP_DUP): {
                 push(peek(0));
                 break;
@@ -351,8 +369,22 @@ InterpretResult VM::run() {
                         std::cerr << "List index must be a number." << std::endl;
                         return InterpretResult::INTERPRET_RUNTIME_ERROR;
                     }
+                } else if (std::holds_alternative<std::string>(listVal)) {
+                    auto str = std::get<std::string>(listVal);
+                    if (std::holds_alternative<double>(index)) {
+                        int i = std::get<double>(index);
+                        if (i >= 0 && i < str.length()) {
+                            push(std::string(1, str[i]));
+                        } else {
+                            std::cerr << "String index out of bounds." << std::endl;
+                            return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                        }
+                    } else {
+                        std::cerr << "String index must be a number." << std::endl;
+                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                    }
                 } else {
-                    std::cerr << "Can only index into lists." << std::endl;
+                    std::cerr << "Can only index into lists or strings." << std::endl;
                     return InterpretResult::INTERPRET_RUNTIME_ERROR;
                 }
                 break;
