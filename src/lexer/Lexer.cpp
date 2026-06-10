@@ -1,4 +1,4 @@
-﻿#include "Lexer.h"
+#include "Lexer.h"
 #include <cctype>
 #include <stdexcept>
 #include <unordered_map>
@@ -14,7 +14,6 @@ static std::unordered_map<std::string, TokenType> keywords = {
     {"public", TokenType::PUBLIC},
     {"private", TokenType::PRIVATE},
     {"protected", TokenType::PROTECTED},
-    {"print", TokenType::PRINT},
     {"if", TokenType::IF},
     {"else", TokenType::ELSE},
     {"while", TokenType::WHILE},

@@ -29,6 +29,8 @@ private:
     VMValue pop();
     VMValue peek(int distance);
     
+    void defineNative(const std::string& name, int arity, NativeFn function);
+    
     InterpretResult run();
 
 public:

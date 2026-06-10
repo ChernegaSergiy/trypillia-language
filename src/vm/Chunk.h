@@ -10,6 +10,22 @@
 #include "OpCode.h"
 
 class Chunk;
+
+struct ObjFunction;
+struct ObjNative;
+
+using VMValue = std::variant<std::nullptr_t, bool, double, std::string, std::shared_ptr<ObjFunction>, std::shared_ptr<ObjNative>>;
+
+using NativeFn = VMValue(*)(int argCount, VMValue* args);
+
+struct ObjNative {
+    std::string name;
+    int arity;
+    NativeFn function;
+
+    ObjNative(std::string n, int a, NativeFn f) : name(n), arity(a), function(f) {}
+};
+
 struct ObjFunction {
     std::string name;
     int arity;
@@ -17,8 +33,6 @@ struct ObjFunction {
 
     ObjFunction() : arity(0) {}
 };
-
-using VMValue = std::variant<std::nullptr_t, bool, double, std::string, std::shared_ptr<ObjFunction>>;
 
 class Chunk {
 public:

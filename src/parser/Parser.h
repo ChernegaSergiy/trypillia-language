@@ -1,4 +1,4 @@
-﻿#ifndef PARSER_H
+#ifndef PARSER_H
 #define PARSER_H
 
 #include "../lexer/Lexer.h"
@@ -40,7 +40,6 @@ private:
     // Statement parsing methods
     StmtNode* statement();
     StmtNode* expressionStatement();
-    StmtNode* printStatement();
     StmtNode* loadStatement();
     StmtNode* block();
     StmtNode* ifStatement();

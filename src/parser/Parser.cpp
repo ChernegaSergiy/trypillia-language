@@ -1,4 +1,4 @@
-﻿#include "Parser.h"
+#include "Parser.h"
 #include "../ast/AST.h"
 #include "../utils/ErrorHandling.h"
 #include <stdexcept>
@@ -360,12 +360,6 @@ StmtNode* Parser::expressionStatement() {
     return new ExpressionStmt(expr);
 }
 
-StmtNode* Parser::printStatement() {
-    ExprNode* value = expression();
-    consume(TokenType::SEMICOLON);
-    return new PrintStmt(value);
-}
-
 StmtNode* Parser::loadStatement() {
     Token filename = currentToken;
     consume(TokenType::STRING);
@@ -552,10 +546,6 @@ StmtNode* Parser::finishForLoop(StmtNode* initializer) {
 StmtNode* Parser::statement() {
     if (match(TokenType::IF)) {
         return ifStatement();
-    }
-    
-    if (match(TokenType::PRINT)) {
-        return printStatement();
     }
     
     if (match(TokenType::LOAD)) {

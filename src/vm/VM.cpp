@@ -1,11 +1,38 @@
 #include "VM.h"
 #include <iostream>
+#include <ctime>
 
 VM::VM() {
-    resetStack();
+    auto printNative = [](int argCount, VMValue* args) -> VMValue {
+        for (int i = 0; i < argCount; i++) {
+            if (std::holds_alternative<double>(args[i])) {
+                std::cout << std::get<double>(args[i]);
+            } else if (std::holds_alternative<std::string>(args[i])) {
+                std::cout << std::get<std::string>(args[i]);
+            } else if (std::holds_alternative<bool>(args[i])) {
+                std::cout << (std::get<bool>(args[i]) ? "true" : "false");
+            } else if (std::holds_alternative<std::nullptr_t>(args[i])) {
+                std::cout << "nil";
+            }
+            if (i < argCount - 1) std::cout << " ";
+        }
+        std::cout << std::endl;
+        return nullptr;
+    };
+    
+    auto clockNative = [](int argCount, VMValue* args) -> VMValue {
+        return (double)clock() / CLOCKS_PER_SEC;
+    };
+
+    defineNative("print", -1, printNative);
+    defineNative("clock", 0, clockNative);
 }
 
 VM::~VM() {
+}
+
+void VM::defineNative(const std::string& name, int arity, NativeFn function) {
+    globals[name] = std::make_shared<ObjNative>(name, arity, function);
 }
 
 void VM::resetStack() {
@@ -244,6 +271,15 @@ InterpretResult VM::run() {
                     newFrame.stackStart = stack.size() - argCount - 1;
                     frames.push_back(newFrame);
                     frame = &frames.back();
+                } else if (std::holds_alternative<std::shared_ptr<ObjNative>>(callee)) {
+                    auto native = std::get<std::shared_ptr<ObjNative>>(callee);
+                    if (native->arity != -1 && argCount != native->arity) {
+                        std::cerr << "Expected " << native->arity << " arguments but got " << (int)argCount << "." << std::endl;
+                        return InterpretResult::INTERPRET_RUNTIME_ERROR;
+                    }
+                    VMValue result = native->function(argCount, &stack[stack.size() - argCount]);
+                    stack.resize(stack.size() - argCount - 1);
+                    push(result);
                 } else {
                     std::cerr << "Can only call functions." << std::endl;
                     return InterpretResult::INTERPRET_RUNTIME_ERROR;
