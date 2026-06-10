@@ -556,11 +556,19 @@ public:
         emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), chunk->addConstant(node->name));
     }
     void visit(FieldDeclNode* node) override {}
+    VMAccessModifier getVMAccessModifier(AccessModifier am) {
+        if (am == AccessModifier::PRIVATE) return VMAccessModifier::PRIVATE;
+        if (am == AccessModifier::PROTECTED) return VMAccessModifier::PROTECTED;
+        return VMAccessModifier::PUBLIC;
+    }
+
     void compileMethod(FunctionNode* node, ClassNode* classNode = nullptr) {
         auto func = std::make_shared<ObjFunction>();
         func->name = node->name;
         func->arity = node->params.size();
         func->chunk = std::make_shared<Chunk>();
+        func->accessModifier = getVMAccessModifier(node->accessModifier);
+        func->enclosingClassName = currentClassName;
 
         CompilerVisitor funcCompiler(func->chunk.get());
         
@@ -636,6 +644,10 @@ public:
         }
         
         emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), chunk->addConstant(node->name));
+        for (auto field : node->fields) {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_FIELD_MODIFIER), chunk->addConstant(field->name));
+            emitByte(static_cast<uint8_t>(getVMAccessModifier(field->accessModifier)));
+        }
         bool hasInit = false;
         for (auto& method : node->methods) {
             if (method->name == "init") hasInit = true;
