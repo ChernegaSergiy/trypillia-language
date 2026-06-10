@@ -140,6 +140,16 @@ InterpretResult VM::run() {
                 }
                 break;
             }
+            case static_cast<uint8_t>(OpCode::OP_GET_LOCAL): {
+                uint8_t slot = READ_BYTE();
+                push(stack[slot]);
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_SET_LOCAL): {
+                uint8_t slot = READ_BYTE();
+                stack[slot] = peek(0);
+                break;
+            }
             case static_cast<uint8_t>(OpCode::OP_LOOP): {
                 uint16_t offset = READ_SHORT();
                 ip -= offset;

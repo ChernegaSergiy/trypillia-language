@@ -6,6 +6,34 @@ class CompilerVisitor : public ASTVisitor {
 private:
     Chunk* chunk;
 
+    struct Local {
+        std::string name;
+        int depth;
+    };
+    std::vector<Local> locals;
+    int scopeDepth = 0;
+
+    void beginScope() {
+        scopeDepth++;
+    }
+
+    void endScope() {
+        scopeDepth--;
+        while (locals.size() > 0 && locals.back().depth > scopeDepth) {
+            emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+            locals.pop_back();
+        }
+    }
+
+    int resolveLocal(const std::string& name) {
+        for (int i = locals.size() - 1; i >= 0; i--) {
+            if (locals[i].name == name) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     void emitByte(uint8_t byte) {
         chunk->write(byte, 1);
     }
@@ -94,11 +122,21 @@ public:
     }
 
     void visit(VariableExpr* node) override {
-        emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), chunk->addConstant(node->name.lexeme));
+        int arg = resolveLocal(node->name.lexeme);
+        if (arg != -1) {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), (uint8_t)arg);
+        } else {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), chunk->addConstant(node->name.lexeme));
+        }
     }
     void visit(AssignExpr* node) override {
         node->value->accept(this);
-        emitBytes(static_cast<uint8_t>(OpCode::OP_SET_GLOBAL), chunk->addConstant(node->name.lexeme));
+        int arg = resolveLocal(node->name.lexeme);
+        if (arg != -1) {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_SET_LOCAL), (uint8_t)arg);
+        } else {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_SET_GLOBAL), chunk->addConstant(node->name.lexeme));
+        }
     }
     void visit(CompoundAssignExpr* node) override {}
     void visit(CallExpr* node) override {}
@@ -108,12 +146,19 @@ public:
         } else {
             emitByte(static_cast<uint8_t>(OpCode::OP_NIL));
         }
-        emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), chunk->addConstant(node->name.lexeme));
+        
+        if (scopeDepth > 0) {
+            locals.push_back({node->name.lexeme, scopeDepth});
+        } else {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), chunk->addConstant(node->name.lexeme));
+        }
     }
     void visit(BlockStmt* node) override {
+        beginScope();
         for (auto& stmt : node->statements) {
             stmt->accept(this);
         }
+        endScope();
     }
     void visit(IfStmt* node) override {
         node->condition->accept(this);
