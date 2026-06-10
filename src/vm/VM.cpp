@@ -22,6 +22,10 @@ VMValue VM::pop() {
     return value;
 }
 
+VMValue VM::peek(int distance) {
+    return stack[stack.size() - 1 - distance];
+}
+
 InterpretResult VM::interpret(Chunk* chunk) {
     this->chunk = chunk;
     this->ip = chunk->code.data();
@@ -32,6 +36,9 @@ InterpretResult VM::interpret(Chunk* chunk) {
 #define READ_BYTE() (*ip++)
 // Читання константи з масиву констант за індексом
 #define READ_CONSTANT() (chunk->constants[READ_BYTE()])
+// Читання 16-бітного зміщення (для стрибків)
+#define READ_SHORT() \
+    (ip += 2, (uint16_t)((ip[-2] << 8) | ip[-1]))
 
 InterpretResult VM::run() {
     for (;;) {
@@ -116,6 +123,26 @@ InterpretResult VM::run() {
                 }
                 break;
             }
+            case static_cast<uint8_t>(OpCode::OP_JUMP): {
+                uint16_t offset = READ_SHORT();
+                ip += offset;
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE): {
+                uint16_t offset = READ_SHORT();
+                VMValue condition = peek(0);
+                bool isFalsy = false;
+                if (std::holds_alternative<bool>(condition)) {
+                    isFalsy = !std::get<bool>(condition);
+                } else if (std::holds_alternative<std::nullptr_t>(condition)) {
+                    isFalsy = true;
+                }
+                
+                if (isFalsy) {
+                    ip += offset;
+                }
+                break;
+            }
             case static_cast<uint8_t>(OpCode::OP_POP): {
                 pop();
                 break;
@@ -152,3 +179,4 @@ InterpretResult VM::run() {
 
 #undef READ_BYTE
 #undef READ_CONSTANT
+#undef READ_SHORT

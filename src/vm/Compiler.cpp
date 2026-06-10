@@ -19,6 +19,22 @@ private:
         emitBytes(static_cast<uint8_t>(OpCode::OP_CONSTANT), chunk->addConstant(value));
     }
 
+    int emitJump(uint8_t instruction) {
+        emitByte(instruction);
+        emitByte(0xff); // placeholder
+        emitByte(0xff); // placeholder
+        return chunk->code.size() - 2;
+    }
+
+    void patchJump(int offset) {
+        int jump = chunk->code.size() - offset - 2;
+        if (jump > 65535) {
+            ErrorHandling::reportError("Too much code to jump over.");
+        }
+        chunk->code[offset] = (jump >> 8) & 0xff;
+        chunk->code[offset + 1] = jump & 0xff;
+    }
+
 public:
     CompilerVisitor(Chunk* chunk) : chunk(chunk) {}
 
@@ -76,7 +92,24 @@ public:
     void visit(CallExpr* node) override {}
     void visit(VarStmt* node) override {}
     void visit(BlockStmt* node) override {}
-    void visit(IfStmt* node) override {}
+    void visit(IfStmt* node) override {
+        node->condition->accept(this);
+
+        int thenJump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE));
+        emitByte(static_cast<uint8_t>(OpCode::OP_POP)); // Очищаємо умову зі стеку
+
+        node->thenBranch->accept(this);
+
+        int elseJump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP));
+
+        patchJump(thenJump);
+        emitByte(static_cast<uint8_t>(OpCode::OP_POP)); // Очищаємо умову зі стеку, якщо стрибнули
+
+        if (node->elseBranch) {
+            node->elseBranch->accept(this);
+        }
+        patchJump(elseJump);
+    }
     void visit(WhileStmt* node) override {}
     void visit(DoWhileStmt* node) override {}
     void visit(ReturnStmt* node) override {}

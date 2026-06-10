@@ -20,6 +20,7 @@ private:
     void resetStack();
     void push(VMValue value);
     VMValue pop();
+    VMValue peek(int distance);
     
     // Головний цикл виконання інструкцій
     InterpretResult run();
