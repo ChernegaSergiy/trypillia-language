@@ -29,28 +29,25 @@ int main(int argc, char** argv) {
     }
 
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " [compile|build] <file> [output]" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " [build] <file> [output]" << std::endl;
         return 1;
     }
 
-    bool compileOnly = false;
     bool buildStandalone = false;
     std::string inputFile;
     std::string outputFile;
 
-    if (command == "compile" || command == "build") {
+    if (command == "build") {
         if (argc < 3) {
-            std::cerr << "Usage: " << argv[0] << " " << command << " <file.try> [output]" << std::endl;
+            std::cerr << "Usage: " << argv[0] << " build <file.try> [output]" << std::endl;
             return 1;
         }
-        if (command == "build") buildStandalone = true;
-        else compileOnly = true;
-        
+        buildStandalone = true;
         inputFile = argv[2];
         if (argc >= 4) {
             outputFile = argv[3];
         } else {
-            outputFile = buildStandalone ? "app" : inputFile + "c";
+            outputFile = "app";
         }
     } else {
         inputFile = argv[1];
@@ -59,19 +56,11 @@ int main(int argc, char** argv) {
         }
     }
 
-    // Check if it's a precompiled bytecode file
-    if (inputFile.length() > 5 && inputFile.substr(inputFile.length() - 5) == ".tryc") {
-        function = Serializer::loadFromFile(inputFile);
-        if (!function) {
-            std::cerr << "Error: Could not load bytecode from " << inputFile << std::endl;
-            return 1;
-        }
-    } else {
-        std::ifstream sourceFile(inputFile);
-        if (!sourceFile.is_open()) {
-            std::cerr << "Error: Could not open source file: " << inputFile << std::endl;
-            return 1;
-        }
+    std::ifstream sourceFile(inputFile);
+    if (!sourceFile.is_open()) {
+        std::cerr << "Error: Could not open source file: " << inputFile << std::endl;
+        return 1;
+    }
         std::string sourceCode((std::istreambuf_iterator<char>(sourceFile)),
                                 std::istreambuf_iterator<char>());
 
@@ -82,28 +71,19 @@ int main(int argc, char** argv) {
         SemanticAnalyzer semanticAnalyzer;
         semanticAnalyzer.analyze(ast);
 
-        Compiler compiler;
-        compiler.currentFilename = inputFile;
-        function = compiler.compile(ast);
-    }
+    Compiler compiler;
+    compiler.currentFilename = inputFile;
+    function = compiler.compile(ast);
 
     if (function) {
         if (buildStandalone) {
             if (Serializer::buildStandalone(function, argv[0], outputFile)) {
-                // chmod +x the output file using system call
                 std::string chmodCmd = "chmod +x " + outputFile;
                 int ret = system(chmodCmd.c_str());
-                (void)ret; // suppress warning
+                (void)ret; 
                 std::cout << "Successfully built standalone executable: " << outputFile << std::endl;
             } else {
                 std::cerr << "Error building standalone executable: " << outputFile << std::endl;
-                return 1;
-            }
-        } else if (compileOnly) {
-            if (Serializer::saveToFile(function, outputFile)) {
-                std::cout << "Successfully compiled to " << outputFile << std::endl;
-            } else {
-                std::cerr << "Error writing to " << outputFile << std::endl;
                 return 1;
             }
         } else {

@@ -8,8 +8,8 @@
 
 class Serializer {
 public:
-    static bool saveToFile(const std::shared_ptr<ObjFunction>& function, const std::string& path);
-    static std::shared_ptr<ObjFunction> loadFromFile(const std::string& path);
+    static bool buildStandalone(const std::shared_ptr<ObjFunction>& function, const std::string& trypilliaExePath, const std::string& outputPath);
+    static std::shared_ptr<ObjFunction> loadEmbeddedBytecode(const std::string& currentExePath);
 
 private:
     static void writeFunction(std::ofstream& out, const std::shared_ptr<ObjFunction>& function);

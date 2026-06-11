@@ -12,46 +12,7 @@ enum ValueType {
     VAL_FUNCTION = 4
 };
 
-bool Serializer::saveToFile(const std::shared_ptr<ObjFunction>& function, const std::string& path) {
-    std::ofstream out(path, std::ios::binary);
-    if (!out.is_open()) return false;
-
-    // Write shebang to make it executable
-    std::string shebang = "#!/usr/bin/env trypillia\n";
-    out.write(shebang.c_str(), shebang.length());
-
-    out.write(MAGIC, 4);
-    uint32_t version = VERSION;
-    out.write(reinterpret_cast<const char*>(&version), sizeof(version));
-
-    writeFunction(out, function);
-    return true;
-}
-
-std::shared_ptr<ObjFunction> Serializer::loadFromFile(const std::string& path) {
-    std::ifstream in(path, std::ios::binary);
-    if (!in.is_open()) return nullptr;
-
-    char firstTwo[2];
-    in.read(firstTwo, 2);
-    if (in.gcount() == 2 && firstTwo[0] == '#' && firstTwo[1] == '!') {
-        // Skip the shebang line
-        std::string dummy;
-        std::getline(in, dummy);
-    } else {
-        in.seekg(0);
-    }
-
-    char magic[4];
-    in.read(magic, 4);
-    if (std::string(magic, 4) != MAGIC) return nullptr;
-
-    uint32_t version;
-    in.read(reinterpret_cast<char*>(&version), sizeof(version));
-    if (version != VERSION) return nullptr;
-
-    return readFunction(in);
-}
+// .tryc serialization removed in favor of standalone executables
 
 bool Serializer::buildStandalone(const std::shared_ptr<ObjFunction>& function, const std::string& trypilliaExePath, const std::string& outputPath) {
     // 1. Copy the interpreter executable
