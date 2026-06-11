@@ -78,22 +78,18 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake .. ${{ matrix.cmake_args }} -DCMAKE_BUILD_TYPE=Release
+          cmake .. ${{ matrix.cmake_args }} -DCMAKE_BUILD_TYPE=Release -DARTIFACT_NAME=trypillia-${{ matrix.target }}
 
       - name: Build
         run: |
           cd build
           cmake --build . --config Release --parallel 4
 
-      - name: Rename Artifact
-        shell: bash
-        run: |
-          cd build
-          mv trypillia ${{ matrix.artifact_name }} || mv trypillia.exe ${{ matrix.artifact_name }} || mv Release/trypillia.exe ${{ matrix.artifact_name }}
-          mv ${{ matrix.artifact_name }} trypillia-${{ matrix.target }}
-
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: trypillia-${{ matrix.target }}
-          path: build/trypillia-${{ matrix.target }}
+          path: |
+            build/trypillia-${{ matrix.target }}
+            build/trypillia-${{ matrix.target }}.exe
+            build/Release/trypillia-${{ matrix.target }}.exe
