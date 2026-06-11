@@ -238,24 +238,62 @@ Token Lexer::number() {
 }
 
 Token Lexer::string() {
-    size_t start = currentIndex;
+    std::string value = "";
     
     while (peek() != '"' && !isAtEnd()) {
         if (peek() == '\n') {
             line++;
         }
+        char c = peek();
         advance();
+        
+        if (c == '\\' && !isAtEnd()) {
+            char escape = peek();
+            advance();
+            switch (escape) {
+                case 'n': value += '\n'; break;
+                case 'r': value += '\r'; break;
+                case 't': value += '\t'; break;
+                case '\\': value += '\\'; break;
+                case '"': value += '"'; break;
+                case 'e': value += '\x1b'; break; // \e for Escape is useful
+                case 'x': {
+                    if (currentIndex + 1 < source.length()) {
+                        std::string hexStr = source.substr(currentIndex, 2);
+                        bool isHex = true;
+                        for (char h : hexStr) {
+                            if (!std::isxdigit(h)) isHex = false;
+                        }
+                        if (isHex) {
+                            char hexChar = static_cast<char>(std::stoi(hexStr, nullptr, 16));
+                            value += hexChar;
+                            advance();
+                            advance();
+                            break;
+                        }
+                    }
+                    value += "\\x";
+                    break;
+                }
+                default:
+                    value += '\\';
+                    value += escape;
+                    break;
+            }
+        } else {
+            value += c;
+        }
     }
     
     if (isAtEnd()) {
-        return {TokenType::UNKNOWN, "", line}; // Unterminated string
+        ErrorHandling::reportError("Unterminated string.");
+        return {TokenType::UNKNOWN, "", line};
     }
     
-    // Consume the closing '"'
+    // Consume the closing "
     advance();
     
-    std::string text = source.substr(start, currentIndex - start - 1);
-    return {TokenType::STRING, text, line};
+    return {TokenType::STRING, value, line};
 }
 
 Token Lexer::scanToken() {
