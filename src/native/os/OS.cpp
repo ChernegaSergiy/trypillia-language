@@ -13,7 +13,7 @@ namespace OSModule {
     
     std::vector<std::string> commandLineArgs;
 
-    static VM* currentVM = nullptr;
+    thread_local VM* currentVM = nullptr;
 
     static VMValue osGetEnv(int argCount, VMValue* args) {
         if (argCount != 1 || !std::holds_alternative<std::string>(args[0])) return nullptr;

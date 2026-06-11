@@ -7,7 +7,7 @@
 namespace StdLib {
 namespace FS {
 
-    static VM* currentVM = nullptr;
+    thread_local VM* currentVM = nullptr;
 
     static void freeFile(void* nativeData) {
         std::fstream* file = static_cast<std::fstream*>(nativeData);

@@ -4,7 +4,7 @@
 namespace StdLib {
 namespace RegexModule {
 
-    static VM* currentVM = nullptr;
+    thread_local VM* currentVM = nullptr;
 
     static VMValue regexTest(int argCount, VMValue* args) {
         if (argCount != 2 || !std::holds_alternative<std::string>(args[0]) || !std::holds_alternative<std::string>(args[1])) {

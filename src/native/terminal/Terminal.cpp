@@ -10,7 +10,7 @@
 namespace StdLib {
 namespace TerminalModule {
 
-    static VM* currentVM = nullptr;
+    thread_local VM* currentVM = nullptr;
     static struct termios orig_termios;
     static bool inRawMode = false;
     static bool atexitRegistered = false;

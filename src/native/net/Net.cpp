@@ -12,7 +12,7 @@
 namespace StdLib {
 namespace Net {
 
-    static VM* currentVM = nullptr;
+    thread_local VM* currentVM = nullptr;
 
     static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* userp) {
         size_t totalSize = size * nmemb;

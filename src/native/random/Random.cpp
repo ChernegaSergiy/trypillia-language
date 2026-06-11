@@ -7,7 +7,7 @@
 namespace StdLib {
 namespace RandomModule {
 
-    static VM* currentVM = nullptr;
+    thread_local VM* currentVM = nullptr;
 
     // Use a thread-local random engine for thread safety and performance
     static std::mt19937& getEngine() {

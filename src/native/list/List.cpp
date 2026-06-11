@@ -5,7 +5,7 @@
 namespace StdLib {
 namespace ListModule {
 
-    static VM* currentVM = nullptr;
+    thread_local VM* currentVM = nullptr;
 
     static VMValue listLength(int argCount, VMValue* args) {
         if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjList>>(args[0])) return nullptr;

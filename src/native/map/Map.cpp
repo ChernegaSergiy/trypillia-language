@@ -3,7 +3,7 @@
 namespace StdLib {
 namespace MapModule {
 
-    static VM* currentVM = nullptr;
+    thread_local VM* currentVM = nullptr;
 
     static VMValue mapKeys(int argCount, VMValue* args) {
         if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjMap>>(args[0])) return nullptr;

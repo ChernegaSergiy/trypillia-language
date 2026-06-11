@@ -11,6 +11,7 @@
 #include "terminal/Terminal.h"
 #include "map/Map.h"
 #include "regex/Regex.h"
+#include "worker/Worker.h"
 
 namespace StdLib {
     void registerAll(VM* vm) {
@@ -27,6 +28,7 @@ namespace StdLib {
         TerminalModule::registerAll(vm);
         MapModule::registerAll(vm);
         RegexModule::registerAll(vm);
+        WorkerModule::registerAll(vm);
     }
 
     void registerSymbols(SymbolTable* scope) {
@@ -43,6 +45,7 @@ namespace StdLib {
         TerminalModule::registerSymbols(scope);
         MapModule::registerSymbols(scope);
         RegexModule::registerSymbols(scope);
+        WorkerModule::registerSymbols(scope);
     }
 
     VMValue makeResultOk(VM* vm, VMValue value) {

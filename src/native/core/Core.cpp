@@ -6,7 +6,7 @@
 namespace StdLib {
 namespace Core {
 
-    static VM* currentVM = nullptr;
+    thread_local VM* currentVM = nullptr;
 
     static VMValue printNative(int argCount, VMValue* args) {
         for (int i = 0; i < argCount; i++) {
