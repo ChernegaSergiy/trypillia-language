@@ -28,8 +28,12 @@ private:
     ExprNode* ternary();
     ExprNode* orExpr();
     ExprNode* andExpr();
+    ExprNode* bitwiseOrExpr();
+    ExprNode* bitwiseXorExpr();
+    ExprNode* bitwiseAndExpr();
     ExprNode* equality();
     ExprNode* comparison();
+    ExprNode* shiftExpr();
     ExprNode* term();
     ExprNode* factor();
     ExprNode* unary();

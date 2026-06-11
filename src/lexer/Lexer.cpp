@@ -120,12 +120,16 @@ Token Lexer::nextToken() {
         case '<': 
             if (match('=')) {
                 return {TokenType::LESS_EQUAL, "<=", line};
+            } else if (match('<')) {
+                return {TokenType::SHIFT_LEFT, "<<", line};
             } else {
                 return {TokenType::LESS, "<", line};
             }
         case '>': 
             if (match('=')) {
                 return {TokenType::GREATER_EQUAL, ">=", line};
+            } else if (match('>')) {
+                return {TokenType::SHIFT_RIGHT, ">>", line};
             } else {
                 return {TokenType::GREATER, ">", line};
             }
@@ -140,14 +144,16 @@ Token Lexer::nextToken() {
             if (match('&')) {
                 return {TokenType::AND, "&&", line};
             } else {
-                return {TokenType::UNKNOWN, "&", line};
+                return {TokenType::BITWISE_AND, "&", line};
             }
         case '|':
             if (match('|')) {
                 return {TokenType::OR, "||", line};
             } else {
-                return {TokenType::UNKNOWN, "|", line};
+                return {TokenType::BITWISE_OR, "|", line};
             }
+        case '^': return {TokenType::BITWISE_XOR, "^", line};
+        case '~': return {TokenType::BITWISE_NOT, "~", line};
     }
     
     return {TokenType::UNKNOWN, std::string(1, c), line};

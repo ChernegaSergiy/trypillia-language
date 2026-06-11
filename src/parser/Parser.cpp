@@ -285,12 +285,13 @@ ExprNode* Parser::call() {
     return expr;
 }
 
-// Unary expressions: !, -, ++, -- etc.
+// Unary operators (!, -, ~)
 ExprNode* Parser::unary() {
     if (currentToken.type == TokenType::BANG ||
         currentToken.type == TokenType::MINUS ||
         currentToken.type == TokenType::PLUS_PLUS ||
-        currentToken.type == TokenType::MINUS_MINUS) {
+        currentToken.type == TokenType::MINUS_MINUS ||
+        currentToken.type == TokenType::BITWISE_NOT) {
         Token op = currentToken;
         advance();
         ExprNode* right = unary();
@@ -328,14 +329,67 @@ ExprNode* Parser::term() {
     return expr;
 }
 
-// Comparison operators (>, <, >=, <=)
+// Comparison operators (<, <=, >, >=)
 ExprNode* Parser::comparison() {
+    ExprNode* expr = bitwiseOrExpr();
+
+    while (currentToken.type == TokenType::LESS ||
+           currentToken.type == TokenType::LESS_EQUAL ||
+           currentToken.type == TokenType::GREATER ||
+           currentToken.type == TokenType::GREATER_EQUAL) {
+        Token op = currentToken;
+        advance();
+        ExprNode* right = bitwiseOrExpr();
+        expr = new BinaryExpr(expr, op, right);
+    }
+
+    return expr;
+}
+
+ExprNode* Parser::bitwiseOrExpr() {
+    ExprNode* expr = bitwiseXorExpr();
+
+    while (currentToken.type == TokenType::BITWISE_OR) {
+        Token op = currentToken;
+        advance();
+        ExprNode* right = bitwiseXorExpr();
+        expr = new BinaryExpr(expr, op, right);
+    }
+
+    return expr;
+}
+
+ExprNode* Parser::bitwiseXorExpr() {
+    ExprNode* expr = bitwiseAndExpr();
+
+    while (currentToken.type == TokenType::BITWISE_XOR) {
+        Token op = currentToken;
+        advance();
+        ExprNode* right = bitwiseAndExpr();
+        expr = new BinaryExpr(expr, op, right);
+    }
+
+    return expr;
+}
+
+ExprNode* Parser::bitwiseAndExpr() {
+    ExprNode* expr = shiftExpr();
+
+    while (currentToken.type == TokenType::BITWISE_AND) {
+        Token op = currentToken;
+        advance();
+        ExprNode* right = shiftExpr();
+        expr = new BinaryExpr(expr, op, right);
+    }
+
+    return expr;
+}
+
+ExprNode* Parser::shiftExpr() {
     ExprNode* expr = term();
 
-    while (currentToken.type == TokenType::GREATER ||
-           currentToken.type == TokenType::GREATER_EQUAL ||
-           currentToken.type == TokenType::LESS ||
-           currentToken.type == TokenType::LESS_EQUAL) {
+    while (currentToken.type == TokenType::SHIFT_LEFT ||
+           currentToken.type == TokenType::SHIFT_RIGHT) {
         Token op = currentToken;
         advance();
         ExprNode* right = term();

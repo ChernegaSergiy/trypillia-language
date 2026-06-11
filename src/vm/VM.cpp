@@ -223,6 +223,7 @@ InterpretResult VM::run(int targetFrameDepth) {
                 push(constant);
                 break;
             }
+
             case static_cast<uint8_t>(OpCode::OP_TRUE): {
                 push(true);
                 break;
@@ -290,6 +291,56 @@ InterpretResult VM::run(int targetFrameDepth) {
                 }
                 break;
             }
+            case static_cast<uint8_t>(OpCode::OP_BIT_AND): {
+                VMValue b = pop();
+                VMValue a = pop();
+                if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
+                    push(static_cast<double>(static_cast<int32_t>(std::get<double>(a)) & static_cast<int32_t>(std::get<double>(b))));
+                } else {
+                    return runtimeError("Operands must be numbers.");
+                }
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_BIT_OR): {
+                VMValue b = pop();
+                VMValue a = pop();
+                if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
+                    push(static_cast<double>(static_cast<int32_t>(std::get<double>(a)) | static_cast<int32_t>(std::get<double>(b))));
+                } else {
+                    return runtimeError("Operands must be numbers.");
+                }
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_BIT_XOR): {
+                VMValue b = pop();
+                VMValue a = pop();
+                if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
+                    push(static_cast<double>(static_cast<int32_t>(std::get<double>(a)) ^ static_cast<int32_t>(std::get<double>(b))));
+                } else {
+                    return runtimeError("Operands must be numbers.");
+                }
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_BIT_SHIFT_LEFT): {
+                VMValue b = pop();
+                VMValue a = pop();
+                if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
+                    push(static_cast<double>(static_cast<int32_t>(std::get<double>(a)) << static_cast<int32_t>(std::get<double>(b))));
+                } else {
+                    return runtimeError("Operands must be numbers.");
+                }
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_BIT_SHIFT_RIGHT): {
+                VMValue b = pop();
+                VMValue a = pop();
+                if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
+                    push(static_cast<double>(static_cast<int32_t>(std::get<double>(a)) >> static_cast<int32_t>(std::get<double>(b))));
+                } else {
+                    return runtimeError("Operands must be numbers.");
+                }
+                break;
+            }
             case static_cast<uint8_t>(OpCode::OP_EQUAL): {
                 VMValue b = pop();
                 VMValue a = pop();
@@ -332,6 +383,15 @@ InterpretResult VM::run(int targetFrameDepth) {
                     push(true);
                 } else {
                     push(false);
+                }
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_BIT_NOT): {
+                VMValue value = pop();
+                if (std::holds_alternative<double>(value)) {
+                    push(static_cast<double>(~static_cast<int32_t>(std::get<double>(value))));
+                } else {
+                    return runtimeError("Operand must be a number.");
                 }
                 break;
             }

@@ -177,6 +177,11 @@ public:
             case TokenType::LESS_EQUAL: emitByte(static_cast<uint8_t>(OpCode::OP_GREATER)); emitByte(static_cast<uint8_t>(OpCode::OP_NOT)); break;
             case TokenType::GREATER: emitByte(static_cast<uint8_t>(OpCode::OP_GREATER)); break;
             case TokenType::GREATER_EQUAL: emitByte(static_cast<uint8_t>(OpCode::OP_LESS)); emitByte(static_cast<uint8_t>(OpCode::OP_NOT)); break;
+            case TokenType::BITWISE_AND: emitByte(static_cast<uint8_t>(OpCode::OP_BIT_AND)); break;
+            case TokenType::BITWISE_OR: emitByte(static_cast<uint8_t>(OpCode::OP_BIT_OR)); break;
+            case TokenType::BITWISE_XOR: emitByte(static_cast<uint8_t>(OpCode::OP_BIT_XOR)); break;
+            case TokenType::SHIFT_LEFT: emitByte(static_cast<uint8_t>(OpCode::OP_BIT_SHIFT_LEFT)); break;
+            case TokenType::SHIFT_RIGHT: emitByte(static_cast<uint8_t>(OpCode::OP_BIT_SHIFT_RIGHT)); break;
         }
     }
 
@@ -575,6 +580,7 @@ public:
         node->right->accept(this);
         switch (node->op.type) {
             case TokenType::BANG: emitByte(static_cast<uint8_t>(OpCode::OP_NOT)); break;
+            case TokenType::BITWISE_NOT: emitByte(static_cast<uint8_t>(OpCode::OP_BIT_NOT)); break;
             case TokenType::MINUS: emitByte(static_cast<uint8_t>(OpCode::OP_NEGATE)); break;
             default: break;
         }

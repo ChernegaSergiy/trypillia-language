@@ -49,7 +49,13 @@ enum class OpCode : uint8_t {
     OP_PRINT,
     OP_RETURN,
     OP_DUP,
-    OP_ITER_HAS_NEXT
+    OP_ITER_HAS_NEXT,
+    OP_BIT_AND,
+    OP_BIT_OR,
+    OP_BIT_XOR,
+    OP_BIT_NOT,
+    OP_BIT_SHIFT_LEFT,
+    OP_BIT_SHIFT_RIGHT
 };
 
 #endif // TRYPILLIA_OPCODE_H
