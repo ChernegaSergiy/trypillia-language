@@ -93,8 +93,30 @@ namespace TerminalModule {
     static VMValue terminalReadChar(int argCount, VMValue* args) {
         char c;
         if (read(STDIN_FILENO, &c, 1) == 1) {
+            if (c == '\x1b') {
+                char seq[3];
+                if (read(STDIN_FILENO, &seq[0], 1) == 1 && read(STDIN_FILENO, &seq[1], 1) == 1) {
+                    if (seq[0] == '[') {
+                        switch (seq[1]) {
+                            case 'A': return std::string("up");
+                            case 'B': return std::string("down");
+                            case 'C': return std::string("right");
+                            case 'D': return std::string("left");
+                        }
+                    }
+                }
+                return std::string("escape");
+            }
             std::string s(1, c);
             return s;
+        }
+        return nullptr;
+    }
+
+    static VMValue terminalReadByte(int argCount, VMValue* args) {
+        unsigned char c;
+        if (read(STDIN_FILENO, &c, 1) == 1) {
+            return static_cast<double>(c);
         }
         return nullptr;
     }
@@ -141,6 +163,7 @@ namespace TerminalModule {
         terminalClass->statics["enableRawMode"] = std::make_shared<ObjNative>("enableRawMode", 0, terminalEnableRawMode);
         terminalClass->statics["disableRawMode"] = std::make_shared<ObjNative>("disableRawMode", 0, terminalDisableRawMode);
         terminalClass->statics["readChar"] = std::make_shared<ObjNative>("readChar", 0, terminalReadChar);
+        terminalClass->statics["readByte"] = std::make_shared<ObjNative>("readByte", 0, terminalReadByte);
         terminalClass->statics["color"] = std::make_shared<ObjNative>("color", 1, terminalColor);
         terminalClass->statics["reset"] = std::make_shared<ObjNative>("reset", 0, terminalReset);
         terminalClass->statics["write"] = std::make_shared<ObjNative>("write", 1, terminalWrite);
