@@ -148,6 +148,14 @@ public:
     }
 
     int addConstant(VMValue value) {
+        // Simple deduplication to avoid exceeding 255 constants
+        if (std::holds_alternative<std::string>(value) || std::holds_alternative<double>(value) || std::holds_alternative<bool>(value)) {
+            for (size_t i = 0; i < constants.size(); i++) {
+                if (constants[i] == value) {
+                    return static_cast<int>(i);
+                }
+            }
+        }
         constants.push_back(value);
         return constants.size() - 1;
     }
