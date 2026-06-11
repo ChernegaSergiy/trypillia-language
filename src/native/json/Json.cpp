@@ -8,8 +8,7 @@
 namespace StdLib {
 namespace Json {
 
-    // Simple JSON Stringifier
-    static std::string stringifyValue(const VMValue& val) {
+    static std::string stringifyValue(const VMValue& val, int indent = -1, int currentIndent = 0) {
         if (std::holds_alternative<std::nullptr_t>(val)) return "null";
         if (std::holds_alternative<bool>(val)) return std::get<bool>(val) ? "true" : "false";
         if (std::holds_alternative<double>(val)) {
@@ -31,43 +30,65 @@ namespace Json {
             res += "\"";
             return res;
         }
+        
+        std::string nl = (indent >= 0) ? "\n" : "";
+        std::string sp = (indent >= 0) ? " " : "";
+        
         if (std::holds_alternative<std::shared_ptr<ObjList>>(val)) {
             auto list = std::get<std::shared_ptr<ObjList>>(val);
-            std::string res = "[";
+            if (list->elements.empty()) return "[]";
+            
+            std::string res = "[" + nl;
+            int nextIndent = (indent >= 0) ? currentIndent + indent : 0;
+            std::string indentStr = (indent >= 0) ? std::string(nextIndent, ' ') : "";
+            std::string endIndentStr = (indent >= 0) ? std::string(currentIndent, ' ') : "";
+            
             for (size_t i = 0; i < list->elements.size(); ++i) {
-                res += stringifyValue(list->elements[i]);
-                if (i < list->elements.size() - 1) res += ",";
+                res += indentStr + stringifyValue(list->elements[i], indent, nextIndent);
+                if (i < list->elements.size() - 1) res += "," + nl;
+                else res += nl;
             }
-            res += "]";
+            res += endIndentStr + "]";
             return res;
         }
         if (std::holds_alternative<std::shared_ptr<ObjMap>>(val)) {
             auto map = std::get<std::shared_ptr<ObjMap>>(val);
-            std::string res = "{";
+            if (map->values.empty()) return "{}";
+            
+            std::string res = "{" + nl;
+            int nextIndent = (indent >= 0) ? currentIndent + indent : 0;
+            std::string indentStr = (indent >= 0) ? std::string(nextIndent, ' ') : "";
+            std::string endIndentStr = (indent >= 0) ? std::string(currentIndent, ' ') : "";
+            
             bool first = true;
             for (auto const& [k, v] : map->values) {
-                if (!first) res += ",";
+                if (!first) res += "," + nl;
                 first = false;
+                
+                res += indentStr;
                 if (std::holds_alternative<std::string>(k)) {
-                    res += stringifyValue(k) + ":" + stringifyValue(v);
+                    res += stringifyValue(k, -1, 0) + ":" + sp + stringifyValue(v, indent, nextIndent);
                 } else {
-                    // JSON keys must be strings
                     std::stringstream ss;
                     if (std::holds_alternative<double>(k)) ss << std::get<double>(k);
                     else if (std::holds_alternative<bool>(k)) ss << (std::get<bool>(k) ? "true" : "false");
                     else if (std::holds_alternative<std::nullptr_t>(k)) ss << "null";
-                    res += "\"" + ss.str() + "\":" + stringifyValue(v);
+                    res += "\"" + ss.str() + "\":" + sp + stringifyValue(v, indent, nextIndent);
                 }
             }
-            res += "}";
+            res += nl + endIndentStr + "}";
             return res;
         }
         return "null"; // Default fallback
     }
 
     static VMValue jsonStringify(int argCount, VMValue* args) {
-        if (argCount != 1) return nullptr;
-        return stringifyValue(args[0]);
+        if (argCount < 1 || argCount > 2) return nullptr;
+        int indent = -1;
+        if (argCount == 2 && std::holds_alternative<double>(args[1])) {
+            indent = static_cast<int>(std::get<double>(args[1]));
+        }
+        return stringifyValue(args[0], indent, 0);
     }
 
     // Simple JSON Parser
@@ -193,7 +214,7 @@ namespace Json {
 
     void registerAll(VM* vm) {
         auto jsonClass = std::make_shared<ObjClass>("Json");
-        jsonClass->statics["stringify"] = std::make_shared<ObjNative>("stringify", 1, jsonStringify);
+        jsonClass->statics["stringify"] = std::make_shared<ObjNative>("stringify", -1, jsonStringify);
         jsonClass->statics["parse"] = std::make_shared<ObjNative>("parse", 1, jsonParse);
         vm->globals["Json"] = jsonClass;
     }
