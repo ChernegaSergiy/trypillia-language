@@ -12,6 +12,7 @@
 #include "map/Map.h"
 #include "regex/Regex.h"
 #include "worker/Worker.h"
+#include "crypto/Crypto.h"
 
 namespace StdLib {
     void registerAll(VM* vm) {
@@ -29,6 +30,7 @@ namespace StdLib {
         MapModule::registerAll(vm);
         RegexModule::registerAll(vm);
         WorkerModule::registerAll(vm);
+        CryptoModule::registerAll(vm);
     }
 
     void registerSymbols(SymbolTable* scope) {
@@ -46,6 +48,7 @@ namespace StdLib {
         MapModule::registerSymbols(scope);
         RegexModule::registerSymbols(scope);
         WorkerModule::registerSymbols(scope);
+        CryptoModule::registerSymbols(scope);
     }
 
     VMValue makeResultOk(VM* vm, VMValue value) {
