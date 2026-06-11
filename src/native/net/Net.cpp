@@ -1,5 +1,7 @@
 #include "Net.h"
+#ifdef HAS_CURL
 #include <curl/curl.h>
+#endif
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -14,13 +16,16 @@ namespace Net {
 
     thread_local VM* currentVM = nullptr;
 
+#ifdef HAS_CURL
     static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* userp) {
         size_t totalSize = size * nmemb;
         userp->append((char*)contents, totalSize);
         return totalSize;
     }
+#endif
 
     static VMValue httpGet(int argCount, VMValue* args) {
+#ifdef HAS_CURL
         if (argCount != 1 || !std::holds_alternative<std::string>(args[0])) return nullptr;
         std::string url = std::get<std::string>(args[0]);
         
@@ -43,9 +48,13 @@ namespace Net {
             return makeResultOk(currentVM, readBuffer);
         }
         return makeResultErr(currentVM, "Failed to initialize CURL");
+#else
+        return makeResultErr(currentVM, "HTTP module was disabled during compilation (CURL not found)");
+#endif
     }
 
     static VMValue httpPost(int argCount, VMValue* args) {
+#ifdef HAS_CURL
         if (argCount != 2 || !std::holds_alternative<std::string>(args[0]) || !std::holds_alternative<std::string>(args[1])) return nullptr;
         std::string url = std::get<std::string>(args[0]);
         std::string payload = std::get<std::string>(args[1]);
@@ -74,6 +83,9 @@ namespace Net {
             return makeResultOk(currentVM, readBuffer);
         }
         return makeResultErr(currentVM, "Failed to initialize CURL");
+#else
+        return makeResultErr(currentVM, "HTTP module was disabled during compilation (CURL not found)");
+#endif
     }
 
     // --- Socket implementation ---

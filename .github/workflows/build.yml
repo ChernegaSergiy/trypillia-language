@@ -36,6 +36,7 @@ jobs:
           - os: ubuntu-latest
             target: linux-x86_64
             artifact_name: trypillia
+            compiler_packages: "libcurl4-openssl-dev"
             cmake_args: ""
             
           # Cross-compile Linux ARM64 (aarch64 / Raspberry Pi 4 64-bit)
