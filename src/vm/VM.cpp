@@ -104,7 +104,7 @@ VMValue VM::callClosure(VMValue closureVal, int argCount, VMValue* args) {
     if (!std::holds_alternative<std::shared_ptr<ObjClosure>>(closureVal)) return nullptr;
     auto closure = std::get<std::shared_ptr<ObjClosure>>(closureVal);
     
-    int initialFrameCount = frames.size();
+    int initialFrameCount = static_cast<int>(frames.size());
     
     push(closureVal);
     for (int i = 0; i < argCount; i++) {
@@ -114,7 +114,7 @@ VMValue VM::callClosure(VMValue closureVal, int argCount, VMValue* args) {
     CallFrame newFrame;
     newFrame.closure = closure;
     newFrame.ip = closure->function->chunk->code.data();
-    newFrame.stackStart = stack.size() - argCount - 1;
+    newFrame.stackStart = static_cast<int>(stack.size() - argCount - 1);
     frames.push_back(newFrame);
     
     InterpretResult result = run(initialFrameCount);
