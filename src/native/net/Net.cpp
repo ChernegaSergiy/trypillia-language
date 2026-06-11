@@ -1,7 +1,5 @@
 #include "Net.h"
-#ifdef HAS_CURL
-#include <curl/curl.h>
-#endif
+
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -23,76 +21,162 @@ namespace Net {
 
     thread_local VM* currentVM = nullptr;
 
-#ifdef HAS_CURL
-    static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* userp) {
-        size_t totalSize = size * nmemb;
-        userp->append((char*)contents, totalSize);
-        return totalSize;
+    static bool parseUrl(const std::string& url, std::string& host, int& port, std::string& path) {
+        size_t pos = 0;
+        if (url.find("http://") == 0) {
+            pos = 7;
+            port = 80;
+        } else if (url.find("https://") == 0) {
+            pos = 8;
+            port = 443;
+        } else {
+            return false;
+        }
+
+        size_t pathPos = url.find('/', pos);
+        size_t colonPos = url.find(':', pos);
+
+        if (pathPos == std::string::npos) {
+            path = "/";
+            pathPos = url.length();
+        } else {
+            path = url.substr(pathPos);
+        }
+
+        if (colonPos != std::string::npos && colonPos < pathPos) {
+            host = url.substr(pos, colonPos - pos);
+            try {
+                port = std::stoi(url.substr(colonPos + 1, pathPos - colonPos - 1));
+            } catch (...) {
+                return false;
+            }
+        } else {
+            host = url.substr(pos, pathPos - pos);
+        }
+
+        return true;
     }
-#endif
+
+    static std::string makeHttpRequest(const std::string& host, int port, const std::string& requestStr, bool& success, std::string& errorMsg) {
+        if (port == 443) {
+            success = false;
+            errorMsg = "HTTPS is not supported natively without a TLS library.";
+            return "";
+        }
+
+        int sock = socket(AF_INET, SOCK_STREAM, 0);
+        if (sock < 0) {
+            success = false;
+            errorMsg = "Failed to create socket.";
+            return "";
+        }
+
+        struct hostent* server = gethostbyname(host.c_str());
+        if (server == nullptr) {
+            close(sock);
+            success = false;
+            errorMsg = "Failed to resolve host: " + host;
+            return "";
+        }
+
+        struct sockaddr_in serv_addr;
+        memset(&serv_addr, 0, sizeof(serv_addr));
+        serv_addr.sin_family = AF_INET;
+        bcopy((char*)server->h_addr, (char*)&serv_addr.sin_addr.s_addr, server->h_length);
+        serv_addr.sin_port = htons(port);
+
+        if (connect(sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
+            close(sock);
+            success = false;
+            errorMsg = "Failed to connect to host.";
+            return "";
+        }
+
+        if (write(sock, requestStr.c_str(), requestStr.length()) < 0) {
+            close(sock);
+            success = false;
+            errorMsg = "Failed to write to socket.";
+            return "";
+        }
+
+        std::string response;
+        char buffer[4096];
+        while (true) {
+            ssize_t n = read(sock, buffer, sizeof(buffer));
+            if (n <= 0) break;
+            response.append(buffer, n);
+        }
+        
+        close(sock);
+        success = true;
+        return response;
+    }
 
     static VMValue httpGet(int argCount, VMValue* args) {
-#ifdef HAS_CURL
         if (argCount != 1 || !std::holds_alternative<std::string>(args[0])) return nullptr;
         std::string url = std::get<std::string>(args[0]);
         
-        CURL* curl;
-        CURLcode res;
-        std::string readBuffer;
-        
-        curl = curl_easy_init();
-        if (curl) {
-            curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-            curl_easy_setopt(curl, CURLOPT_USERAGENT, "Trypillia-Http-Client/1.0");
-            curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L); // follow redirects
-            
-            res = curl_easy_perform(curl);
-            curl_easy_cleanup(curl);
-            
-            if (res != CURLE_OK) return makeResultErr(currentVM, curl_easy_strerror(res));
-            return makeResultOk(currentVM, readBuffer);
+        std::string host, path;
+        int port;
+        if (!parseUrl(url, host, port, path)) {
+            return makeResultErr(currentVM, "Invalid URL format.");
         }
-        return makeResultErr(currentVM, "Failed to initialize CURL");
-#else
-        return makeResultErr(currentVM, "HTTP module was disabled during compilation (CURL not found)");
-#endif
+
+        std::string requestStr = "GET " + path + " HTTP/1.1\r\n"
+                                 "Host: " + host + "\r\n"
+                                 "Connection: close\r\n"
+                                 "User-Agent: Trypillia-Http-Client/1.0\r\n"
+                                 "\r\n";
+
+        bool success = false;
+        std::string errorMsg;
+        std::string response = makeHttpRequest(host, port, requestStr, success, errorMsg);
+
+        if (!success) {
+            return makeResultErr(currentVM, errorMsg);
+        }
+
+        size_t headerEnd = response.find("\r\n\r\n");
+        if (headerEnd != std::string::npos) {
+            response = response.substr(headerEnd + 4);
+        }
+
+        return makeResultOk(currentVM, response);
     }
 
     static VMValue httpPost(int argCount, VMValue* args) {
-#ifdef HAS_CURL
         if (argCount != 2 || !std::holds_alternative<std::string>(args[0]) || !std::holds_alternative<std::string>(args[1])) return nullptr;
         std::string url = std::get<std::string>(args[0]);
         std::string payload = std::get<std::string>(args[1]);
         
-        CURL* curl;
-        CURLcode res;
-        std::string readBuffer;
-        
-        curl = curl_easy_init();
-        if (curl) {
-            struct curl_slist* headers = NULL;
-            headers = curl_slist_append(headers, "Content-Type: application/json");
-            
-            curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
-            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-            curl_easy_setopt(curl, CURLOPT_USERAGENT, "Trypillia-Http-Client/1.0");
-            
-            res = curl_easy_perform(curl);
-            curl_slist_free_all(headers);
-            curl_easy_cleanup(curl);
-            
-            if (res != CURLE_OK) return makeResultErr(currentVM, curl_easy_strerror(res));
-            return makeResultOk(currentVM, readBuffer);
+        std::string host, path;
+        int port;
+        if (!parseUrl(url, host, port, path)) {
+            return makeResultErr(currentVM, "Invalid URL format.");
         }
-        return makeResultErr(currentVM, "Failed to initialize CURL");
-#else
-        return makeResultErr(currentVM, "HTTP module was disabled during compilation (CURL not found)");
-#endif
+
+        std::string requestStr = "POST " + path + " HTTP/1.1\r\n"
+                                 "Host: " + host + "\r\n"
+                                 "Content-Type: application/json\r\n"
+                                 "Connection: close\r\n"
+                                 "User-Agent: Trypillia-Http-Client/1.0\r\n"
+                                 "Content-Length: " + std::to_string(payload.length()) + "\r\n"
+                                 "\r\n" + payload;
+
+        bool success = false;
+        std::string errorMsg;
+        std::string response = makeHttpRequest(host, port, requestStr, success, errorMsg);
+
+        if (!success) {
+            return makeResultErr(currentVM, errorMsg);
+        }
+
+        size_t headerEnd = response.find("\r\n\r\n");
+        if (headerEnd != std::string::npos) {
+            response = response.substr(headerEnd + 4);
+        }
+
+        return makeResultOk(currentVM, response);
     }
 
     // --- Socket implementation ---
