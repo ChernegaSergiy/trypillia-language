@@ -78,9 +78,6 @@ int main(int argc, char** argv) {
     if (function) {
         if (buildStandalone) {
             if (Serializer::buildStandalone(function, argv[0], outputFile)) {
-                std::string chmodCmd = "chmod +x " + outputFile;
-                int ret = system(chmodCmd.c_str());
-                (void)ret; 
                 std::cout << "Successfully built standalone executable: " << outputFile << std::endl;
             } else {
                 std::cerr << "Error building standalone executable: " << outputFile << std::endl;
