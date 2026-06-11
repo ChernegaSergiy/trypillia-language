@@ -10,7 +10,7 @@ namespace StringModule {
 
     static VMValue stringLength(int argCount, VMValue* args) {
         if (argCount != 1 || !std::holds_alternative<std::string>(args[0])) return nullptr;
-        return (double)std::get<std::string>(args[0]).length();
+        return static_cast<double>(std::get<std::string>(args[0]).length());
     }
 
     static VMValue stringSubstring(int argCount, VMValue* args) {
@@ -19,11 +19,11 @@ namespace StringModule {
             !std::holds_alternative<double>(args[2])) return nullptr;
             
         std::string str = std::get<std::string>(args[0]);
-        int start = std::get<double>(args[1]);
-        int length = std::get<double>(args[2]);
+        int start = static_cast<int>(std::get<double>(args[1]));
+        int length = static_cast<int>(std::get<double>(args[2]));
         
-        if (start < 0 || start >= str.length()) return std::string("");
-        return str.substr(start, length);
+        if (start < 0 || start >= static_cast<int>(str.length())) return std::string("");
+        return str.substr(static_cast<size_t>(start), static_cast<size_t>(length));
     }
 
     static VMValue stringToUpper(int argCount, VMValue* args) {

@@ -52,8 +52,8 @@ namespace RandomModule {
         
         if (list->elements.empty()) return nullptr;
         
-        std::uniform_int_distribution<int> dist(0, list->elements.size() - 1);
-        return list->elements[dist(getEngine())];
+        std::uniform_int_distribution<int> dist(0, static_cast<int>(list->elements.size() - 1));
+        return list->elements[static_cast<size_t>(dist(getEngine()))];
     }
 
     static VMValue randomUuid(int argCount, VMValue* args) {

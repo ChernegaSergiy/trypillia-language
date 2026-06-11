@@ -27,3 +27,8 @@ if(DEFINED ARTIFACT_NAME)
     set_target_properties(trypillia PROPERTIES OUTPUT_NAME "${ARTIFACT_NAME}")
 endif()
 
+if(MSVC)
+    target_compile_options(trypillia PRIVATE /wd4244 /wd4267)
+    target_compile_definitions(trypillia PRIVATE _CRT_SECURE_NO_WARNINGS)
+endif()
+
