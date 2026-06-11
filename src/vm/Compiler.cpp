@@ -937,10 +937,3 @@ std::shared_ptr<ObjFunction> Compiler::compile(ASTNode* ast) {
 
     return script;
 }
-ccept(&visitor);
-
-    visitor.emitByte(static_cast<uint8_t>(OpCode::OP_NIL));
-    visitor.emitByte(static_cast<uint8_t>(OpCode::OP_RETURN));
-
-    return script;
-}
