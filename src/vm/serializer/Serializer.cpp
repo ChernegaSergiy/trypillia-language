@@ -24,14 +24,14 @@ bool Serializer::buildStandalone(const std::shared_ptr<ObjFunction>& function, c
     src.close();
 
     // 2. Append bytecode
-    uint32_t bytecodeStartPos = dst.tellp();
+    uint32_t bytecodeStartPos = static_cast<uint32_t>(dst.tellp());
     
     dst.write(MAGIC, 4);
     uint32_t version = VERSION;
     dst.write(reinterpret_cast<const char*>(&version), sizeof(version));
     writeFunction(dst, function);
     
-    uint32_t bytecodeEndPos = dst.tellp();
+    uint32_t bytecodeEndPos = static_cast<uint32_t>(dst.tellp());
     uint32_t bytecodeSize = bytecodeEndPos - bytecodeStartPos;
 
     // 3. Write footer (Size + Magic TRYS)
@@ -88,15 +88,15 @@ std::shared_ptr<ObjFunction> Serializer::readFunction(std::ifstream& in) {
 }
 
 void Serializer::writeChunk(std::ofstream& out, const std::shared_ptr<Chunk>& chunk) {
-    uint32_t codeSize = chunk->code.size();
+    uint32_t codeSize = static_cast<uint32_t>(chunk->code.size());
     out.write(reinterpret_cast<const char*>(&codeSize), sizeof(codeSize));
     if (codeSize > 0) out.write(reinterpret_cast<const char*>(chunk->code.data()), codeSize);
 
-    uint32_t linesSize = chunk->lines.size();
+    uint32_t linesSize = static_cast<uint32_t>(chunk->lines.size());
     out.write(reinterpret_cast<const char*>(&linesSize), sizeof(linesSize));
     if (linesSize > 0) out.write(reinterpret_cast<const char*>(chunk->lines.data()), linesSize * sizeof(int));
 
-    uint32_t constSize = chunk->constants.size();
+    uint32_t constSize = static_cast<uint32_t>(chunk->constants.size());
     out.write(reinterpret_cast<const char*>(&constSize), sizeof(constSize));
     for (const auto& val : chunk->constants) {
         writeValue(out, val);
@@ -181,7 +181,7 @@ VMValue Serializer::readValue(std::ifstream& in) {
 }
 
 void Serializer::writeString(std::ofstream& out, const std::string& str) {
-    uint32_t len = str.length();
+    uint32_t len = static_cast<uint32_t>(str.length());
     out.write(reinterpret_cast<const char*>(&len), sizeof(len));
     if (len > 0) out.write(str.c_str(), len);
 }

@@ -553,8 +553,8 @@ InterpretResult VM::run(int targetFrameDepth) {
                 if (std::holds_alternative<std::shared_ptr<ObjList>>(listVal)) {
                     auto list = std::get<std::shared_ptr<ObjList>>(listVal);
                     if (std::holds_alternative<double>(index)) {
-                        int i = std::get<double>(index);
-                        if (i >= 0 && i < list->elements.size()) {
+                        int i = static_cast<int>(std::get<double>(index));
+                        if (i >= 0 && i < static_cast<int>(list->elements.size())) {
                             push(list->elements[i]);
                         } else {
                             return runtimeError(std::string("Index out of bounds."));
@@ -565,7 +565,7 @@ InterpretResult VM::run(int targetFrameDepth) {
                 } else if (std::holds_alternative<std::string>(listVal)) {
                     auto str = std::get<std::string>(listVal);
                     if (std::holds_alternative<double>(index)) {
-                        int i = std::get<double>(index);
+                        int i = static_cast<int>(std::get<double>(index));
                         int len = utf8_length(str);
                         if (i >= 0 && i < len) {
                             push(utf8_char_at(str, i));
@@ -594,8 +594,8 @@ InterpretResult VM::run(int targetFrameDepth) {
                 if (std::holds_alternative<std::shared_ptr<ObjList>>(listVal)) {
                     auto list = std::get<std::shared_ptr<ObjList>>(listVal);
                     if (std::holds_alternative<double>(index)) {
-                        int i = std::get<double>(index);
-                        if (i >= 0 && i < list->elements.size()) {
+                        int i = static_cast<int>(std::get<double>(index));
+                        if (i >= 0 && i < static_cast<int>(list->elements.size())) {
                             list->elements[i] = value;
                             push(value);
                         } else {
@@ -790,7 +790,7 @@ InterpretResult VM::run(int targetFrameDepth) {
                     CallFrame newFrame;
                     newFrame.closure = closure;
                     newFrame.ip = function->chunk->code.data();
-                    newFrame.stackStart = stack.size() - argCount - 1;
+                    newFrame.stackStart = static_cast<int>(stack.size() - argCount - 1);
                     frames.push_back(newFrame);
                     frame = &frames.back();
                 } else if (std::holds_alternative<std::shared_ptr<ObjNative>>(callee)) {
@@ -828,7 +828,7 @@ InterpretResult VM::run(int targetFrameDepth) {
                             CallFrame newFrame;
                             newFrame.closure = closure;
                             newFrame.ip = func->chunk->code.data();
-                            newFrame.stackStart = stack.size() - argCount - 1;
+                            newFrame.stackStart = static_cast<int>(stack.size() - argCount - 1);
                             frames.push_back(newFrame);
                             frame = &frames.back();
                         } else {
@@ -860,7 +860,7 @@ InterpretResult VM::run(int targetFrameDepth) {
                         CallFrame newFrame;
                         newFrame.closure = closure;
                         newFrame.ip = func->chunk->code.data();
-                        newFrame.stackStart = stack.size() - argCount - 1;
+                        newFrame.stackStart = static_cast<int>(stack.size() - argCount - 1);
                         frames.push_back(newFrame);
                         frame = &frames.back();
                     } else {

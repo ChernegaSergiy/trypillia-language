@@ -157,7 +157,7 @@ public:
             }
         }
         constants.push_back(value);
-        return constants.size() - 1;
+        return static_cast<int>(constants.size() - 1);
     }
 };
 
