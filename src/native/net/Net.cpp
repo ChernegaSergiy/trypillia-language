@@ -2,10 +2,17 @@
 #ifdef HAS_CURL
 #include <curl/curl.h>
 #endif
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#pragma comment(lib, "ws2_32.lib")
+#define close closesocket
+#else
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <unistd.h>
+#endif
 #include <cstring>
 #include <vector>
 #include "../StdLib.h"
@@ -260,6 +267,10 @@ namespace Net {
     }
 
     void registerAll(VM* vm) {
+#ifdef _WIN32
+        WSADATA wsaData;
+        WSAStartup(MAKEWORD(2, 2), &wsaData);
+#endif
         currentVM = vm;
         auto httpClass = std::make_shared<ObjClass>("Http");
         httpClass->statics["get"] = std::make_shared<ObjNative>("get", 1, httpGet);

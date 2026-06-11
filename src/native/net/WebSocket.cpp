@@ -1,8 +1,14 @@
 #include "WebSocket.h"
 #include "../crypto/Crypto.h"
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#define close closesocket
+#else
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#endif
 #include <cstring>
 #include <vector>
 #include <iostream>
