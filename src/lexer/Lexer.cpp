@@ -286,7 +286,7 @@ Token Lexer::string() {
     }
     
     if (isAtEnd()) {
-        ErrorHandling::reportError("Unterminated string.");
+        
         return {TokenType::UNKNOWN, "", line};
     }
     

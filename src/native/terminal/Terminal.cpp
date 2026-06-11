@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string>
+#include <signal.h>
+#include <stdlib.h>
 
 namespace StdLib {
 namespace TerminalModule {
@@ -11,6 +13,19 @@ namespace TerminalModule {
     static VM* currentVM = nullptr;
     static struct termios orig_termios;
     static bool inRawMode = false;
+    static bool atexitRegistered = false;
+
+    static void restore_terminal_state() {
+        if (inRawMode) {
+            tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
+            inRawMode = false;
+        }
+    }
+
+    static void terminal_signal_handler(int sig) {
+        restore_terminal_state();
+        exit(128 + sig);
+    }
 
     static VMValue terminalClear(int argCount, VMValue* args) {
         std::cout << "\033[2J\033[H";
@@ -78,6 +93,13 @@ namespace TerminalModule {
             raw.c_cc[VTIME] = 1; // 100ms timeout
             tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
             inRawMode = true;
+
+            if (!atexitRegistered) {
+                atexit(restore_terminal_state);
+                signal(SIGINT, terminal_signal_handler);
+                signal(SIGTERM, terminal_signal_handler);
+                atexitRegistered = true;
+            }
         }
         return nullptr;
     }
