@@ -665,7 +665,7 @@ public:
         for (auto& el : node->elements) {
             el->accept(this);
         }
-        emitBytes(static_cast<uint8_t>(OpCode::OP_BUILD_LIST), node->elements.size());
+        emitBytes(static_cast<uint8_t>(OpCode::OP_BUILD_LIST), static_cast<uint8_t>(node->elements.size()));
     }
     void visit(IndexGetExpr* node) override {
         node->object->accept(this);
@@ -681,7 +681,7 @@ public:
     void visit(FunctionNode* node) override {
         auto func = std::make_shared<ObjFunction>();
         func->name = node->name;
-        func->arity = node->params.size();
+        func->arity = static_cast<int>(node->params.size());
         func->chunk = std::make_shared<Chunk>();
         func->filename = compiler_filename;
 
@@ -699,15 +699,15 @@ public:
         funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_NIL));
         funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_RETURN));
         
-        func->upvalueCount = funcCompiler.upvalues.size();
+        func->upvalueCount = static_cast<int>(funcCompiler.upvalues.size());
 
-        emitBytes(static_cast<uint8_t>(OpCode::OP_CLOSURE), chunk->addConstant(func));
+        emitBytes(static_cast<uint8_t>(OpCode::OP_CLOSURE), static_cast<uint8_t>(chunk->addConstant(func)));
         for (const auto& upval : funcCompiler.upvalues) {
             emitByte(upval.isLocal ? 1 : 0);
             emitByte(upval.index);
         }
 
-        emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), chunk->addConstant(node->name));
+        emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), static_cast<uint8_t>(chunk->addConstant(node->name)));
     }
     void visit(FieldDeclNode* node) override {}
     VMAccessModifier getVMAccessModifier(AccessModifier am) {
@@ -719,7 +719,7 @@ public:
     void compileMethod(FunctionNode* node, ClassNode* classNode = nullptr) {
         auto func = std::make_shared<ObjFunction>();
         func->name = node->name;
-        func->arity = node->params.size();
+        func->arity = static_cast<int>(node->params.size());
         func->chunk = std::make_shared<Chunk>();
         func->filename = compiler_filename;
         func->accessModifier = getVMAccessModifier(node->accessModifier);
@@ -746,7 +746,7 @@ public:
                 } else {
                     funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_NIL));
                 }
-                funcCompiler.emitBytes(static_cast<uint8_t>(OpCode::OP_PROPERTY_SET), funcCompiler.chunk->addConstant(field->name));
+                funcCompiler.emitBytes(static_cast<uint8_t>(OpCode::OP_PROPERTY_SET), static_cast<uint8_t>(funcCompiler.chunk->addConstant(field->name)));
                 funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_POP));
             }
         }
@@ -763,20 +763,20 @@ public:
             funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_RETURN));
         }
         
-        func->upvalueCount = funcCompiler.upvalues.size();
+        func->upvalueCount = static_cast<int>(funcCompiler.upvalues.size());
 
-        emitBytes(static_cast<uint8_t>(OpCode::OP_CLOSURE), chunk->addConstant(func));
+        emitBytes(static_cast<uint8_t>(OpCode::OP_CLOSURE), static_cast<uint8_t>(chunk->addConstant(func)));
         for (const auto& upval : funcCompiler.upvalues) {
             emitByte(upval.isLocal ? 1 : 0);
             emitByte(upval.index);
         }
 
         if (node->isStatic) {
-            emitBytes(static_cast<uint8_t>(OpCode::OP_STATIC_METHOD), chunk->addConstant(node->name));
+            emitBytes(static_cast<uint8_t>(OpCode::OP_STATIC_METHOD), static_cast<uint8_t>(chunk->addConstant(node->name)));
         } else if (node->isAbstract) {
-            emitBytes(static_cast<uint8_t>(OpCode::OP_ABSTRACT_METHOD), chunk->addConstant(node->name));
+            emitBytes(static_cast<uint8_t>(OpCode::OP_ABSTRACT_METHOD), static_cast<uint8_t>(chunk->addConstant(node->name)));
         } else {
-            emitBytes(static_cast<uint8_t>(OpCode::OP_METHOD), chunk->addConstant(node->name));
+            emitBytes(static_cast<uint8_t>(OpCode::OP_METHOD), static_cast<uint8_t>(chunk->addConstant(node->name)));
         }
     }
 
@@ -914,7 +914,7 @@ public:
             pair.first->accept(this);
             pair.second->accept(this);
         }
-        emitBytes(static_cast<uint8_t>(OpCode::OP_BUILD_MAP), node->elements.size());
+        emitBytes(static_cast<uint8_t>(OpCode::OP_BUILD_MAP), static_cast<uint8_t>(node->elements.size()));
     }
 };
 
@@ -931,6 +931,13 @@ std::shared_ptr<ObjFunction> Compiler::compile(ASTNode* ast) {
 
     CompilerVisitor visitor(script->chunk.get(), currentFilename);
     ast->accept(&visitor);
+
+    visitor.emitByte(static_cast<uint8_t>(OpCode::OP_NIL));
+    visitor.emitByte(static_cast<uint8_t>(OpCode::OP_RETURN));
+
+    return script;
+}
+ccept(&visitor);
 
     visitor.emitByte(static_cast<uint8_t>(OpCode::OP_NIL));
     visitor.emitByte(static_cast<uint8_t>(OpCode::OP_RETURN));

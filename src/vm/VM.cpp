@@ -185,11 +185,11 @@ InterpretResult VM::runtimeError(const std::string& message) {
     std::cerr << "Panic: " << message << "\n\n";
     std::cerr << "Traceback (most recent call last):\n";
     
-    for (int i = frames.size() - 1; i >= 0; i--) {
+    for (int i = static_cast<int>(frames.size()) - 1; i >= 0; i--) {
         CallFrame* frame = &frames[i];
         std::shared_ptr<ObjFunction> function = frame->closure->function;
         size_t instruction = frame->ip - function->chunk->code.data() - 1;
-        int line = function->chunk->lines[instruction];
+        int line = function->chunk->lines[static_cast<int>(instruction)];
         
         std::cerr << "  at ";
         if (function->name.empty() || function->name == "<script>") {
