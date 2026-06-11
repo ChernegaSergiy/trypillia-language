@@ -142,8 +142,15 @@ namespace WebSocketModule {
     }
 
     static VMValue wsFromFd(int argCount, VMValue* args) {
-        if (argCount != 1 || !std::holds_alternative<double>(args[0])) return nullptr;
-        int fd = static_cast<int>(std::get<double>(args[0]));
+        if (argCount != 1) return nullptr;
+        int fd = -1;
+        if (std::holds_alternative<double>(args[0])) {
+            fd = static_cast<int>(std::get<double>(args[0]));
+        } else if (std::holds_alternative<std::string>(args[0])) {
+            fd = std::stoi(std::get<std::string>(args[0]));
+        } else {
+            return nullptr;
+        }
 
         WSClientData* data = new WSClientData{fd};
         auto klass = std::get<std::shared_ptr<ObjClass>>(currentVM->globals["WebSocket"]);
