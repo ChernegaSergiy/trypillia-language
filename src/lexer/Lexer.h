@@ -21,6 +21,10 @@ enum class TokenType {
     // Logical operators
     AND, OR,
     
+    // Bitwise operators
+    BITWISE_AND, BITWISE_OR, BITWISE_XOR, BITWISE_NOT,
+    SHIFT_LEFT, SHIFT_RIGHT,
+    
     // Literals
     IDENTIFIER, NUMBER, STRING,
     
