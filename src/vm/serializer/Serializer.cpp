@@ -53,6 +53,62 @@ std::shared_ptr<ObjFunction> Serializer::loadFromFile(const std::string& path) {
     return readFunction(in);
 }
 
+bool Serializer::buildStandalone(const std::shared_ptr<ObjFunction>& function, const std::string& trypilliaExePath, const std::string& outputPath) {
+    // 1. Copy the interpreter executable
+    std::ifstream src(trypilliaExePath, std::ios::binary);
+    std::ofstream dst(outputPath, std::ios::binary);
+    if (!src.is_open() || !dst.is_open()) return false;
+
+    dst << src.rdbuf();
+    src.close();
+
+    // 2. Append bytecode
+    uint32_t bytecodeStartPos = dst.tellp();
+    
+    dst.write(MAGIC, 4);
+    uint32_t version = VERSION;
+    dst.write(reinterpret_cast<const char*>(&version), sizeof(version));
+    writeFunction(dst, function);
+    
+    uint32_t bytecodeEndPos = dst.tellp();
+    uint32_t bytecodeSize = bytecodeEndPos - bytecodeStartPos;
+
+    // 3. Write footer (Size + Magic TRYS)
+    dst.write(reinterpret_cast<const char*>(&bytecodeSize), sizeof(bytecodeSize));
+    dst.write("TRYS", 4);
+
+    return true;
+}
+
+std::shared_ptr<ObjFunction> Serializer::loadEmbeddedBytecode(const std::string& currentExePath) {
+    std::ifstream in(currentExePath, std::ios::binary);
+    if (!in.is_open()) return nullptr;
+
+    in.seekg(-8, std::ios::end);
+    if (in.tellg() < 0) return nullptr; // File too small
+
+    uint32_t bytecodeSize;
+    in.read(reinterpret_cast<char*>(&bytecodeSize), sizeof(bytecodeSize));
+    
+    char magic[4];
+    in.read(magic, 4);
+    if (std::string(magic, 4) != "TRYS") return nullptr;
+
+    // Seek to start of bytecode
+    std::streamoff offset = -8 - static_cast<std::streamoff>(bytecodeSize);
+    in.seekg(offset, std::ios::end);
+    
+    // Read and verify TRYC magic
+    in.read(magic, 4);
+    if (std::string(magic, 4) != MAGIC) return nullptr;
+
+    uint32_t version;
+    in.read(reinterpret_cast<char*>(&version), sizeof(version));
+    if (version != VERSION) return nullptr;
+
+    return readFunction(in);
+}
+
 void Serializer::writeFunction(std::ofstream& out, const std::shared_ptr<ObjFunction>& function) {
     writeString(out, function->name);
     out.write(reinterpret_cast<const char*>(&function->arity), sizeof(function->arity));

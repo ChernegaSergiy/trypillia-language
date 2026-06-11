@@ -10,27 +10,47 @@
 #include "vm/serializer/Serializer.h"
 
 int main(int argc, char** argv) {
+    std::string command;
+    if (argc >= 2) command = argv[1];
+
+    std::shared_ptr<ObjFunction> function;
+
+    // 1. Check for embedded bytecode first (standalone executable)
+    function = Serializer::loadEmbeddedBytecode(argv[0]);
+    if (function) {
+        // Run embedded bytecode
+        for (int i = 1; i < argc; i++) {
+            StdLib::OSModule::commandLineArgs.push_back(argv[i]);
+        }
+        std::cout << "\n--- Bytecode VM Execution (Standalone) ---\n";
+        VM vm;
+        vm.interpret(function);
+        return 0;
+    }
+
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " [compile] <file> [output.tryc]" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " [compile|build] <file> [output]" << std::endl;
         return 1;
     }
 
-    std::string command = argv[1];
     bool compileOnly = false;
+    bool buildStandalone = false;
     std::string inputFile;
     std::string outputFile;
 
-    if (command == "compile") {
+    if (command == "compile" || command == "build") {
         if (argc < 3) {
-            std::cerr << "Usage: " << argv[0] << " compile <file.try> [output.tryc]" << std::endl;
+            std::cerr << "Usage: " << argv[0] << " " << command << " <file.try> [output]" << std::endl;
             return 1;
         }
-        compileOnly = true;
+        if (command == "build") buildStandalone = true;
+        else compileOnly = true;
+        
         inputFile = argv[2];
         if (argc >= 4) {
             outputFile = argv[3];
         } else {
-            outputFile = inputFile + "c"; // Default .try -> .tryc
+            outputFile = buildStandalone ? "app" : inputFile + "c";
         }
     } else {
         inputFile = argv[1];
@@ -38,8 +58,6 @@ int main(int argc, char** argv) {
             StdLib::OSModule::commandLineArgs.push_back(argv[i]);
         }
     }
-
-    std::shared_ptr<ObjFunction> function;
 
     // Check if it's a precompiled bytecode file
     if (inputFile.length() > 5 && inputFile.substr(inputFile.length() - 5) == ".tryc") {
@@ -70,7 +88,18 @@ int main(int argc, char** argv) {
     }
 
     if (function) {
-        if (compileOnly) {
+        if (buildStandalone) {
+            if (Serializer::buildStandalone(function, argv[0], outputFile)) {
+                // chmod +x the output file using system call
+                std::string chmodCmd = "chmod +x " + outputFile;
+                int ret = system(chmodCmd.c_str());
+                (void)ret; // suppress warning
+                std::cout << "Successfully built standalone executable: " << outputFile << std::endl;
+            } else {
+                std::cerr << "Error building standalone executable: " << outputFile << std::endl;
+                return 1;
+            }
+        } else if (compileOnly) {
             if (Serializer::saveToFile(function, outputFile)) {
                 std::cout << "Successfully compiled to " << outputFile << std::endl;
             } else {
