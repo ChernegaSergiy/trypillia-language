@@ -5,6 +5,7 @@
 #include "list/List.h"
 #include "os/OS.h"
 #include "terminal/Terminal.h"
+#include "map/Map.h"
 #include "../vm/VM.h"
 #include "../symbol/SymbolTable.h"
 

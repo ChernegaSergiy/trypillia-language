@@ -9,6 +9,7 @@
 #include "os/OS.h"
 #include "random/Random.h"
 #include "terminal/Terminal.h"
+#include "map/Map.h"
 
 namespace StdLib {
     void registerAll(VM* vm) {
@@ -23,6 +24,7 @@ namespace StdLib {
         OSModule::registerAll(vm);
         RandomModule::registerAll(vm);
         TerminalModule::registerAll(vm);
+        MapModule::registerAll(vm);
     }
 
     void registerSymbols(SymbolTable* scope) {
@@ -37,6 +39,7 @@ namespace StdLib {
         OSModule::registerSymbols(scope);
         RandomModule::registerSymbols(scope);
         TerminalModule::registerSymbols(scope);
+        MapModule::registerSymbols(scope);
     }
 
     VMValue makeResultOk(VM* vm, VMValue value) {
