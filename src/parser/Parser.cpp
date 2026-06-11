@@ -60,7 +60,72 @@ ASTNode* Parser::parse() {
 
 // Primary expressions: literals, identifiers, grouped expressions
 ExprNode* Parser::primary() {
-    if (currentToken.type == TokenType::NUMBER || currentToken.type == TokenType::STRING) {
+    if (currentToken.type == TokenType::STRING) {
+        Token literal = currentToken;
+        advance();
+        
+        std::string str = literal.lexeme;
+        size_t openBrace = str.find('{');
+        if (openBrace != std::string::npos) {
+            std::vector<ExprNode*> parts;
+            size_t i = 0;
+            while (i < str.length()) {
+                size_t nextOpen = str.find('{', i);
+                if (nextOpen == std::string::npos) {
+                    Token t = literal;
+                    t.lexeme = str.substr(i);
+                    parts.push_back(new LiteralExpr(t));
+                    break;
+                }
+                
+                if (nextOpen > i) {
+                    Token t = literal;
+                    t.lexeme = str.substr(i, nextOpen - i);
+                    parts.push_back(new LiteralExpr(t));
+                }
+                
+                size_t closeBrace = str.find('}', nextOpen);
+                if (closeBrace == std::string::npos) {
+                    Token t = literal;
+                    t.lexeme = str.substr(nextOpen);
+                    parts.push_back(new LiteralExpr(t));
+                    break;
+                }
+                
+                std::string exprStr = str.substr(nextOpen + 1, closeBrace - nextOpen - 1);
+                if (!exprStr.empty()) {
+                    try {
+                        Lexer lex(exprStr);
+                        Parser p(lex);
+                        ExprNode* e = p.expression();
+                        if (e) parts.push_back(e);
+                    } catch (...) {
+                        Token t = literal;
+                        t.lexeme = "{" + exprStr + "}";
+                        parts.push_back(new LiteralExpr(t));
+                    }
+                }
+                
+                i = closeBrace + 1;
+            }
+            
+            if (parts.empty()) return new LiteralExpr(literal);
+            
+            ExprNode* result = parts[0];
+            for (size_t j = 1; j < parts.size(); j++) {
+                Token plusToken;
+                plusToken.type = TokenType::PLUS;
+                plusToken.lexeme = "+";
+                plusToken.line = literal.line;
+                result = new BinaryExpr(result, plusToken, parts[j]);
+            }
+            return result;
+        }
+
+        return new LiteralExpr(literal);
+    }
+    
+    if (currentToken.type == TokenType::NUMBER) {
         Token literal = currentToken;
         advance();
         return new LiteralExpr(literal);
