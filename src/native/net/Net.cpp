@@ -16,6 +16,12 @@
 #include "../StdLib.h"
 #include <iostream>
 
+#include <mbedtls/net_sockets.h>
+#include <mbedtls/ssl.h>
+#include <mbedtls/entropy.h>
+#include <mbedtls/ctr_drbg.h>
+#include <mbedtls/error.h>
+
 namespace StdLib {
 namespace Net {
 
@@ -59,9 +65,95 @@ namespace Net {
 
     static std::string makeHttpRequest(const std::string& host, int port, const std::string& requestStr, bool& success, std::string& errorMsg) {
         if (port == 443) {
-            success = false;
-            errorMsg = "HTTPS is not supported natively without a TLS library.";
-            return "";
+            mbedtls_net_context server_fd;
+            mbedtls_entropy_context entropy;
+            mbedtls_ctr_drbg_context ctr_drbg;
+            mbedtls_ssl_context ssl;
+            mbedtls_ssl_config conf;
+
+            mbedtls_net_init(&server_fd);
+            mbedtls_ssl_init(&ssl);
+            mbedtls_ssl_config_init(&conf);
+            mbedtls_ctr_drbg_init(&ctr_drbg);
+            mbedtls_entropy_init(&entropy);
+
+            const char* pers = "trypillia_https";
+            if (mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, (const unsigned char*)pers, strlen(pers)) != 0) {
+                errorMsg = "Failed to seed random number generator.";
+                success = false;
+                return "";
+            }
+
+            if (mbedtls_net_connect(&server_fd, host.c_str(), std::to_string(port).c_str(), MBEDTLS_NET_PROTO_TCP) != 0) {
+                errorMsg = "Failed to connect to host (HTTPS).";
+                success = false;
+                return "";
+            }
+
+            if (mbedtls_ssl_config_defaults(&conf, MBEDTLS_SSL_IS_CLIENT, MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT) != 0) {
+                errorMsg = "Failed to set SSL config.";
+                success = false;
+                return "";
+            }
+
+            // Disable cert verification for simplicity (can add ca-certificates support later)
+            mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_NONE);
+            mbedtls_ssl_conf_rng(&conf, mbedtls_ctr_drbg_random, &ctr_drbg);
+
+            if (mbedtls_ssl_setup(&ssl, &conf) != 0) {
+                errorMsg = "Failed to setup SSL.";
+                success = false;
+                return "";
+            }
+
+            mbedtls_ssl_set_hostname(&ssl, host.c_str());
+            mbedtls_ssl_set_bio(&ssl, &server_fd, mbedtls_net_send, mbedtls_net_recv, NULL);
+
+            while (true) {
+                int ret = mbedtls_ssl_handshake(&ssl);
+                if (ret == 0) break;
+                if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
+                    errorMsg = "SSL handshake failed.";
+                    success = false;
+                    return "";
+                }
+            }
+
+            int ret;
+            size_t written = 0;
+            while (written < requestStr.length()) {
+                ret = mbedtls_ssl_write(&ssl, (const unsigned char*)requestStr.c_str() + written, requestStr.length() - written);
+                if (ret <= 0) {
+                    if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
+                        errorMsg = "Failed to write via SSL.";
+                        success = false;
+                        return "";
+                    }
+                } else {
+                    written += ret;
+                }
+            }
+
+            std::string response;
+            unsigned char buffer[4096];
+            while (true) {
+                ret = mbedtls_ssl_read(&ssl, buffer, sizeof(buffer));
+                if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE) continue;
+                if (ret == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) break;
+                if (ret < 0) break;
+                if (ret == 0) break;
+                response.append((char*)buffer, ret);
+            }
+
+            mbedtls_ssl_close_notify(&ssl);
+            mbedtls_ssl_free(&ssl);
+            mbedtls_ssl_config_free(&conf);
+            mbedtls_ctr_drbg_free(&ctr_drbg);
+            mbedtls_entropy_free(&entropy);
+            mbedtls_net_free(&server_fd);
+
+            success = true;
+            return response;
         }
 
         int sock = socket(AF_INET, SOCK_STREAM, 0);
