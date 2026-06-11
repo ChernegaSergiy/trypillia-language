@@ -7,6 +7,7 @@
 #include <cstring>
 #include <vector>
 #include "../StdLib.h"
+#include <iostream>
 
 namespace StdLib {
 namespace Net {
@@ -86,6 +87,82 @@ namespace Net {
             if (data->fd != -1) close(data->fd);
             delete data;
         }
+    }
+
+    static VMValue httpServe(int argCount, VMValue* args) {
+        if (argCount != 2 || !std::holds_alternative<double>(args[0])) return makeResultErr(currentVM, "Invalid arguments");
+        
+        int port = static_cast<int>(std::get<double>(args[0]));
+        VMValue callback = args[1];
+
+        int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+        int opt = 1;
+        setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+        struct sockaddr_in address;
+        address.sin_family = AF_INET;
+        address.sin_addr.s_addr = INADDR_ANY;
+        address.sin_port = htons(port);
+
+        if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
+            return makeResultErr(currentVM, "Bind failed");
+        }
+        
+        if (listen(server_fd, 10) < 0) {
+            return makeResultErr(currentVM, "Listen failed");
+        }
+
+        std::cout << "[HttpServer] Listening on port " << port << "..." << std::endl;
+
+        while (true) {
+            int new_socket = accept(server_fd, nullptr, nullptr);
+            if (new_socket < 0) continue;
+
+            char buffer[4096] = {0};
+            read(new_socket, buffer, 4096);
+            
+            std::string req(buffer);
+            std::string method = "";
+            std::string path = "";
+            
+            size_t space1 = req.find(' ');
+            if (space1 != std::string::npos) {
+                method = req.substr(0, space1);
+                size_t space2 = req.find(' ', space1 + 1);
+                if (space2 != std::string::npos) {
+                    path = req.substr(space1 + 1, space2 - space1 - 1);
+                }
+            }
+
+            auto reqMap = std::make_shared<ObjMap>();
+            reqMap->values["method"] = method;
+            reqMap->values["path"] = path;
+            
+            VMValue cbArgs[1] = { reqMap };
+            
+            VMValue result = currentVM->callClosure(callback, 1, cbArgs);
+
+            std::string responseBody = "Internal Server Error";
+            if (std::holds_alternative<std::string>(result)) {
+                responseBody = std::get<std::string>(result);
+            } else if (std::holds_alternative<std::shared_ptr<ObjMap>>(result)) {
+                auto map = std::get<std::shared_ptr<ObjMap>>(result);
+                if (map->values.count("body")) {
+                    responseBody = std::get<std::string>(map->values["body"]);
+                }
+            }
+
+            std::string response = "HTTP/1.1 200 OK\r\n"
+                                   "Content-Type: text/html\r\n"
+                                   "Connection: close\r\n"
+                                   "Content-Length: " + std::to_string(responseBody.length()) + "\r\n\r\n" +
+                                   responseBody;
+
+            write(new_socket, response.c_str(), response.length());
+            close(new_socket);
+        }
+
+        return nullptr;
     }
 
     static VMValue socketConnect(int argCount, VMValue* args) {
@@ -175,6 +252,7 @@ namespace Net {
         auto httpClass = std::make_shared<ObjClass>("Http");
         httpClass->statics["get"] = std::make_shared<ObjNative>("get", 1, httpGet);
         httpClass->statics["post"] = std::make_shared<ObjNative>("post", 2, httpPost);
+        httpClass->statics["serve"] = std::make_shared<ObjNative>("serve", 2, httpServe);
         vm->globals["Http"] = httpClass;
 
         auto socketClass = std::make_shared<ObjClass>("Socket");
