@@ -60,6 +60,72 @@ ASTNode* Parser::parse() {
 
 // Primary expressions: literals, identifiers, grouped expressions
 ExprNode* Parser::primary() {
+    bool isArrow = false;
+    if (currentToken.type == TokenType::IDENTIFIER) {
+        Lexer tempLexer = lexer;
+        Token next = tempLexer.nextToken();
+        if (next.type == TokenType::ARROW) {
+            isArrow = true;
+        }
+    } else if (currentToken.type == TokenType::LPAREN) {
+        Lexer tempLexer = lexer;
+        Token t = tempLexer.nextToken();
+        bool validParams = true;
+        if (t.type != TokenType::RPAREN) {
+            while (true) {
+                if (t.type != TokenType::IDENTIFIER) { validParams = false; break; }
+                t = tempLexer.nextToken();
+                if (t.type == TokenType::COMMA) {
+                    t = tempLexer.nextToken();
+                } else {
+                    break;
+                }
+            }
+        }
+        if (validParams && t.type == TokenType::RPAREN) {
+            Token afterParen = tempLexer.nextToken();
+            if (afterParen.type == TokenType::ARROW) {
+                isArrow = true;
+            }
+        }
+    }
+
+    if (isArrow) {
+        std::vector<std::string> parameters;
+        if (currentToken.type == TokenType::IDENTIFIER) {
+            parameters.push_back(currentToken.lexeme);
+            advance(); // consume ident
+        } else {
+            consume(TokenType::LPAREN);
+            if (currentToken.type != TokenType::RPAREN) {
+                do {
+                    Token param = currentToken;
+                    consume(TokenType::IDENTIFIER);
+                    parameters.push_back(param.lexeme);
+                } while (match(TokenType::COMMA));
+            }
+            consume(TokenType::RPAREN);
+        }
+        consume(TokenType::ARROW);
+        
+        std::vector<StmtNode*> body;
+        if (currentToken.type == TokenType::LBRACE) {
+            consume(TokenType::LBRACE);
+            while (currentToken.type != TokenType::RBRACE && currentToken.type != TokenType::END_OF_FILE) {
+                body.push_back(dynamic_cast<StmtNode*>(declaration()));
+            }
+            consume(TokenType::RBRACE);
+        } else {
+            ExprNode* expr = expression();
+            Token retToken;
+            retToken.type = TokenType::RETURN;
+            retToken.lexeme = "return";
+            retToken.line = currentToken.line;
+            body.push_back(new ReturnStmt(retToken, expr));
+        }
+        return new LambdaExpr(parameters, body);
+    }
+
     if (currentToken.type == TokenType::STRING) {
         Token literal = currentToken;
         advance();

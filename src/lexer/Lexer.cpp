@@ -108,6 +108,8 @@ Token Lexer::nextToken() {
         case '=': 
             if (match('=')) {
                 return {TokenType::EQUAL_EQUAL, "==", line};
+            } else if (match('>')) {
+                return {TokenType::ARROW, "=>", line};
             } else {
                 return {TokenType::ASSIGN, "=", line};
             }
