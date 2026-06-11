@@ -13,6 +13,7 @@
 #include "regex/Regex.h"
 #include "worker/Worker.h"
 #include "crypto/Crypto.h"
+#include "net/WebSocket.h"
 
 namespace StdLib {
     void registerAll(VM* vm) {
@@ -31,6 +32,7 @@ namespace StdLib {
         RegexModule::registerAll(vm);
         WorkerModule::registerAll(vm);
         CryptoModule::registerAll(vm);
+        WebSocketModule::registerAll(vm);
     }
 
     void registerSymbols(SymbolTable* scope) {
@@ -49,6 +51,7 @@ namespace StdLib {
         RegexModule::registerSymbols(scope);
         WorkerModule::registerSymbols(scope);
         CryptoModule::registerSymbols(scope);
+        WebSocketModule::registerSymbols(scope);
     }
 
     VMValue makeResultOk(VM* vm, VMValue value) {
