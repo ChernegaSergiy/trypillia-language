@@ -1,12 +1,19 @@
 #include "OS.h"
 #include "../StdLib.h"
 #include <cstdlib>
-#include <unistd.h>
-#include <limits.h>
+#include <filesystem>
 #include <array>
 #include <memory>
 #include <stdexcept>
 #include <string>
+
+#ifdef _WIN32
+#define POPEN _popen
+#define PCLOSE _pclose
+#else
+#define POPEN popen
+#define PCLOSE pclose
+#endif
 
 namespace StdLib {
 namespace OSModule {
@@ -26,11 +33,11 @@ namespace OSModule {
     }
 
     static VMValue osCwd(int argCount, VMValue* args) {
-        char cwd[PATH_MAX];
-        if (getcwd(cwd, sizeof(cwd)) != nullptr) {
-            return makeResultOk(currentVM, std::string(cwd));
+        try {
+            return makeResultOk(currentVM, std::filesystem::current_path().string());
+        } catch (...) {
+            return makeResultErr(currentVM, "Failed to get current working directory");
         }
-        return makeResultErr(currentVM, "Failed to get current working directory");
     }
 
     static VMValue osExec(int argCount, VMValue* args) {
@@ -40,14 +47,14 @@ namespace OSModule {
         std::array<char, 128> buffer;
         std::string result;
         
-        // Use popen to run the command and read its stdout
-        auto deleter = [](FILE* f) { pclose(f); };
-        std::unique_ptr<FILE, decltype(deleter)> pipe(popen(cmd.c_str(), "r"), deleter);
+        // Use POPEN to run the command and read its stdout
+        auto deleter = [](FILE* f) { PCLOSE(f); };
+        std::unique_ptr<FILE, decltype(deleter)> pipe(POPEN(cmd.c_str(), "r"), deleter);
         if (!pipe) {
             return makeResultErr(currentVM, "popen() failed!");
         }
         
-        while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe.get()) != nullptr) {
             result += buffer.data();
         }
         

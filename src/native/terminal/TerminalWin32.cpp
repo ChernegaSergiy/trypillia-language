@@ -1,23 +1,30 @@
+#ifdef _WIN32
 #include "Terminal.h"
 #include <iostream>
-#include <termios.h>
-#include <unistd.h>
 #include <stdio.h>
 #include <string>
 #include <signal.h>
 #include <stdlib.h>
+#include <vector>
+#include <windows.h>
+
+#ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
+#define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
+#endif
 
 namespace StdLib {
 namespace TerminalModule {
 
     thread_local VM* currentVM = nullptr;
-    static struct termios orig_termios;
+    static DWORD orig_out_mode;
+    static DWORD orig_in_mode;
     static bool inRawMode = false;
     static bool atexitRegistered = false;
 
     static void restore_terminal_state() {
         if (inRawMode) {
-            tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
+            SetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), orig_out_mode);
+            SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), orig_in_mode);
             inRawMode = false;
         }
     }
@@ -43,55 +50,28 @@ namespace TerminalModule {
     }
 
     static VMValue terminalGetCursor(int argCount, VMValue* args) {
-        // We must be in raw mode to read the response cleanly
-        bool wasRaw = inRawMode;
-        if (!wasRaw) {
-            struct termios raw;
-            tcgetattr(STDIN_FILENO, &orig_termios);
-            raw = orig_termios;
-            raw.c_lflag &= ~(ECHO | ICANON);
-            raw.c_cc[VMIN] = 0;
-            raw.c_cc[VTIME] = 2; // 200ms timeout
-            tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+        CONSOLE_SCREEN_BUFFER_INFO csbi;
+        if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) {
+            std::vector<VMValue> listElements;
+            listElements.push_back(static_cast<double>(csbi.dwCursorPosition.X + 1));
+            listElements.push_back(static_cast<double>(csbi.dwCursorPosition.Y + 1));
+            return std::make_shared<ObjList>(listElements);
         }
-
-        std::cout << "\033[6n";
-        std::cout.flush();
-
-        char buf[32];
-        unsigned int i = 0;
-        while (i < sizeof(buf) - 1) {
-            if (read(STDIN_FILENO, &buf[i], 1) != 1) break;
-            if (buf[i] == 'R') break;
-            i++;
-        }
-        buf[i] = '\0';
-
-        if (!wasRaw) {
-            tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
-        }
-
-        int rows = 0, cols = 0;
-        if (buf[0] == '\033' && buf[1] == '[') {
-            sscanf(&buf[2], "%d;%d", &rows, &cols);
-        }
-
-        std::vector<VMValue> listElements;
-        listElements.push_back((double)cols);
-        listElements.push_back((double)rows);
-        return std::make_shared<ObjList>(listElements);
+        return nullptr;
     }
 
     static VMValue terminalEnableRawMode(int argCount, VMValue* args) {
         if (!inRawMode) {
-            tcgetattr(STDIN_FILENO, &orig_termios);
-            struct termios raw = orig_termios;
-            raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
-            raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-            raw.c_cflag |= (CS8);
-            raw.c_cc[VMIN] = 0;
-            raw.c_cc[VTIME] = 1; // 100ms timeout
-            tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+            HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+            HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
+            GetConsoleMode(hOut, &orig_out_mode);
+            GetConsoleMode(hIn, &orig_in_mode);
+            
+            DWORD outMode = orig_out_mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+            DWORD inMode = orig_in_mode & ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT);
+            
+            SetConsoleMode(hOut, outMode);
+            SetConsoleMode(hIn, inMode);
             inRawMode = true;
 
             if (!atexitRegistered) {
@@ -105,40 +85,37 @@ namespace TerminalModule {
     }
 
     static VMValue terminalDisableRawMode(int argCount, VMValue* args) {
-        if (inRawMode) {
-            tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
-            inRawMode = false;
-        }
+        restore_terminal_state();
         return nullptr;
     }
 
     static VMValue terminalReadChar(int argCount, VMValue* args) {
-        char c;
-        if (read(STDIN_FILENO, &c, 1) == 1) {
-            if (c == '\x1b') {
-                char seq[3];
-                if (read(STDIN_FILENO, &seq[0], 1) == 1 && read(STDIN_FILENO, &seq[1], 1) == 1) {
-                    if (seq[0] == '[') {
-                        switch (seq[1]) {
-                            case 'A': return std::string("up");
-                            case 'B': return std::string("down");
-                            case 'C': return std::string("right");
-                            case 'D': return std::string("left");
-                        }
-                    }
-                }
-                return std::string("escape");
+        HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
+        INPUT_RECORD ir;
+        DWORD read;
+        while (ReadConsoleInput(hIn, &ir, 1, &read) && read > 0) {
+            if (ir.EventType == KEY_EVENT && ir.Event.KeyEvent.bKeyDown) {
+                if (ir.Event.KeyEvent.wVirtualKeyCode == VK_UP) return std::string("up");
+                if (ir.Event.KeyEvent.wVirtualKeyCode == VK_DOWN) return std::string("down");
+                if (ir.Event.KeyEvent.wVirtualKeyCode == VK_LEFT) return std::string("left");
+                if (ir.Event.KeyEvent.wVirtualKeyCode == VK_RIGHT) return std::string("right");
+                if (ir.Event.KeyEvent.wVirtualKeyCode == VK_ESCAPE) return std::string("escape");
+                
+                char c = ir.Event.KeyEvent.uChar.AsciiChar;
+                if (c != 0) return std::string(1, c);
             }
-            std::string s(1, c);
-            return s;
         }
         return nullptr;
     }
 
     static VMValue terminalReadByte(int argCount, VMValue* args) {
-        unsigned char c;
-        if (read(STDIN_FILENO, &c, 1) == 1) {
-            return static_cast<double>(c);
+        HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
+        INPUT_RECORD ir;
+        DWORD read;
+        while (ReadConsoleInput(hIn, &ir, 1, &read) && read > 0) {
+            if (ir.EventType == KEY_EVENT && ir.Event.KeyEvent.bKeyDown) {
+                return static_cast<double>(ir.Event.KeyEvent.uChar.AsciiChar);
+            }
         }
         return nullptr;
     }
@@ -200,6 +177,6 @@ namespace TerminalModule {
         sym.isConst = true;
         scope->define(sym);
     }
-
 }
 }
+#endif
