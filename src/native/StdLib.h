@@ -6,6 +6,7 @@
 #include "os/OS.h"
 #include "terminal/Terminal.h"
 #include "map/Map.h"
+#include "regex/Regex.h"
 #include "../vm/VM.h"
 #include "../symbol/SymbolTable.h"
 

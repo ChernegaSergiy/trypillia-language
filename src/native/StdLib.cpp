@@ -10,6 +10,7 @@
 #include "random/Random.h"
 #include "terminal/Terminal.h"
 #include "map/Map.h"
+#include "regex/Regex.h"
 
 namespace StdLib {
     void registerAll(VM* vm) {
@@ -25,6 +26,7 @@ namespace StdLib {
         RandomModule::registerAll(vm);
         TerminalModule::registerAll(vm);
         MapModule::registerAll(vm);
+        RegexModule::registerAll(vm);
     }
 
     void registerSymbols(SymbolTable* scope) {
@@ -40,6 +42,7 @@ namespace StdLib {
         RandomModule::registerSymbols(scope);
         TerminalModule::registerSymbols(scope);
         MapModule::registerSymbols(scope);
+        RegexModule::registerSymbols(scope);
     }
 
     VMValue makeResultOk(VM* vm, VMValue value) {
