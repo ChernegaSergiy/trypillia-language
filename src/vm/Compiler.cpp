@@ -182,6 +182,7 @@ public:
             case TokenType::BITWISE_XOR: emitByte(static_cast<uint8_t>(OpCode::OP_BIT_XOR)); break;
             case TokenType::SHIFT_LEFT: emitByte(static_cast<uint8_t>(OpCode::OP_BIT_SHIFT_LEFT)); break;
             case TokenType::SHIFT_RIGHT: emitByte(static_cast<uint8_t>(OpCode::OP_BIT_SHIFT_RIGHT)); break;
+            default: break;
         }
     }
 
