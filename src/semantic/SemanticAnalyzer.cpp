@@ -469,6 +469,9 @@ public:
             pair.second->accept(this);
         }
     }
+
+    void visit(NamespaceStmt* node) override {}
+    void visit(UseStmt* node) override {}
 };
 
 void SemanticAnalyzer::analyze(ASTNode* ast) {

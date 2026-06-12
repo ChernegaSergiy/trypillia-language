@@ -2,8 +2,11 @@
 #include "../utils/ErrorHandling.h"
 #include "../lexer/Lexer.h"
 #include "../parser/Parser.h"
+#include "../symbol/SymbolTable.h"
+#include "../native/StdLib.h"
 #include <iostream>
 #include <fstream>
+#include <map>
 
 class CompilerVisitor : public ASTVisitor {
 private:
@@ -52,6 +55,20 @@ private:
         return -1;
     }
 
+    std::string resolveName(const std::string& name) {
+        if (useAliases.find(name) != useAliases.end()) {
+            return useAliases[name];
+        }
+        // If it's a native symbol, don't prefix it
+        if (nativeSymbols && nativeSymbols->resolve(name)) {
+            return name;
+        }
+        if (!currentNamespace.empty() && name.find('.') == std::string::npos) {
+            return currentNamespace + "." + name;
+        }
+        return name;
+    }
+
     int resolveUpvalue(const std::string& name) {
         if (enclosing == nullptr) return -1;
 
@@ -94,9 +111,26 @@ public:
         std::vector<int> continueJumps;
     };
     std::vector<LoopContext> loops;
+    std::string currentNamespace = "";
+    std::map<std::string, std::string> useAliases;
+    SymbolTable* nativeSymbols = nullptr;
 
     CompilerVisitor(Chunk* chunk, const std::string& fname, CompilerVisitor* enc = nullptr) : chunk(chunk), compiler_filename(fname), enclosing(enc) {
+        if (enc) {
+            this->currentNamespace = enc->currentNamespace;
+            this->useAliases = enc->useAliases;
+            this->nativeSymbols = enc->nativeSymbols;
+        } else {
+            this->nativeSymbols = new SymbolTable();
+            StdLib::registerSymbols(this->nativeSymbols);
+        }
         locals.push_back({"", 0, false});
+    }
+
+    ~CompilerVisitor() {
+        if (enclosing == nullptr && nativeSymbols != nullptr) {
+            delete nativeSymbols;
+        }
     }
 
     void emitByte(uint8_t byte) {
@@ -218,7 +252,8 @@ public:
         } else if ((arg = resolveUpvalue(node->name.lexeme)) != -1) {
             emitBytes(static_cast<uint8_t>(OpCode::OP_GET_UPVALUE), static_cast<uint8_t>(arg));
         } else {
-            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(node->name.lexeme)));
+            std::string actualName = resolveName(node->name.lexeme);
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(actualName)));
         }
     }
     void visit(AssignExpr* node) override {
@@ -230,7 +265,8 @@ public:
         } else if ((arg = resolveUpvalue(node->name.lexeme)) != -1) {
             emitBytes(static_cast<uint8_t>(OpCode::OP_SET_UPVALUE), static_cast<uint8_t>(arg));
         } else {
-            emitBytes(static_cast<uint8_t>(OpCode::OP_SET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(node->name.lexeme)));
+            std::string actualName = resolveName(node->name.lexeme);
+            emitBytes(static_cast<uint8_t>(OpCode::OP_SET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(actualName)));
         }
     }
     void visit(CompoundAssignExpr* node) override {
@@ -241,7 +277,8 @@ public:
         } else if ((upArg = resolveUpvalue(node->name.lexeme)) != -1) {
             emitBytes(static_cast<uint8_t>(OpCode::OP_GET_UPVALUE), static_cast<uint8_t>(upArg));
         } else {
-            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(node->name.lexeme)));
+            std::string actualName = resolveName(node->name.lexeme);
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(actualName)));
         }
         
         node->value->accept(this);
@@ -259,7 +296,8 @@ public:
         } else if (upArg != -1) {
             emitBytes(static_cast<uint8_t>(OpCode::OP_SET_UPVALUE), static_cast<uint8_t>(upArg));
         } else {
-            emitBytes(static_cast<uint8_t>(OpCode::OP_SET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(node->name.lexeme)));
+            std::string actualName = resolveName(node->name.lexeme);
+            emitBytes(static_cast<uint8_t>(OpCode::OP_SET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(actualName)));
         }
     }
     void visit(CallExpr* node) override {
@@ -280,7 +318,11 @@ public:
         if (scopeDepth > 0) {
             locals.push_back({node->name.lexeme, scopeDepth, false});
         } else {
-            emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), static_cast<uint8_t>(chunk->addConstant(node->name.lexeme)));
+            std::string actualName = node->name.lexeme;
+            if (!currentNamespace.empty()) {
+                actualName = currentNamespace + "." + actualName;
+            }
+            emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), static_cast<uint8_t>(chunk->addConstant(actualName)));
         }
     }
     void visit(BlockStmt* node) override {
@@ -783,29 +825,33 @@ public:
     void visit(ClassNode* node) override {
         std::string enclosingClassName = currentClassName;
         std::string enclosingParentName = currentParentName;
-        currentClassName = node->name;
-        currentParentName = node->parentName;
+        std::string actualName = node->name;
+        if (!currentNamespace.empty()) {
+            actualName = currentNamespace + "." + actualName;
+        }
+        currentClassName = actualName;
+        currentParentName = node->parentName.empty() ? "" : resolveName(node->parentName);
 
         if (node->isAbstract) {
-            emitBytes(static_cast<uint8_t>(OpCode::OP_ABSTRACT_CLASS), static_cast<uint8_t>(chunk->addConstant(node->name)));
+            emitBytes(static_cast<uint8_t>(OpCode::OP_ABSTRACT_CLASS), static_cast<uint8_t>(chunk->addConstant(actualName)));
         } else {
-            emitBytes(static_cast<uint8_t>(OpCode::OP_CLASS), static_cast<uint8_t>(chunk->addConstant(node->name)));
+            emitBytes(static_cast<uint8_t>(OpCode::OP_CLASS), static_cast<uint8_t>(chunk->addConstant(actualName)));
         }
-        emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), static_cast<uint8_t>(chunk->addConstant(node->name)));
+        emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), static_cast<uint8_t>(chunk->addConstant(actualName)));
         
         if (!node->parentName.empty()) {
-            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(node->name)));
-            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(node->parentName)));
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(actualName)));
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(currentParentName)));
             emitByte(static_cast<uint8_t>(OpCode::OP_INHERIT));
         }
 
         for (auto& traitName : node->interfaceNames) {
-            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(node->name)));
-            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(traitName)));
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(actualName)));
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(resolveName(traitName))));
             emitByte(static_cast<uint8_t>(OpCode::OP_MIXIN));
         }
         
-        emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(node->name)));
+        emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(actualName)));
         for (auto field : node->fields) {
             emitBytes(static_cast<uint8_t>(OpCode::OP_FIELD_MODIFIER), static_cast<uint8_t>(chunk->addConstant(field->name)));
             emitByte(static_cast<uint8_t>(getVMAccessModifier(field->accessModifier)));
@@ -826,20 +872,28 @@ public:
         currentParentName = enclosingParentName;
     }
     void visit(InterfaceNode* node) override {
-        emitBytes(static_cast<uint8_t>(OpCode::OP_CLASS), static_cast<uint8_t>(chunk->addConstant(node->name)));
-        emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), static_cast<uint8_t>(chunk->addConstant(node->name)));
+        std::string actualName = node->name;
+        if (!currentNamespace.empty()) {
+            actualName = currentNamespace + "." + actualName;
+        }
+        emitBytes(static_cast<uint8_t>(OpCode::OP_CLASS), static_cast<uint8_t>(chunk->addConstant(actualName)));
+        emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), static_cast<uint8_t>(chunk->addConstant(actualName)));
         
-        emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(node->name)));
+        emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(actualName)));
         for (auto& method : node->methods) {
             compileMethod(method, nullptr);
         }
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
     }
     void visit(TraitNode* node) override {
-        emitBytes(static_cast<uint8_t>(OpCode::OP_CLASS), static_cast<uint8_t>(chunk->addConstant(node->name)));
-        emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), static_cast<uint8_t>(chunk->addConstant(node->name)));
+        std::string actualName = node->name;
+        if (!currentNamespace.empty()) {
+            actualName = currentNamespace + "." + actualName;
+        }
+        emitBytes(static_cast<uint8_t>(OpCode::OP_CLASS), static_cast<uint8_t>(chunk->addConstant(actualName)));
+        emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), static_cast<uint8_t>(chunk->addConstant(actualName)));
         
-        emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(node->name)));
+        emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(actualName)));
         for (auto& method : node->methods) {
             compileMethod(method);
         }
@@ -915,6 +969,14 @@ public:
             pair.second->accept(this);
         }
         emitBytes(static_cast<uint8_t>(OpCode::OP_BUILD_MAP), static_cast<uint8_t>(node->elements.size()));
+    }
+
+    void visit(NamespaceStmt* node) override {
+        this->currentNamespace = node->name.lexeme;
+    }
+
+    void visit(UseStmt* node) override {
+        this->useAliases[node->alias.lexeme] = node->name.lexeme;
     }
 };
 
