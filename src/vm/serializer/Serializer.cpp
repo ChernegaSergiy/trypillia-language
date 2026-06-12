@@ -74,6 +74,7 @@ std::shared_ptr<ObjFunction> Serializer::loadEmbeddedBytecode(const std::string 
 void Serializer::writeFunction(std::ofstream &out, const std::shared_ptr<ObjFunction> &function) {
     writeString(out, function->name);
     out.write(reinterpret_cast<const char *>(&function->arity), sizeof(function->arity));
+    out.write(reinterpret_cast<const char *>(&function->maxArity), sizeof(function->maxArity));
     out.write(reinterpret_cast<const char *>(&function->isAbstract), sizeof(function->isAbstract));
     // statics is not needed for serialized bytecode functions (built at runtime or empty)
     writeChunk(out, function->chunk);
@@ -83,6 +84,7 @@ std::shared_ptr<ObjFunction> Serializer::readFunction(std::ifstream &in) {
     auto function = std::make_shared<ObjFunction>();
     function->name = readString(in);
     in.read(reinterpret_cast<char *>(&function->arity), sizeof(function->arity));
+    in.read(reinterpret_cast<char *>(&function->maxArity), sizeof(function->maxArity));
     in.read(reinterpret_cast<char *>(&function->isAbstract), sizeof(function->isAbstract));
     function->chunk = readChunk(in);
     return function;
