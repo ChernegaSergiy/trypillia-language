@@ -1,0 +1,25 @@
+// Простий HTTP-сервер на мові Trypillia
+let port = 8080;
+let server = Socket.listen(port).unwrap(); 
+
+print("Сервер запущено на http://localhost:8080 ...");
+
+// Один запит для тесту (щоб скрипт завершився сам)
+let client = server.accept(); 
+if (client) {
+    let request = client.recv();
+    
+    let html = "<html>
+        <head><meta charset='utf-8'><title>Trypillia Server</title></head>
+        <body style='font-family: sans-serif; text-align: center; margin-top: 50px;'>
+            <h1 style='color: #4A90E2;'>Привіт від Trypillia! ૮ ˶ᵔ ᵕ ᵔ˶ ა</h1>
+            <p>Сайт успішно працює на mbedtls.</p>
+        </body>
+    </html>";
+
+    let response = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: " + String.length(html) + "\r\nConnection: close\r\n\r\n" + html;
+
+    client.send(response);
+    client.close();
+}
+server.close();

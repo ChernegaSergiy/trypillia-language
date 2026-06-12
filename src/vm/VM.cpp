@@ -722,10 +722,7 @@ InterpretResult VM::run(int targetFrameDepth) {
                         push(instance->fields[name]);
                     } else if (instance->klass->methods.count(name)) {
                         auto method = instance->klass->methods[name];
-                        if (!checkAccess(getMethodAccessModifier(method), instance->klass, callerClass)) {
-                            return runtimeError(std::string("Access error: Cannot access method '") + name + "'.");
-                        }
-                        pop();
+                        pop(); // instance
                         push(std::make_shared<ObjBoundMethod>(instance, method));
                     } else {
                         return runtimeError(std::string("Undefined property '") + name + "'.");

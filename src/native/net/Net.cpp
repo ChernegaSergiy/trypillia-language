@@ -137,6 +137,30 @@ namespace Net {
         return makeResultOk(currentVM, inst);
     }
 
+    // TCP Server Support
+    static VMValue socketListen(int argCount, VMValue* args) {
+        if (argCount != 1 || !std::holds_alternative<double>(args[0])) return nullptr;
+        SocketData* data = new SocketData(); mbedtls_net_init(&data->fd);
+        if (mbedtls_net_bind(&data->fd, NULL, std::to_string((int)std::get<double>(args[0])).c_str(), MBEDTLS_NET_PROTO_TCP) != 0) {
+            delete data; return makeResultErr(currentVM, "Bind failed");
+        }
+        auto inst = std::make_shared<ObjInstance>(std::get<std::shared_ptr<ObjClass>>(currentVM->globals["Socket"]));
+        inst->nativeData = data; inst->freeFn = freeSocket;
+        return makeResultOk(currentVM, inst);
+    }
+
+    static VMValue socketAccept(int argCount, VMValue* args) {
+        auto inst = std::get<std::shared_ptr<ObjInstance>>(args[-1]);
+        SocketData* data = (SocketData*)inst->nativeData;
+        SocketData* clientData = new SocketData(); mbedtls_net_init(&clientData->fd);
+        if (mbedtls_net_accept(&data->fd, &clientData->fd, NULL, 0, NULL) != 0) {
+            delete clientData; return nullptr;
+        }
+        auto clientInst = std::make_shared<ObjInstance>(std::get<std::shared_ptr<ObjClass>>(currentVM->globals["Socket"]));
+        clientInst->nativeData = clientData; clientInst->freeFn = freeSocket;
+        return clientInst;
+    }
+
     static VMValue socketSend(int argCount, VMValue* args) {
         auto inst = std::get<std::shared_ptr<ObjInstance>>(args[-1]);
         SocketData* data = (SocketData*)inst->nativeData;
@@ -167,6 +191,8 @@ namespace Net {
 
         auto sock = std::make_shared<ObjClass>("Socket");
         sock->statics["connect"] = std::make_shared<ObjNative>("connect", 2, socketConnect);
+        sock->statics["listen"] = std::make_shared<ObjNative>("listen", 1, socketListen);
+        sock->methods["accept"] = std::make_shared<ObjNative>("accept", 0, socketAccept);
         sock->methods["send"] = std::make_shared<ObjNative>("send", 1, socketSend);
         sock->methods["recv"] = std::make_shared<ObjNative>("recv", -1, socketRecv);
         sock->methods["close"] = std::make_shared<ObjNative>("close", 0, socketClose);
