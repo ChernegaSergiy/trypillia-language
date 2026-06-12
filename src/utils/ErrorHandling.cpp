@@ -3,12 +3,12 @@
 
 std::vector<std::string> ErrorHandling::errors;
 
-void ErrorHandling::reportError(const std::string& message) {
+void ErrorHandling::reportError(const std::string &message) {
     errors.push_back(message);
     std::cerr << "Error: " << message << std::endl;
 }
 
-const std::vector<std::string>& ErrorHandling::getErrors() {
+const std::vector<std::string> &ErrorHandling::getErrors() {
     return errors;
 }
 

@@ -1,20 +1,14 @@
 #ifndef TRYPILLIA_CHUNK_H
 #define TRYPILLIA_CHUNK_H
 
-#include <vector>
-#include <cstdint>
-#include <variant>
-#include <string>
-#include <string>
-#include <memory>
-#include <unordered_map>
 #include "OpCode.h"
-enum class VMAccessModifier {
-    PUBLIC,
-    PRIVATE,
-    PROTECTED
-};
-
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <variant>
+#include <vector>
+enum class VMAccessModifier { PUBLIC, PRIVATE, PROTECTED };
 
 class Chunk;
 
@@ -28,22 +22,29 @@ struct ObjClass;
 struct ObjInstance;
 struct ObjBoundMethod;
 
-using VMValue = std::variant<std::nullptr_t, bool, double, std::string, std::shared_ptr<ObjFunction>, std::shared_ptr<ObjClosure>, std::shared_ptr<ObjNative>, std::shared_ptr<ObjList>, std::shared_ptr<ObjMap>, std::shared_ptr<ObjClass>, std::shared_ptr<ObjInstance>, std::shared_ptr<ObjBoundMethod>>;
+using VMValue =
+    std::variant<std::nullptr_t, bool, double, std::string, std::shared_ptr<ObjFunction>, std::shared_ptr<ObjClosure>,
+                 std::shared_ptr<ObjNative>, std::shared_ptr<ObjList>, std::shared_ptr<ObjMap>,
+                 std::shared_ptr<ObjClass>, std::shared_ptr<ObjInstance>, std::shared_ptr<ObjBoundMethod>>;
 
-using NativeFn = VMValue(*)(int argCount, VMValue* args);
+using NativeFn = VMValue (*)(int argCount, VMValue *args);
 
 struct VMValueHash {
-    std::size_t operator()(const VMValue& v) const {
-        if (std::holds_alternative<double>(v)) return std::hash<double>{}(std::get<double>(v));
-        if (std::holds_alternative<std::string>(v)) return std::hash<std::string>{}(std::get<std::string>(v));
-        if (std::holds_alternative<bool>(v)) return std::hash<bool>{}(std::get<bool>(v));
-        if (std::holds_alternative<std::nullptr_t>(v)) return 0;
+    std::size_t operator()(const VMValue &v) const {
+        if (std::holds_alternative<double>(v))
+            return std::hash<double>{}(std::get<double>(v));
+        if (std::holds_alternative<std::string>(v))
+            return std::hash<std::string>{}(std::get<std::string>(v));
+        if (std::holds_alternative<bool>(v))
+            return std::hash<bool>{}(std::get<bool>(v));
+        if (std::holds_alternative<std::nullptr_t>(v))
+            return 0;
         return 0;
     }
 };
 
 struct VMValueEqual {
-    bool operator()(const VMValue& a, const VMValue& b) const {
+    bool operator()(const VMValue &a, const VMValue &b) const {
         return a == b;
     }
 };
@@ -55,19 +56,21 @@ struct ObjClass {
     bool isAbstract = false;
     std::unordered_map<std::string, VMValue> statics;
     std::unordered_map<std::string, VMAccessModifier> fieldModifiers;
-    ObjClass(std::string name) : name(name), superclass(nullptr) {}
+    ObjClass(std::string name) : name(name), superclass(nullptr) {
+    }
 };
 
 struct ObjInstance {
     std::shared_ptr<ObjClass> klass;
     std::unordered_map<std::string, VMValue> fields;
-    
-    // Native resource binding
-    void* nativeData = nullptr;
-    void (*freeFn)(void*) = nullptr;
 
-    ObjInstance(std::shared_ptr<ObjClass> k) : klass(k) {}
-    
+    // Native resource binding
+    void *nativeData = nullptr;
+    void (*freeFn)(void *) = nullptr;
+
+    ObjInstance(std::shared_ptr<ObjClass> k) : klass(k) {
+    }
+
     ~ObjInstance() {
         if (nativeData && freeFn) {
             freeFn(nativeData);
@@ -79,12 +82,14 @@ struct ObjInstance {
 struct ObjBoundMethod {
     std::shared_ptr<ObjInstance> receiver;
     VMValue method;
-    ObjBoundMethod(std::shared_ptr<ObjInstance> r, VMValue m) : receiver(r), method(m) {}
+    ObjBoundMethod(std::shared_ptr<ObjInstance> r, VMValue m) : receiver(r), method(m) {
+    }
 };
 
 struct ObjList {
     std::vector<VMValue> elements;
-    ObjList(const std::vector<VMValue>& e) : elements(e) {}
+    ObjList(const std::vector<VMValue> &e) : elements(e) {
+    }
 };
 
 struct ObjMap {
@@ -98,7 +103,8 @@ struct ObjNative {
     bool isAbstract = false;
     VMAccessModifier accessModifier = VMAccessModifier::PUBLIC;
 
-    ObjNative(std::string n, int a, NativeFn f) : name(n), arity(a), function(f) {}
+    ObjNative(std::string n, int a, NativeFn f) : name(n), arity(a), function(f) {
+    }
 };
 
 struct ObjFunction {
@@ -112,26 +118,29 @@ struct ObjFunction {
     std::string filename = "";
     int upvalueCount = 0;
 
-    ObjFunction() : arity(0), upvalueCount(0) {}
+    ObjFunction() : arity(0), upvalueCount(0) {
+    }
 };
 
 struct ObjUpvalue {
-    VMValue* location;
+    VMValue *location;
     VMValue closed;
     std::shared_ptr<ObjUpvalue> next;
-    
-    ObjUpvalue(VMValue* slot) : location(slot), closed(nullptr), next(nullptr) {}
+
+    ObjUpvalue(VMValue *slot) : location(slot), closed(nullptr), next(nullptr) {
+    }
 };
 
 struct ObjClosure {
     std::shared_ptr<ObjFunction> function;
     std::vector<std::shared_ptr<ObjUpvalue>> upvalues;
-    
-    ObjClosure(std::shared_ptr<ObjFunction> f) : function(f) {}
+
+    ObjClosure(std::shared_ptr<ObjFunction> f) : function(f) {
+    }
 };
 
 class Chunk {
-public:
+  public:
     std::vector<uint8_t> code;
     std::vector<VMValue> constants;
     std::vector<int> lines;
@@ -149,7 +158,8 @@ public:
 
     int addConstant(VMValue value) {
         // Simple deduplication to avoid exceeding 255 constants
-        if (std::holds_alternative<std::string>(value) || std::holds_alternative<double>(value) || std::holds_alternative<bool>(value)) {
+        if (std::holds_alternative<std::string>(value) || std::holds_alternative<double>(value) ||
+            std::holds_alternative<bool>(value)) {
             for (size_t i = 0; i < constants.size(); i++) {
                 if (constants[i] == value) {
                     return static_cast<int>(i);

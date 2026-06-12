@@ -1,8 +1,8 @@
 #include "OS.h"
 #include "../StdLib.h"
+#include <array>
 #include <cstdlib>
 #include <filesystem>
-#include <array>
 #include <memory>
 #include <string>
 #include <vector>
@@ -17,65 +17,73 @@
 
 namespace StdLib {
 namespace OSModule {
-    
-    std::vector<std::string> commandLineArgs;
-    thread_local VM* currentVM = nullptr;
 
-    static VMValue osGetEnv(int argCount, VMValue* args) {
-        if (argCount != 1 || !std::holds_alternative<std::string>(args[0])) return nullptr;
-        const char* val = std::getenv(std::get<std::string>(args[0]).c_str());
-        return val ? makeResultOk(currentVM, std::string(val)) : makeResultErr(currentVM, "Not found");
-    }
+std::vector<std::string> commandLineArgs;
+thread_local VM *currentVM = nullptr;
 
-    static VMValue osCwd(int argCount, VMValue* args) {
-        try {
-            return makeResultOk(currentVM, std::filesystem::current_path().string());
-        } catch (...) {
-            return makeResultErr(currentVM, "Error");
-        }
-    }
-
-    static VMValue osExec(int argCount, VMValue* args) {
-        if (argCount != 1 || !std::holds_alternative<std::string>(args[0])) return nullptr;
-        std::string cmd = std::get<std::string>(args[0]);
-        std::string result;
-        std::array<char, 128> buffer;
-        
-        FILE* pipe = POPEN(cmd.c_str(), "r");
-        if (!pipe) return makeResultErr(currentVM, "Failed");
-        
-        while (fgets(buffer.data(), buffer.size(), pipe)) result += buffer.data();
-        PCLOSE(pipe);
-        
-        return makeResultOk(currentVM, result);
-    }
-
-    static VMValue osExit(int argCount, VMValue* args) {
-        int code = (argCount == 1 && std::holds_alternative<double>(args[0])) ? (int)std::get<double>(args[0]) : 0;
-        std::exit(code);
+static VMValue osGetEnv(int argCount, VMValue *args) {
+    if (argCount != 1 || !std::holds_alternative<std::string>(args[0]))
         return nullptr;
-    }
+    const char *val = std::getenv(std::get<std::string>(args[0]).c_str());
+    return val ? makeResultOk(currentVM, std::string(val)) : makeResultErr(currentVM, "Not found");
+}
 
-    static VMValue osArgs(int argCount, VMValue* args) {
-        std::vector<VMValue> list;
-        for (const auto& a : commandLineArgs) list.push_back(a);
-        return std::make_shared<ObjList>(list);
-    }
-
-    void registerAll(VM* vm) {
-        currentVM = vm;
-        auto cls = std::make_shared<ObjClass>("OS");
-        cls->statics["getEnv"] = std::make_shared<ObjNative>("getEnv", 1, osGetEnv);
-        cls->statics["cwd"] = std::make_shared<ObjNative>("cwd", 0, osCwd);
-        cls->statics["exec"] = std::make_shared<ObjNative>("exec", 1, osExec);
-        cls->statics["exit"] = std::make_shared<ObjNative>("exit", -1, osExit);
-        cls->statics["args"] = std::make_shared<ObjNative>("args", 0, osArgs);
-        vm->globals["OS"] = cls;
-    }
-
-    void registerSymbols(SymbolTable* scope) {
-        Symbol sym; sym.name = "OS"; sym.type = "class"; sym.isConst = true;
-        scope->define(sym);
+static VMValue osCwd(int argCount, VMValue *args) {
+    try {
+        return makeResultOk(currentVM, std::filesystem::current_path().string());
+    } catch (...) {
+        return makeResultErr(currentVM, "Error");
     }
 }
+
+static VMValue osExec(int argCount, VMValue *args) {
+    if (argCount != 1 || !std::holds_alternative<std::string>(args[0]))
+        return nullptr;
+    std::string cmd = std::get<std::string>(args[0]);
+    std::string result;
+    std::array<char, 128> buffer;
+
+    FILE *pipe = POPEN(cmd.c_str(), "r");
+    if (!pipe)
+        return makeResultErr(currentVM, "Failed");
+
+    while (fgets(buffer.data(), buffer.size(), pipe))
+        result += buffer.data();
+    PCLOSE(pipe);
+
+    return makeResultOk(currentVM, result);
 }
+
+static VMValue osExit(int argCount, VMValue *args) {
+    int code = (argCount == 1 && std::holds_alternative<double>(args[0])) ? (int)std::get<double>(args[0]) : 0;
+    std::exit(code);
+    return nullptr;
+}
+
+static VMValue osArgs(int argCount, VMValue *args) {
+    std::vector<VMValue> list;
+    for (const auto &a : commandLineArgs)
+        list.push_back(a);
+    return std::make_shared<ObjList>(list);
+}
+
+void registerAll(VM *vm) {
+    currentVM = vm;
+    auto cls = std::make_shared<ObjClass>("OS");
+    cls->statics["getEnv"] = std::make_shared<ObjNative>("getEnv", 1, osGetEnv);
+    cls->statics["cwd"] = std::make_shared<ObjNative>("cwd", 0, osCwd);
+    cls->statics["exec"] = std::make_shared<ObjNative>("exec", 1, osExec);
+    cls->statics["exit"] = std::make_shared<ObjNative>("exit", -1, osExit);
+    cls->statics["args"] = std::make_shared<ObjNative>("args", 0, osArgs);
+    vm->globals["OS"] = cls;
+}
+
+void registerSymbols(SymbolTable *scope) {
+    Symbol sym;
+    sym.name = "OS";
+    sym.type = "class";
+    sym.isConst = true;
+    scope->define(sym);
+}
+} // namespace OSModule
+} // namespace StdLib

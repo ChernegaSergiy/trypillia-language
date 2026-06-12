@@ -2,169 +2,175 @@
 
 // Implementation of accept methods for each AST node type
 
-void ProgramNode::accept(ASTVisitor* visitor) {
+void ProgramNode::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void UnaryExpr::accept(ASTVisitor* visitor) {
+void UnaryExpr::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void ThisExpr::accept(ASTVisitor* visitor) {
+void ThisExpr::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void SuperExpr::accept(ASTVisitor* visitor) {
+void SuperExpr::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void GetExpr::accept(ASTVisitor* visitor) {
+void GetExpr::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void SetExpr::accept(ASTVisitor* visitor) {
+void SetExpr::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void PostfixExpr::accept(ASTVisitor* visitor) {
+void PostfixExpr::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void TernaryExpr::accept(ASTVisitor* visitor) {
+void TernaryExpr::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void ListExpr::accept(ASTVisitor* visitor) {
+void ListExpr::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void IndexGetExpr::accept(ASTVisitor* visitor) {
+void IndexGetExpr::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void IndexSetExpr::accept(ASTVisitor* visitor) {
+void IndexSetExpr::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void BinaryExpr::accept(ASTVisitor* visitor) {
+void BinaryExpr::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void LiteralExpr::accept(ASTVisitor* visitor) {
+void LiteralExpr::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void VariableExpr::accept(ASTVisitor* visitor) {
+void VariableExpr::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void AssignExpr::accept(ASTVisitor* visitor) {
+void AssignExpr::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void CompoundAssignExpr::accept(ASTVisitor* visitor) {
+void CompoundAssignExpr::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void CallExpr::accept(ASTVisitor* visitor) {
+void CallExpr::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void ExpressionStmt::accept(ASTVisitor* visitor) {
+void ExpressionStmt::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void PrintStmt::accept(ASTVisitor* visitor) {
+void PrintStmt::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void VarStmt::accept(ASTVisitor* visitor) {
+void VarStmt::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void BlockStmt::accept(ASTVisitor* visitor) {
+void BlockStmt::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void IfStmt::accept(ASTVisitor* visitor) {
+void IfStmt::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void WhileStmt::accept(ASTVisitor* visitor) {
+void WhileStmt::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void DoWhileStmt::accept(ASTVisitor* visitor) {
+void DoWhileStmt::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void ReturnStmt::accept(ASTVisitor* visitor) {
+void ReturnStmt::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void BreakStmt::accept(ASTVisitor* visitor) {
+void BreakStmt::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void ContinueStmt::accept(ASTVisitor* visitor) {
+void ContinueStmt::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void ForStmt::accept(ASTVisitor* visitor) {
+void ForStmt::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void ForeachStmt::accept(ASTVisitor* visitor) {
+void ForeachStmt::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void FunctionNode::accept(ASTVisitor* visitor) {
+void FunctionNode::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void SwitchStmt::accept(ASTVisitor* visitor) {
+void SwitchStmt::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void FieldDeclNode::accept(ASTVisitor* visitor) {
+void FieldDeclNode::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void ClassNode::accept(ASTVisitor* visitor) {
+void ClassNode::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void InterfaceNode::accept(ASTVisitor* visitor) {
+void InterfaceNode::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void TraitNode::accept(ASTVisitor* visitor) {
+void TraitNode::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void StaticGetExpr::accept(ASTVisitor* visitor) {
+void StaticGetExpr::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void StaticCallExpr::accept(ASTVisitor* visitor) {
+void StaticCallExpr::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void StaticSetExpr::accept(ASTVisitor* visitor) {
+void StaticSetExpr::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void LoadStmt::accept(ASTVisitor* visitor) {
+void LoadStmt::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
-void DictExpr::accept(ASTVisitor* visitor) { visitor->visit(this); }
-void UsingStmt::accept(ASTVisitor* visitor) { visitor->visit(this); }
-void LambdaExpr::accept(ASTVisitor* visitor) { visitor->visit(this); }
-
-void NamespaceStmt::accept(ASTVisitor* visitor) {
+void DictExpr::accept(ASTVisitor *visitor) {
+    visitor->visit(this);
+}
+void UsingStmt::accept(ASTVisitor *visitor) {
+    visitor->visit(this);
+}
+void LambdaExpr::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 
-void UseStmt::accept(ASTVisitor* visitor) {
+void NamespaceStmt::accept(ASTVisitor *visitor) {
+    visitor->visit(this);
+}
+
+void UseStmt::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }

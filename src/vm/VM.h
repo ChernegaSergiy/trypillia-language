@@ -2,24 +2,20 @@
 #define TRYPILLIA_VM_H
 
 #include "Chunk.h"
-#include <vector>
-#include <unordered_map>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
-enum class InterpretResult {
-    INTERPRET_OK,
-    INTERPRET_COMPILE_ERROR,
-    INTERPRET_RUNTIME_ERROR
-};
+enum class InterpretResult { INTERPRET_OK, INTERPRET_COMPILE_ERROR, INTERPRET_RUNTIME_ERROR };
 
 struct CallFrame {
     std::shared_ptr<ObjClosure> closure;
-    uint8_t* ip;
+    uint8_t *ip;
     int stackStart;
 };
 
 class VM {
-private:
+  private:
     std::vector<CallFrame> frames;
     std::vector<VMValue> stack;
     std::unordered_map<std::string, VMValue> globals_private_removed;
@@ -29,18 +25,18 @@ private:
     void push(VMValue value);
     VMValue pop();
     VMValue peek(int distance);
-    
-    std::shared_ptr<ObjUpvalue> captureUpvalue(VMValue* local);
-    void closeUpvalues(VMValue* last);
-    
-    InterpretResult runtimeError(const std::string& message);
+
+    std::shared_ptr<ObjUpvalue> captureUpvalue(VMValue *local);
+    void closeUpvalues(VMValue *last);
+
+    InterpretResult runtimeError(const std::string &message);
     InterpretResult run(int targetFrameDepth = 0);
 
-public:
+  public:
     std::unordered_map<std::string, VMValue> globals;
-    void defineNative(const std::string& name, int arity, NativeFn function);
-    VMValue callClosure(VMValue closureVal, int argCount, VMValue* args);
-    
+    void defineNative(const std::string &name, int arity, NativeFn function);
+    VMValue callClosure(VMValue closureVal, int argCount, VMValue *args);
+
     VM();
     ~VM();
 

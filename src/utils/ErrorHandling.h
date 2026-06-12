@@ -5,12 +5,12 @@
 #include <vector>
 
 class ErrorHandling {
-public:
-    static void reportError(const std::string& message);
-    static const std::vector<std::string>& getErrors();
+  public:
+    static void reportError(const std::string &message);
+    static const std::vector<std::string> &getErrors();
     static void clearErrors();
-    
-private:
+
+  private:
     static std::vector<std::string> errors;
 };
 

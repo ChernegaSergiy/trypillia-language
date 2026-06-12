@@ -1,17 +1,18 @@
-#include <iostream>
-#include <fstream>
-#include <string>
 #include "lexer/Lexer.h"
+#include "native/os/OS.h"
 #include "parser/Parser.h"
 #include "semantic/SemanticAnalyzer.h"
 #include "vm/Compiler.h"
 #include "vm/VM.h"
-#include "native/os/OS.h"
 #include "vm/serializer/Serializer.h"
+#include <fstream>
+#include <iostream>
+#include <string>
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
     std::string command;
-    if (argc >= 2) command = argv[1];
+    if (argc >= 2)
+        command = argv[1];
 
     std::shared_ptr<ObjFunction> function;
 
@@ -61,21 +62,21 @@ int main(int argc, char** argv) {
         std::cerr << "Error: Could not open source file: " << inputFile << std::endl;
         return 1;
     }
-        std::string sourceCode((std::istreambuf_iterator<char>(sourceFile)),
-                                std::istreambuf_iterator<char>());
+    std::string sourceCode((std::istreambuf_iterator<char>(sourceFile)), std::istreambuf_iterator<char>());
 
-        Lexer lexer(sourceCode);
-        Parser parser(lexer);
-        ASTNode* ast = parser.parse();
+    Lexer lexer(sourceCode);
+    Parser parser(lexer);
+    ASTNode *ast = parser.parse();
 
-        SemanticAnalyzer semanticAnalyzer;
-        SymbolTable* globals = semanticAnalyzer.analyze(ast);
+    SemanticAnalyzer semanticAnalyzer;
+    SymbolTable *globals = semanticAnalyzer.analyze(ast);
 
     Compiler compiler;
     compiler.currentFilename = inputFile;
     function = compiler.compile(ast, globals);
 
-    if (globals) delete globals;
+    if (globals)
+        delete globals;
 
     if (function) {
         if (buildStandalone) {

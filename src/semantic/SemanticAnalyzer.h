@@ -5,8 +5,8 @@
 #include "../symbol/SymbolTable.h"
 
 class SemanticAnalyzer {
-public:
-    SymbolTable* analyze(ASTNode* ast);
+  public:
+    SymbolTable *analyze(ASTNode *ast);
 };
 
 #endif // SEMANTIC_ANALYZER_H
