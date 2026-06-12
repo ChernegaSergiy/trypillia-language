@@ -56,6 +56,16 @@ Trypillia comes with an official **VS Code extension**. To install and use it:
 2. Run `npm install` to install dependencies.
 3. The extension will automatically connect to the `trypillia-lsp` binary from your `build` directory.
 
+## Package Manager (TrypPM)
+
+Trypillia has a native package manager called **[TrypPM](https://github.com/ChernegaSergiy/tryppm)**. It allows you to initialize projects, manage dependencies, and even upgrade the language compiler natively.
+
+**Features of TrypPM:**
+- **`tryppm init`**: Generate a standard `tryp.json` manifest file for your project.
+- **`tryppm install`**: Installs dependencies directly from GitHub into a local `tryp_modules` directory.
+- **`tryppm install github:User/Repo`**: Installs a specific package.
+- **`tryppm upgrade`**: Seamlessly upgrade the Trypillia language compiler from source.
+
 ## Contributing
 
 Contributions are welcome and appreciated! Here's how you can contribute:
