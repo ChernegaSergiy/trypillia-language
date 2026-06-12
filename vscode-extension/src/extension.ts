@@ -12,10 +12,11 @@ let client: LanguageClient;
 export function activate(context: ExtensionContext) {
   // Path to the trypillia-lsp executable
   const serverCommand = path.join(context.extensionPath, '..', 'build', 'trypillia-lsp');
+  const docsPath = path.join(context.extensionPath, '..', 'src', 'lsp', 'native_docs.json');
 
   const serverOptions: ServerOptions = {
-    run: { command: serverCommand },
-    debug: { command: serverCommand }
+    run: { command: serverCommand, args: ["--docs", docsPath] },
+    debug: { command: serverCommand, args: ["--docs", docsPath] }
   };
 
   const clientOptions: LanguageClientOptions = {

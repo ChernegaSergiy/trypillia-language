@@ -13,7 +13,7 @@ namespace trypillia {
 
 class LSPServer {
 public:
-    LSPServer() = default;
+    LSPServer(const std::string& docsPath = "src/lsp/native_docs.json") : docsPath(docsPath) {}
     void run();
 
 private:
@@ -35,6 +35,7 @@ private:
     bool isRunning = true;
     std::unordered_map<std::string, std::string> documents;
     json nativeDocs;
+    std::string docsPath;
 };
 
 } // namespace trypillia

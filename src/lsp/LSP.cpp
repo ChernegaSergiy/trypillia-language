@@ -363,7 +363,7 @@ void LSPServer::handleSignatureHelp(const json& message) {
     
     // Load native_docs.json if not already loaded
     if (nativeDocs.is_null()) {
-        std::ifstream f("src/lsp/native_docs.json");
+        std::ifstream f(docsPath);
         if (f.is_open()) {
             f >> nativeDocs;
         } else {
