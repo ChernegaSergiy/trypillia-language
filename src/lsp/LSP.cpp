@@ -5,11 +5,6 @@
 
 namespace trypillia {
 
-static void logMessage(const std::string& msg) {
-    std::ofstream f("/tmp/trypillia-lsp.log", std::ios::app);
-    f << msg << std::endl;
-}
-
 void LSPServer::run() {
     while (isRunning) {
         std::string message = readMessage();
@@ -63,7 +58,6 @@ void LSPServer::sendMessage(const json& message) {
 void LSPServer::handleMessage(const json& message) {
     if (message.contains("method")) {
         std::string method = message["method"];
-        logMessage("Received method: " + method);
 
         if (method == "initialize") {
             handleInitialize(message);
@@ -363,23 +357,19 @@ void LSPServer::handleCompletion(const json& message) {
 }
 
 void LSPServer::handleSignatureHelp(const json& message) {
-    logMessage("Handling signature help...");
     std::string uri = message["params"]["textDocument"]["uri"];
     int line = message["params"]["position"]["line"];
     int character = message["params"]["position"]["character"];
     
     json result = nullptr;
     
-    logMessage("docsPath is: " + docsPath);
     // Load native_docs.json if not already loaded
     if (nativeDocs.is_null()) {
         std::ifstream f(docsPath);
         if (f.is_open()) {
             f >> nativeDocs;
-            logMessage("Loaded nativeDocs successfully.");
         } else {
             nativeDocs = json::object();
-            logMessage("Failed to load nativeDocs from: " + docsPath);
         }
     }
     
