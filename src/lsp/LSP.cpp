@@ -260,59 +260,81 @@ void LSPServer::handleCompletion(const json& message) {
     
     json items = json::array();
     
-    // Add keywords
-    for (const auto& kw : keywords) {
-        items.push_back({
-            {"label", kw},
-            {"kind", 14}, // Keyword
-            {"detail", "Keyword"}
-        });
+    bool isMethodCompletion = false;
+    if (message.contains("params") && message["params"].contains("context")) {
+        if (message["params"]["context"]["triggerCharacter"] == ".") {
+            isMethodCompletion = true;
+        }
     }
     
-    // Add local variables and functions from the document
-    if (message.contains("params") && message["params"].contains("textDocument")) {
-        std::string uri = message["params"]["textDocument"]["uri"];
-        if (documents.find(uri) != documents.end()) {
-            std::string text = documents[uri];
-            Lexer lexer(text);
-            
-            Token prevToken = {TokenType::UNKNOWN, "", 0, 0};
-            std::vector<std::string> localIdentifiers;
-            
-            while (true) {
-                Token t = lexer.nextToken();
-                if (t.type == TokenType::END_OF_FILE) break;
+    if (isMethodCompletion) {
+        // Suggest common object/array/string methods
+        std::vector<std::string> methods = {
+            "length", "push", "pop", "shift", "unshift", "map", "filter", 
+            "reduce", "toString", "split", "join", "keys", "values", "forEach"
+        };
+        for (const auto& m : methods) {
+            items.push_back({
+                {"label", m},
+                {"kind", 2}, // Method
+                {"detail", "Method"}
+            });
+        }
+    } else {
+        // Add keywords
+        for (const auto& kw : keywords) {
+            items.push_back({
+                {"label", kw},
+                {"kind", 14}, // Keyword
+                {"detail", "Keyword"}
+            });
+        }
+    
+        // Add local variables and functions from the document
+        if (message.contains("params") && message["params"].contains("textDocument")) {
+            std::string uri = message["params"]["textDocument"]["uri"];
+            if (documents.find(uri) != documents.end()) {
+                std::string text = documents[uri];
+                Lexer lexer(text);
                 
-                if (t.type == TokenType::IDENTIFIER) {
-                    if (prevToken.type == TokenType::LET ||
-                        prevToken.type == TokenType::CONST ||
-                        prevToken.type == TokenType::FN ||
-                        prevToken.type == TokenType::CLASS) {
-                        
-                        // Avoid duplicates
-                        bool exists = false;
-                        for (const auto& id : localIdentifiers) {
-                            if (id == t.lexeme) { exists = true; break; }
-                        }
-                        
-                        if (!exists) {
-                            localIdentifiers.push_back(t.lexeme);
+                Token prevToken = {TokenType::UNKNOWN, "", 0, 0};
+                std::vector<std::string> localIdentifiers;
+                
+                while (true) {
+                    Token t = lexer.nextToken();
+                    if (t.type == TokenType::END_OF_FILE) break;
+                    
+                    if (t.type == TokenType::IDENTIFIER) {
+                        if (prevToken.type == TokenType::LET ||
+                            prevToken.type == TokenType::CONST ||
+                            prevToken.type == TokenType::FN ||
+                            prevToken.type == TokenType::CLASS) {
                             
-                            int kind = 6; // Variable by default
-                            std::string detail = "Variable";
-                            if (prevToken.type == TokenType::FN) { kind = 3; detail = "Function"; } // Function
-                            else if (prevToken.type == TokenType::CLASS) { kind = 7; detail = "Class"; } // Class
-                            else if (prevToken.type == TokenType::CONST) { kind = 21; detail = "Constant"; } // Constant
+                            // Avoid duplicates
+                            bool exists = false;
+                            for (const auto& id : localIdentifiers) {
+                                if (id == t.lexeme) { exists = true; break; }
+                            }
                             
-                            items.push_back({
-                                {"label", t.lexeme},
-                                {"kind", kind},
-                                {"detail", detail}
-                            });
+                            if (!exists) {
+                                localIdentifiers.push_back(t.lexeme);
+                                
+                                int kind = 6; // Variable by default
+                                std::string detail = "Variable";
+                                if (prevToken.type == TokenType::FN) { kind = 3; detail = "Function"; } // Function
+                                else if (prevToken.type == TokenType::CLASS) { kind = 7; detail = "Class"; } // Class
+                                else if (prevToken.type == TokenType::CONST) { kind = 21; detail = "Constant"; } // Constant
+                                
+                                items.push_back({
+                                    {"label", t.lexeme},
+                                    {"kind", kind},
+                                    {"detail", detail}
+                                });
+                            }
                         }
                     }
+                    prevToken = t;
                 }
-                prevToken = t;
             }
         }
     }
