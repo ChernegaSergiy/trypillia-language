@@ -49,6 +49,23 @@ Run your code:
 ./build/trypillia hello.try
 ```
 
+## Error Handling
+
+Trypillia features beautifully formatted runtime errors (panics) with full stack traces, making debugging intuitive and friendly:
+
+```text
+$ ./trypillia main.try
+
+ ૮ ˶ᵔ ᵕ ᵔ˶ ა 
+ / づ 📝 ♡ 
+
+Panic: Expected 2 arguments but got 1.
+
+Traceback (most recent call last):
+  at calculate in main.try:8
+  at <main> in main.try:12
+```
+
 ## IDE Support
 
 Trypillia comes with an official **VS Code extension**. To install and use it:
