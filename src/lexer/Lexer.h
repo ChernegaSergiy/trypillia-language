@@ -60,9 +60,9 @@ private:
     char peekNext();
     void skipWhitespace();
     
-    Token identifier();
-    Token number();
-    Token string();
+    Token identifier(int startColumn);
+    Token number(int startColumn);
+    Token string(int startColumn);
     Token scanToken();
 };
 
