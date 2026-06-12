@@ -9,6 +9,38 @@
     "doc": "Reads a line of input from the console.",
     "params": [{"label": "prompt: String", "doc": "The prompt displayed to the user."}]
   },
+  "Terminal.color": {
+    "signature": "Terminal.color(color: String) -> Void",
+    "doc": "Sets the console text color using standard ANSI color names (e.g. 'red', 'green', 'blue', 'gray').",
+    "params": [
+      {"label": "color: String", "doc": "The color name to set."}
+    ]
+  },
+  "Terminal.reset": {
+    "signature": "Terminal.reset() -> Void",
+    "doc": "Resets the console text color to the default.",
+    "params": []
+  },
+  "Terminal.enableRawMode": {
+    "signature": "Terminal.enableRawMode() -> Void",
+    "doc": "Enables raw mode for the terminal (disables echoing and line buffering).",
+    "params": []
+  },
+  "Terminal.disableRawMode": {
+    "signature": "Terminal.disableRawMode() -> Void",
+    "doc": "Restores the terminal to its original mode.",
+    "params": []
+  },
+  "Terminal.readChar": {
+    "signature": "Terminal.readChar() -> String",
+    "doc": "Reads a single character from the console.",
+    "params": []
+  },
+  "Terminal.write": {
+    "signature": "Terminal.write(text: String) -> Void",
+    "doc": "Writes a string directly to the console output without appending a newline.",
+    "params": [{"label": "text: String", "doc": "The text to write."}]
+  },
   "Math.sin": {
     "signature": "Math.sin(angle: Number) -> Number",
     "doc": "Returns the sine of the given angle.",
