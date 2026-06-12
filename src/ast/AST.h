@@ -11,6 +11,11 @@ class ASTVisitor;
 // Access modifier for class members
 enum class AccessModifier { PUBLIC, PRIVATE, PROTECTED };
 
+struct Parameter {
+    std::string name;
+    class ExprNode *defaultValue;
+};
+
 class ASTNode {
   public:
     int line = 0;
@@ -274,13 +279,17 @@ class DictExpr : public ExprNode {
 
 class LambdaExpr : public ExprNode {
   public:
-    std::vector<std::string> params;
+    std::vector<Parameter> params;
     std::vector<StmtNode *> body;
 
-    LambdaExpr(std::vector<std::string> params, std::vector<StmtNode *> body) : params(params), body(body) {
+    LambdaExpr(std::vector<Parameter> params, std::vector<StmtNode *> body) : params(params), body(body) {
     }
 
     ~LambdaExpr() {
+        for (auto &param : params) {
+            if (param.defaultValue)
+                delete param.defaultValue;
+        }
         for (auto stmt : body)
             delete stmt;
     }
@@ -522,13 +531,13 @@ class SwitchStmt : public StmtNode {
 class FunctionNode : public StmtNode {
   public:
     std::string name;
-    std::vector<std::string> params;
+    std::vector<Parameter> params;
     std::vector<StmtNode *> body;
     AccessModifier accessModifier;
     bool isAbstract;
     bool isStatic;
 
-    FunctionNode(std::string name, std::vector<std::string> params, std::vector<StmtNode *> body)
+    FunctionNode(std::string name, std::vector<Parameter> params, std::vector<StmtNode *> body)
         : name(name), params(params), body(body), accessModifier(AccessModifier::PUBLIC), isAbstract(false),
           isStatic(false) {
     }
@@ -538,6 +547,10 @@ class FunctionNode : public StmtNode {
     }
 
     ~FunctionNode() {
+        for (auto &param : params) {
+            if (param.defaultValue)
+                delete param.defaultValue;
+        }
         for (auto stmt : body) {
             delete stmt;
         }
