@@ -57,6 +57,8 @@ JitFunc JITCompiler::compileMathFunction(std::shared_ptr<ObjFunction> function) 
         
         uint8_t op = function->chunk->code[i];
         switch (op) {
+            case static_cast<uint8_t>(OpCode::OP_NOP):
+                break;
             case static_cast<uint8_t>(OpCode::OP_GET_LOCAL): {
                 uint8_t slot = function->chunk->code[++i];
                 if (slot == 0) return nullptr; // 'this' unsupported

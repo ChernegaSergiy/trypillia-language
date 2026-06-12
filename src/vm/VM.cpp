@@ -237,6 +237,8 @@ InterpretResult VM::run(int targetFrameDepth) {
     for (;;) {
         uint8_t instruction;
         switch (instruction = READ_BYTE()) {
+        case static_cast<uint8_t>(OpCode::OP_NOP):
+            break;
         case static_cast<uint8_t>(OpCode::OP_CONSTANT): {
             VMValue constant = READ_CONSTANT();
             push(constant);
