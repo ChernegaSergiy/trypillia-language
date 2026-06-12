@@ -135,6 +135,16 @@ namespace StringModule {
         }
     }
 
+    static VMValue stringToNumber(int argCount, VMValue* args) {
+        if (argCount != 1 || !std::holds_alternative<std::string>(args[0])) return nullptr;
+        std::string str = std::get<std::string>(args[0]);
+        try {
+            return std::stod(str);
+        } catch (...) {
+            return nullptr;
+        }
+    }
+
     void registerAll(VM* vm) {
         currentVM = vm;
         auto stringClass = std::make_shared<ObjClass>("String");
@@ -150,6 +160,7 @@ namespace StringModule {
         stringClass->statics["includes"] = std::make_shared<ObjNative>("includes", 2, stringIncludes);
         stringClass->statics["startsWith"] = std::make_shared<ObjNative>("startsWith", 2, stringStartsWith);
         stringClass->statics["endsWith"] = std::make_shared<ObjNative>("endsWith", 2, stringEndsWith);
+        stringClass->statics["toNumber"] = std::make_shared<ObjNative>("toNumber", 1, stringToNumber);
 
         vm->globals["String"] = stringClass;
     }
