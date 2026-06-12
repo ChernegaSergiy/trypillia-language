@@ -131,58 +131,66 @@ ExprNode* Parser::primary() {
         advance();
         
         std::string str = literal.lexeme;
-        size_t openBrace = str.find('{');
-        if (openBrace != std::string::npos) {
+        // Check for interpolation, but respect escaped braces \{
+        bool hasInterpolation = false;
+        for (size_t i = 0; i < str.length(); i++) {
+            if (str[i] == '{' && (i == 0 || str[i-1] != '\\')) {
+                hasInterpolation = true;
+                break;
+            }
+        }
+
+        if (hasInterpolation) {
             std::vector<ExprNode*> parts;
-            size_t i = 0;
-            while (i < str.length()) {
-                size_t nextOpen = str.find('{', i);
-                if (nextOpen == std::string::npos) {
-                    Token t = literal;
-                    t.lexeme = str.substr(i);
-                    parts.push_back(new LiteralExpr(t));
-                    break;
+            std::string currentPart = "";
+            
+            for (size_t i = 0; i < str.length(); i++) {
+                if (str[i] == '\\' && i + 1 < str.length() && (str[i+1] == '{' || str[i+1] == '}')) {
+                    currentPart += str[i+1];
+                    i++;
+                    continue;
                 }
                 
-                if (nextOpen > i) {
-                    Token t = literal;
-                    t.lexeme = str.substr(i, nextOpen - i);
-                    parts.push_back(new LiteralExpr(t));
-                }
-                
-                size_t closeBrace = str.find('}', nextOpen);
-                if (closeBrace == std::string::npos) {
-                    Token t = literal;
-                    t.lexeme = str.substr(nextOpen);
-                    parts.push_back(new LiteralExpr(t));
-                    break;
-                }
-                
-                std::string exprStr = str.substr(nextOpen + 1, closeBrace - nextOpen - 1);
-                if (!exprStr.empty()) {
+                if (str[i] == '{') {
+                    if (!currentPart.empty()) {
+                        Token t = literal; t.lexeme = currentPart;
+                        parts.push_back(new LiteralExpr(t));
+                        currentPart = "";
+                    }
+                    
+                    size_t start = i + 1;
+                    int nest = 1;
+                    while (i + 1 < str.length() && nest > 0) {
+                        i++;
+                        if (str[i] == '{' && str[i-1] != '\\') nest++;
+                        if (str[i] == '}' && str[i-1] != '\\') nest--;
+                    }
+                    
+                    std::string exprStr = str.substr(start, i - start);
                     try {
                         Lexer lex(exprStr);
                         Parser p(lex);
                         ExprNode* e = p.expression();
                         if (e) parts.push_back(e);
                     } catch (...) {
-                        Token t = literal;
-                        t.lexeme = "{" + exprStr + "}";
+                        Token t = literal; t.lexeme = "{" + exprStr + "}";
                         parts.push_back(new LiteralExpr(t));
                     }
+                } else {
+                    currentPart += str[i];
                 }
-                
-                i = closeBrace + 1;
+            }
+            
+            if (!currentPart.empty()) {
+                Token t = literal; t.lexeme = currentPart;
+                parts.push_back(new LiteralExpr(t));
             }
             
             if (parts.empty()) return new LiteralExpr(literal);
             
             ExprNode* result = parts[0];
             for (size_t j = 1; j < parts.size(); j++) {
-                Token plusToken;
-                plusToken.type = TokenType::PLUS;
-                plusToken.lexeme = "+";
-                plusToken.line = literal.line;
+                Token plusToken; plusToken.type = TokenType::PLUS; plusToken.lexeme = "+"; plusToken.line = literal.line;
                 result = new BinaryExpr(result, plusToken, parts[j]);
             }
             return result;

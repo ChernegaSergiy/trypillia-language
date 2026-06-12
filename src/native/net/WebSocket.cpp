@@ -111,21 +111,21 @@ namespace WebSocketModule {
 
         if (opcode == 0x8) return makeResultErr(currentVM, "Closed by client");
 
-        if (len == 126) { uint8_t ext[2]; mbedtls_net_recv(&data->fd, ext, 2); len = (ext[0] << 8) | ext[1]; }
+        if (len == 126) { uint8_t ext[2]; mbedtls_net_recv(&data->fd, ext, 2); len = (uint64_t(ext[0]) << 8) | ext[1]; }
         else if (len == 127) { uint8_t ext[8]; mbedtls_net_recv(&data->fd, ext, 8); len = 0; for (int i = 0; i < 8; i++) len = (len << 8) | ext[i]; }
 
         uint8_t mask[4] = {0};
         if (masked) mbedtls_net_recv(&data->fd, mask, 4);
 
-        std::vector<uint8_t> payload(len);
+        std::vector<uint8_t> payload(static_cast<size_t>(len));
         size_t total = 0;
         while (total < len) {
-            int r = mbedtls_net_recv(&data->fd, payload.data() + total, len - total);
+            int r = mbedtls_net_recv(&data->fd, payload.data() + total, static_cast<size_t>(len - total));
             if (r <= 0) return makeResultErr(currentVM, "Read error");
-            total += r;
+            total += static_cast<size_t>(r);
         }
 
-        if (masked) for (size_t i = 0; i < len; i++) payload[i] ^= mask[i % 4];
+        if (masked) for (size_t i = 0; i < static_cast<size_t>(len); i++) payload[i] ^= mask[i % 4];
         return makeResultOk(currentVM, std::string(payload.begin(), payload.end()));
     }
 
