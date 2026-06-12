@@ -16,8 +16,8 @@ void Parser::consume(TokenType type) {
     if (currentToken.type == type) {
         advance();
     } else {
-        std::string message = "Expected token type " + std::to_string(static_cast<int>(type)) + 
-                            ", got " + std::to_string(static_cast<int>(currentToken.type)) + " at line " + std::to_string(currentToken.line) + ":" + std::to_string(currentToken.column);
+        std::string message = "Expected token type " + tokenTypeToString(type) + 
+                            ", got " + tokenTypeToString(currentToken.type) + " at line " + std::to_string(currentToken.line) + ":" + std::to_string(currentToken.column);
         ErrorHandling::reportError(message);
         throw std::runtime_error(message);
     }

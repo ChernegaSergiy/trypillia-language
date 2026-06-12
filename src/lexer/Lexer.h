@@ -35,6 +35,8 @@ enum class TokenType {
     END_OF_FILE, UNKNOWN
 };
 
+std::string tokenTypeToString(TokenType type);
+
 struct Token {
     TokenType type;
     std::string lexeme;
