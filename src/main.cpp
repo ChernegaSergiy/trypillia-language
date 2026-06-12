@@ -26,10 +26,10 @@ std::string getExecutablePath(const char* argv0) {
     return std::string(buffer);
 #else
 #ifdef __APPLE__
-    char buffer[PATH_MAX];
-    uint32_t size = sizeof(buffer);
-    if (_NSGetExecutablePath(buffer, &size) == 0) {
-        return std::string(buffer);
+    char apple_buffer[PATH_MAX];
+    uint32_t size = sizeof(apple_buffer);
+    if (_NSGetExecutablePath(apple_buffer, &size) == 0) {
+        return std::string(apple_buffer);
     }
 #endif
     char buffer[PATH_MAX];
