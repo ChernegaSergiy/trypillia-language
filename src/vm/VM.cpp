@@ -889,7 +889,11 @@ InterpretResult VM::run(int targetFrameDepth) {
                 }
                 int expectedArity = getMethodArity(function);
                 if (std::holds_alternative<std::shared_ptr<ObjNative>>(function)) {
-                    if (expectedArity != -1) expectedArity -= 1;
+                    // Primitive methods are registered with arity + 1 because they take the receiver as args[0].
+                    // Instance methods use args[-1] for receiver, so their arity is exactly the argument count.
+                    if (!std::holds_alternative<std::shared_ptr<ObjInstance>>(bound->receiver)) {
+                        if (expectedArity != -1) expectedArity -= 1;
+                    }
                 }
                 if (expectedArity != -1 && argCount != expectedArity) {
                     return runtimeError(std::string("Expected ") + std::to_string(expectedArity) +
@@ -911,7 +915,15 @@ InterpretResult VM::run(int targetFrameDepth) {
                     frame = &frames.back();
                 } else {
                     auto native = std::get<std::shared_ptr<ObjNative>>(function);
-                    VMValue result = native->function(argCount + 1, stack.data() + stack.size() - argCount - 1);
+                    int passedArgCount = argCount;
+                    VMValue *argsPtr;
+                    if (!std::holds_alternative<std::shared_ptr<ObjInstance>>(bound->receiver)) {
+                        passedArgCount += 1;
+                        argsPtr = stack.data() + stack.size() - argCount - 1; // Primitive methods expect receiver at args[0]
+                    } else {
+                        argsPtr = stack.data() + stack.size() - argCount; // Instance methods expect receiver at args[-1]
+                    }
+                    VMValue result = native->function(passedArgCount, argsPtr);
                     stack.resize(stack.size() - argCount - 1);
                     push(result);
                     frame = &frames.back();
