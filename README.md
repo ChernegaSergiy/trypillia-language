@@ -2,7 +2,7 @@
 
 [![Build and Release](https://github.com/ChernegaSergiy/trypillia-language/actions/workflows/build.yml/badge.svg)](https://github.com/ChernegaSergiy/trypillia-language/actions/workflows/build.yml)
 
-Trypillia is a modern, fast, and elegantly designed programming language built from the ground up to empower developers. With a clean syntax, robust standard library, and built-in LSP support, Trypillia is ready for your next big project.
+**Trypillia** is a modern, fast, and elegantly designed programming language built from the ground up to empower developers. With a clean syntax, robust standard library, and built-in LSP support, Trypillia is ready for your next big project.
 
 ## Features
 
