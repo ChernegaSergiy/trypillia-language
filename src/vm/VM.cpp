@@ -375,6 +375,8 @@ InterpretResult VM::run(int targetFrameDepth) {
                 push(std::get<std::string>(a) == std::get<std::string>(b));
             } else if (std::holds_alternative<bool>(a) && std::holds_alternative<bool>(b)) {
                 push(std::get<bool>(a) == std::get<bool>(b));
+            } else if (std::holds_alternative<std::nullptr_t>(a) && std::holds_alternative<std::nullptr_t>(b)) {
+                push(true);
             } else {
                 push(false);
             }
@@ -833,9 +835,16 @@ InterpretResult VM::run(int targetFrameDepth) {
             if (std::holds_alternative<std::shared_ptr<ObjClosure>>(callee)) {
                 auto closure = std::get<std::shared_ptr<ObjClosure>>(callee);
                 auto function = closure->function;
-                if (argCount != function->arity) {
-                    return runtimeError(std::string("Expected ") + std::to_string(function->arity) +
+                if (function->arity != -1 && (argCount < function->arity || argCount > function->maxArity)) {
+                    std::string expected = function->arity == function->maxArity 
+                        ? std::to_string(function->arity) 
+                        : std::to_string(function->arity) + "-" + std::to_string(function->maxArity);
+                    return runtimeError(std::string("Expected ") + expected +
                                         " arguments but got " + std::to_string(argCount) + ".");
+                }
+                while (function->maxArity != -1 && argCount < function->maxArity) {
+                    push(nullptr);
+                    argCount++;
                 }
                 if (frames.size() == 256) {
                     return runtimeError(std::string("Stack overflow."));
