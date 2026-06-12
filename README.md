@@ -110,3 +110,4 @@ This project is licensed under the CSSM Unlimited License v2.0 (CSSM-ULv2). See 
 ## Acknowledgments
 
 - The lightning-fast JIT compiler backend is powered by [AsmJit](https://asmjit.com/), a complete JIT and remote assembler for C++
+- JSON parsing and serialization across the standard library and language server is handled by [nlohmann/json](https://github.com/nlohmann/json) (json.hpp)
