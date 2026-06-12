@@ -932,6 +932,14 @@ class CompilerVisitor : public ASTVisitor {
             path = path.substr(1, path.size() - 2);
         }
 
+        // Resolve relative to the current file
+        if (!path.empty() && path.front() != '/') {
+            size_t slashPos = compiler_filename.find_last_of('/');
+            if (slashPos != std::string::npos) {
+                path = compiler_filename.substr(0, slashPos + 1) + path;
+            }
+        }
+
         std::ifstream file(path);
         if (!file.is_open()) {
             std::cerr << "Compile error: Could not load file '" << path << "'" << std::endl;
