@@ -8,32 +8,61 @@ namespace Core {
 
 thread_local VM *currentVM = nullptr;
 
+static std::string stringify(const VMValue& val, bool inContainer = false) {
+    if (std::holds_alternative<double>(val)) {
+        std::string s = std::to_string(std::get<double>(val));
+        s.erase(s.find_last_not_of('0') + 1, std::string::npos);
+        if (s.back() == '.') s.pop_back();
+        if (s.empty()) return "0";
+        return s;
+    } else if (std::holds_alternative<std::string>(val)) {
+        if (inContainer) {
+            return "\"" + std::get<std::string>(val) + "\"";
+        } else {
+            return std::get<std::string>(val);
+        }
+    } else if (std::holds_alternative<bool>(val)) {
+        return std::get<bool>(val) ? "true" : "false";
+    } else if (std::holds_alternative<std::shared_ptr<ObjList>>(val)) {
+        std::string s = "[";
+        auto list = std::get<std::shared_ptr<ObjList>>(val);
+        for (size_t i = 0; i < list->elements.size(); ++i) {
+            s += stringify(list->elements[i], true);
+            if (i < list->elements.size() - 1) s += ", ";
+        }
+        s += "]";
+        return s;
+    } else if (std::holds_alternative<std::shared_ptr<ObjMap>>(val)) {
+        std::string s = "{";
+        auto map = std::get<std::shared_ptr<ObjMap>>(val);
+        size_t i = 0;
+        for (auto const& [k, v] : map->values) {
+            s += stringify(k, true) + ": " + stringify(v, true);
+            if (i < map->values.size() - 1) s += ", ";
+            i++;
+        }
+        s += "}";
+        return s;
+    } else if (std::holds_alternative<std::shared_ptr<ObjClass>>(val)) {
+        return "<class " + std::get<std::shared_ptr<ObjClass>>(val)->name + ">";
+    } else if (std::holds_alternative<std::shared_ptr<ObjInstance>>(val)) {
+        return "<instance of " + std::get<std::shared_ptr<ObjInstance>>(val)->klass->name + ">";
+    } else if (std::holds_alternative<std::shared_ptr<ObjBoundMethod>>(val)) {
+        auto boundMethod = std::get<std::shared_ptr<ObjBoundMethod>>(val)->method;
+        if (std::holds_alternative<std::shared_ptr<ObjFunction>>(boundMethod)) {
+            return "<bound method " + std::get<std::shared_ptr<ObjFunction>>(boundMethod)->name + ">";
+        } else {
+            return "<bound method " + std::get<std::shared_ptr<ObjNative>>(boundMethod)->name + ">";
+        }
+    } else if (std::holds_alternative<std::nullptr_t>(val)) {
+        return "nil";
+    }
+    return "unknown";
+}
+
 static VMValue printNative(int argCount, VMValue *args) {
     for (int i = 0; i < argCount; i++) {
-        if (std::holds_alternative<double>(args[i])) {
-            std::cout << std::get<double>(args[i]);
-        } else if (std::holds_alternative<std::string>(args[i])) {
-            std::cout << std::get<std::string>(args[i]);
-        } else if (std::holds_alternative<bool>(args[i])) {
-            std::cout << (std::get<bool>(args[i]) ? "true" : "false");
-        } else if (std::holds_alternative<std::shared_ptr<ObjList>>(args[i])) {
-            std::cout << "[list]";
-        } else if (std::holds_alternative<std::shared_ptr<ObjMap>>(args[i])) {
-            std::cout << "{map}";
-        } else if (std::holds_alternative<std::shared_ptr<ObjClass>>(args[i])) {
-            std::cout << "<class " << std::get<std::shared_ptr<ObjClass>>(args[i])->name << ">";
-        } else if (std::holds_alternative<std::shared_ptr<ObjInstance>>(args[i])) {
-            std::cout << "<instance of " << std::get<std::shared_ptr<ObjInstance>>(args[i])->klass->name << ">";
-        } else if (std::holds_alternative<std::shared_ptr<ObjBoundMethod>>(args[i])) {
-            auto boundMethod = std::get<std::shared_ptr<ObjBoundMethod>>(args[i])->method;
-            if (std::holds_alternative<std::shared_ptr<ObjFunction>>(boundMethod)) {
-                std::cout << "<bound method " << std::get<std::shared_ptr<ObjFunction>>(boundMethod)->name << ">";
-            } else {
-                std::cout << "<bound method " << std::get<std::shared_ptr<ObjNative>>(boundMethod)->name << ">";
-            }
-        } else if (std::holds_alternative<std::nullptr_t>(args[i])) {
-            std::cout << "nil";
-        }
+        std::cout << stringify(args[i]);
         if (i < argCount - 1)
             std::cout << " ";
     }
