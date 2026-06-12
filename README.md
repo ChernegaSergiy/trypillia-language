@@ -49,7 +49,7 @@ Run your code:
 
 ## IDE Support
 
-Trypillia comes with an official **VS Code extension**.
+Trypillia comes with an official **VS Code extension**. To install and use it:
 1. Open the `vscode-extension` folder in VS Code.
 2. Run `npm install` to install dependencies.
 3. The extension will automatically connect to the `trypillia-lsp` binary from your `build` directory.
