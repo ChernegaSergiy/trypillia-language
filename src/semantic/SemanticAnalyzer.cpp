@@ -266,7 +266,9 @@ class SemanticVisitor : public ASTVisitor {
         symbol.isConst = false;
         currentScope->define(symbol);
         node->body->accept(this);
+        SymbolTable *old = currentScope;
         currentScope = currentScope->getParent();
+        delete old;
     }
 
     void visit(SwitchStmt *node) override {
@@ -283,7 +285,9 @@ class SemanticVisitor : public ASTVisitor {
         currentScope = new SymbolTable(currentScope);
         node->declaration->accept(this);
         node->body->accept(this);
+        SymbolTable *old = currentScope;
         currentScope = currentScope->getParent();
+        delete old;
     }
 
     void visit(LambdaExpr *node) override {
@@ -297,7 +301,9 @@ class SemanticVisitor : public ASTVisitor {
         }
         for (auto &stmt : node->body)
             stmt->accept(this);
+        SymbolTable *old = currentScope;
         currentScope = currentScope->getParent();
+        delete old;
     }
 
     void visit(FunctionNode *node) override {
@@ -321,7 +327,9 @@ class SemanticVisitor : public ASTVisitor {
         }
         for (auto &stmt : node->body)
             stmt->accept(this);
+        SymbolTable *old = currentScope;
         currentScope = currentScope->getParent();
+        delete old;
     }
 
     void visit(FieldDeclNode *node) override {
