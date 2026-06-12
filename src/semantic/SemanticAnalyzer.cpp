@@ -370,8 +370,20 @@ class SemanticVisitor : public ASTVisitor {
         ifaceSymbol.type = "interface";
         ifaceSymbol.isConst = true;
         currentScope->define(ifaceSymbol);
+        
+        currentScope = new SymbolTable(currentScope);
+        Symbol thisSymbol;
+        thisSymbol.name = "this";
+        thisSymbol.type = "instance";
+        thisSymbol.isConst = true;
+        currentScope->define(thisSymbol);
+
         for (auto &method : node->methods)
             method->accept(this);
+
+        SymbolTable *old = currentScope;
+        currentScope = currentScope->getParent();
+        delete old;
     }
 
     void visit(TraitNode *node) override {
@@ -384,8 +396,20 @@ class SemanticVisitor : public ASTVisitor {
         traitSymbol.type = "trait";
         traitSymbol.isConst = true;
         currentScope->define(traitSymbol);
+        
+        currentScope = new SymbolTable(currentScope);
+        Symbol thisSymbol;
+        thisSymbol.name = "this";
+        thisSymbol.type = "instance";
+        thisSymbol.isConst = true;
+        currentScope->define(thisSymbol);
+
         for (auto &method : node->methods)
             method->accept(this);
+
+        SymbolTable *old = currentScope;
+        currentScope = currentScope->getParent();
+        delete old;
     }
 
     void visit(StaticGetExpr *node) override {
