@@ -558,7 +558,12 @@ class CompilerVisitor : public ASTVisitor {
     void visit(LambdaExpr *node) override {
         auto func = std::make_shared<ObjFunction>();
         func->name = "lambda";
-        func->arity = static_cast<int>(node->params.size());
+        func->maxArity = static_cast<int>(node->params.size());
+        func->arity = func->maxArity;
+        for (auto it = node->params.rbegin(); it != node->params.rend(); ++it) {
+            if (it->defaultValue) func->arity--;
+            else break;
+        }
         func->chunk = std::make_shared<Chunk>();
         func->filename = compiler_filename;
         CompilerVisitor funcCompiler(func->chunk.get(), compiler_filename, globalSymbols, this);
@@ -695,7 +700,12 @@ class CompilerVisitor : public ASTVisitor {
             actualName = currentNamespace + "." + actualName;
         }
         func->name = actualName;
-        func->arity = static_cast<int>(node->params.size());
+        func->maxArity = static_cast<int>(node->params.size());
+        func->arity = func->maxArity;
+        for (auto it = node->params.rbegin(); it != node->params.rend(); ++it) {
+            if (it->defaultValue) func->arity--;
+            else break;
+        }
         func->chunk = std::make_shared<Chunk>();
         func->filename = compiler_filename;
 
@@ -738,7 +748,12 @@ class CompilerVisitor : public ASTVisitor {
     void compileMethod(FunctionNode *node, ClassNode *classNode = nullptr) {
         auto func = std::make_shared<ObjFunction>();
         func->name = node->name;
-        func->arity = static_cast<int>(node->params.size());
+        func->maxArity = static_cast<int>(node->params.size());
+        func->arity = func->maxArity;
+        for (auto it = node->params.rbegin(); it != node->params.rend(); ++it) {
+            if (it->defaultValue) func->arity--;
+            else break;
+        }
         func->chunk = std::make_shared<Chunk>();
         func->filename = compiler_filename;
         func->accessModifier = getVMAccessModifier(node->accessModifier);
