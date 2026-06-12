@@ -63,7 +63,7 @@ jobs:
           - os: ubuntu-latest
             target: android-armv7a
             artifact_name: trypillia
-            cmake_args: "-DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DANDROID_PLATFORM=android-21"
+            cmake_args: "-DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DANDROID_PLATFORM=android-21 -DCMAKE_EXE_LINKER_FLAGS=\"-Wl,--hash-style=both\""
 
     steps:
       - uses: actions/checkout@v6
