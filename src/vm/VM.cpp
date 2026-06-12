@@ -861,7 +861,7 @@ InterpretResult VM::run(int targetFrameDepth) {
 
                 if (nativeJitFunc) {
                     bool canRunJit = true;
-                    std::vector<double> jitArgs(argCount);
+                    std::vector<double> jitArgs(256, 0.0);
                     for (int i = 0; i < argCount; ++i) {
                         VMValue arg = peek(argCount - i - 1); // Top of stack is last argument
                         if (std::holds_alternative<double>(arg)) {
