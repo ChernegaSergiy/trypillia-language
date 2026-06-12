@@ -110,6 +110,58 @@ static VMValue terminalReset(int argCount, VMValue *args) {
     return nullptr;
 }
 
+static VMValue terminalClear(int argCount, VMValue *args) {
+    std::cout << "\033[2J\033[H" << std::flush;
+    return nullptr;
+}
+
+static VMValue terminalSetCursor(int argCount, VMValue *args) {
+    if (argCount == 2 && std::holds_alternative<double>(args[0]) && std::holds_alternative<double>(args[1])) {
+        int x = static_cast<int>(std::get<double>(args[0]));
+        int y = static_cast<int>(std::get<double>(args[1]));
+        std::cout << "\033[" << y << ";" << x << "H" << std::flush;
+    }
+    return nullptr;
+}
+
+static VMValue terminalGetCursor(int argCount, VMValue *args) {
+    auto list = std::make_shared<ObjList>(std::vector<VMValue>{});
+#ifdef _WIN32
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) {
+        list->elements.push_back(static_cast<double>(csbi.dwCursorPosition.X + 1));
+        list->elements.push_back(static_cast<double>(csbi.dwCursorPosition.Y + 1));
+    }
+#else
+    struct termios oldt, newt;
+    tcgetattr(STDIN_FILENO, &oldt);
+    newt = oldt;
+    newt.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+
+    std::cout << "\033[6n" << std::flush;
+    std::string response;
+    char c;
+    while (read(STDIN_FILENO, &c, 1) == 1) {
+        if (c == 'R') break;
+        response += c;
+    }
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    
+    int y = 1, x = 1;
+    size_t bracket = response.find('[');
+    size_t semicolon = response.find(';');
+    if (bracket != std::string::npos && semicolon != std::string::npos) {
+        y = std::stoi(response.substr(bracket + 1, semicolon - bracket - 1));
+        x = std::stoi(response.substr(semicolon + 1));
+    }
+    list->elements.push_back(static_cast<double>(x));
+    list->elements.push_back(static_cast<double>(y));
+#endif
+    return list;
+}
+
 void registerAll(VM *vm) {
     currentVM = vm;
     auto cls = std::make_shared<ObjClass>("Terminal");
@@ -122,6 +174,9 @@ void registerAll(VM *vm) {
     cls->statics["write"] = std::make_shared<ObjNative>("write", 1, terminalWrite);
     cls->statics["color"] = std::make_shared<ObjNative>("color", 1, terminalColor);
     cls->statics["reset"] = std::make_shared<ObjNative>("reset", 0, terminalReset);
+    cls->statics["clear"] = std::make_shared<ObjNative>("clear", 0, terminalClear);
+    cls->statics["setCursor"] = std::make_shared<ObjNative>("setCursor", 2, terminalSetCursor);
+    cls->statics["getCursor"] = std::make_shared<ObjNative>("getCursor", 0, terminalGetCursor);
     vm->globals["Terminal"] = cls;
 }
 
