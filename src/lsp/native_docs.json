@@ -1,204 +1,204 @@
 {
   "print": {
     "signature": "print(message: Any) -> Void",
-    "doc": "Виводить повідомлення у консоль.",
-    "params": [{"label": "message: Any", "doc": "Об'єкт або текст для виводу."}]
+    "doc": "Prints a message to the console.",
+    "params": [{"label": "message: Any", "doc": "The object or text to print."}]
   },
   "input": {
     "signature": "input(prompt: String) -> String",
-    "doc": "Читає рядок вводу від користувача з консолі.",
-    "params": [{"label": "prompt: String", "doc": "Текст-запит, що показується користувачеві."}]
+    "doc": "Reads a line of input from the console.",
+    "params": [{"label": "prompt: String", "doc": "The prompt displayed to the user."}]
   },
   "sin": {
     "signature": "sin(angle: Number) -> Number",
-    "doc": "Повертає синус кута.",
-    "params": [{"label": "angle: Number", "doc": "Кут у радіанах."}]
+    "doc": "Returns the sine of the given angle.",
+    "params": [{"label": "angle: Number", "doc": "Angle in radians."}]
   },
   "cos": {
     "signature": "cos(angle: Number) -> Number",
-    "doc": "Повертає косинус кута.",
-    "params": [{"label": "angle: Number", "doc": "Кут у радіанах."}]
+    "doc": "Returns the cosine of the given angle.",
+    "params": [{"label": "angle: Number", "doc": "Angle in radians."}]
   },
   "random": {
     "signature": "random() -> Number",
-    "doc": "Повертає випадкове число від 0.0 до 1.0.",
+    "doc": "Returns a random float between 0.0 and 1.0.",
     "params": []
   },
   "length": {
     "signature": "length() -> Int",
-    "doc": "Повертає кількість елементів.",
+    "doc": "Returns the number of elements in the array or characters in the string.",
     "params": []
   },
   "push": {
     "signature": "push(item: Any) -> Void",
-    "doc": "Додає новий елемент в кінець масиву.",
-    "params": [{"label": "item: Any", "doc": "Елемент, який потрібно додати."}]
+    "doc": "Adds a new element to the end of the array.",
+    "params": [{"label": "item: Any", "doc": "The item to add."}]
   },
   "pop": {
     "signature": "pop() -> Any",
-    "doc": "Видаляє останній елемент з масиву та повертає його.",
+    "doc": "Removes the last element from the array and returns it.",
     "params": []
   },
   "insert": {
     "signature": "insert(index: Int, item: Any) -> Void",
-    "doc": "Вставляє елемент за вказаним індексом.",
+    "doc": "Inserts an element at the specified index.",
     "params": [
-      {"label": "index: Int", "doc": "Індекс для вставки."},
-      {"label": "item: Any", "doc": "Елемент для вставки."}
+      {"label": "index: Int", "doc": "The zero-based index at which to insert."},
+      {"label": "item: Any", "doc": "The element to insert."}
     ]
   },
   "remove": {
     "signature": "remove(index: Int) -> Any",
-    "doc": "Видаляє елемент за індексом.",
-    "params": [{"label": "index: Int", "doc": "Індекс елемента."}]
+    "doc": "Removes the element at the specified index.",
+    "params": [{"label": "index: Int", "doc": "The index of the element to remove."}]
   },
   "reverse": {
     "signature": "reverse() -> Array",
-    "doc": "Обертає порядок елементів у масиві.",
+    "doc": "Reverses the order of elements in the array in place.",
     "params": []
   },
   "map": {
     "signature": "map(callback: Function) -> Array",
-    "doc": "Створює новий масив, викликаючи передану функцію для кожного елемента.",
-    "params": [{"label": "callback: Function", "doc": "Функція обробки елемента."}]
+    "doc": "Creates a new array populated with the results of calling the provided function on every element.",
+    "params": [{"label": "callback: Function", "doc": "Function that produces an element of the new Array."}]
   },
   "filter": {
     "signature": "filter(callback: Function) -> Array",
-    "doc": "Фільтрує масив за допомогою переданої функції-предиката.",
-    "params": [{"label": "callback: Function", "doc": "Функція-умова."}]
+    "doc": "Creates a new array with all elements that pass the test implemented by the provided function.",
+    "params": [{"label": "callback: Function", "doc": "Predicate function to test each element."}]
   },
   "forEach": {
     "signature": "forEach(callback: Function) -> Void",
-    "doc": "Виконує передану функцію для кожного елемента масиву.",
-    "params": [{"label": "callback: Function", "doc": "Функція для виконання."}]
+    "doc": "Executes a provided function once for each array element.",
+    "params": [{"label": "callback: Function", "doc": "Function to execute on each element."}]
   },
   "split": {
     "signature": "split(separator: String) -> Array",
-    "doc": "Розбиває рядок на масив підрядків.",
-    "params": [{"label": "separator: String", "doc": "Символ або рядок-роздільник."}]
+    "doc": "Splits a string into an array of substrings.",
+    "params": [{"label": "separator: String", "doc": "The pattern describing where each split should occur."}]
   },
   "join": {
     "signature": "join(separator: String) -> String",
-    "doc": "Об'єднує елементи масиву в єдиний рядок.",
-    "params": [{"label": "separator: String", "doc": "Рядок, що буде вставлений між елементами."}]
+    "doc": "Creates and returns a new string by concatenating all of the elements in the array.",
+    "params": [{"label": "separator: String", "doc": "Specifies a string to separate each pair of adjacent elements."}]
   },
   "substring": {
     "signature": "substring(start: Int, end: Int) -> String",
-    "doc": "Повертає підрядок.",
+    "doc": "Returns the part of the string between the start and end indexes.",
     "params": [
-      {"label": "start: Int", "doc": "Початковий індекс."},
-      {"label": "end: Int", "doc": "Кінцевий індекс."}
+      {"label": "start: Int", "doc": "The index of the first character to include."},
+      {"label": "end: Int", "doc": "The index of the first character to exclude."}
     ]
   },
   "toUpper": {
     "signature": "toUpper() -> String",
-    "doc": "Переводить рядок у верхній регістр.",
+    "doc": "Converts the string to uppercase.",
     "params": []
   },
   "toLower": {
     "signature": "toLower() -> String",
-    "doc": "Переводить рядок у нижній регістр.",
+    "doc": "Converts the string to lowercase.",
     "params": []
   },
   "trim": {
     "signature": "trim() -> String",
-    "doc": "Видаляє пробіли на початку та в кінці рядка.",
+    "doc": "Removes whitespace from both ends of a string.",
     "params": []
   },
   "replace": {
     "signature": "replace(oldVal: String, newVal: String) -> String",
-    "doc": "Замінює підрядок у рядку.",
+    "doc": "Returns a new string with some or all matches of a pattern replaced by a replacement.",
     "params": [
-      {"label": "oldVal: String", "doc": "Що замінити."},
-      {"label": "newVal: String", "doc": "На що замінити."}
+      {"label": "oldVal: String", "doc": "The substring to replace."},
+      {"label": "newVal: String", "doc": "The new substring."}
     ]
   },
   "indexOf": {
     "signature": "indexOf(search: String) -> Int",
-    "doc": "Повертає індекс першого входження підрядка.",
-    "params": [{"label": "search: String", "doc": "Підрядок для пошуку."}]
+    "doc": "Returns the index of the first occurrence of the specified value.",
+    "params": [{"label": "search: String", "doc": "The string to search for."}]
   },
   "includes": {
     "signature": "includes(search: String) -> Bool",
-    "doc": "Перевіряє, чи міститься підрядок у рядку.",
-    "params": [{"label": "search: String", "doc": "Підрядок для пошуку."}]
+    "doc": "Determines whether the array/string includes a certain value among its entries.",
+    "params": [{"label": "search: String", "doc": "The value to search for."}]
   },
   "startsWith": {
     "signature": "startsWith(search: String) -> Bool",
-    "doc": "Перевіряє, чи починається рядок з вказаного підрядка.",
-    "params": [{"label": "search: String", "doc": "Підрядок для пошуку."}]
+    "doc": "Determines whether a string begins with the characters of a specified string.",
+    "params": [{"label": "search: String", "doc": "The characters to be searched for at the start of this string."}]
   },
   "endsWith": {
     "signature": "endsWith(search: String) -> Bool",
-    "doc": "Перевіряє, чи закінчується рядок вказаним підрядком.",
-    "params": [{"label": "search: String", "doc": "Підрядок для пошуку."}]
+    "doc": "Determines whether a string ends with the characters of a specified string.",
+    "params": [{"label": "search: String", "doc": "The characters to be searched for at the end of this string."}]
   },
   "getEnv": {
     "signature": "getEnv(name: String) -> String",
-    "doc": "Отримує значення змінної середовища.",
-    "params": [{"label": "name: String", "doc": "Назва змінної середовища."}]
+    "doc": "Retrieves the value of an environment variable.",
+    "params": [{"label": "name: String", "doc": "The name of the environment variable."}]
   },
   "cwd": {
     "signature": "cwd() -> String",
-    "doc": "Повертає поточну робочу директорію.",
+    "doc": "Returns the current working directory.",
     "params": []
   },
   "exec": {
     "signature": "exec(command: String) -> String",
-    "doc": "Виконує системну команду.",
-    "params": [{"label": "command: String", "doc": "Команда для виконання."}]
+    "doc": "Executes a system command.",
+    "params": [{"label": "command: String", "doc": "The command to execute."}]
   },
   "exit": {
     "signature": "exit(code: Int) -> Void",
-    "doc": "Завершує роботу програми.",
-    "params": [{"label": "code: Int", "doc": "Код завершення."}]
+    "doc": "Terminates the current process with the specified exit code.",
+    "params": [{"label": "code: Int", "doc": "The exit code (default is 0)."}]
   },
   "args": {
     "signature": "args() -> Array",
-    "doc": "Повертає аргументи командного рядка.",
+    "doc": "Returns an array containing the command-line arguments passed when the Node.js process was launched.",
     "params": []
   },
   "connect": {
     "signature": "connect(host: String, port: Int) -> Result",
-    "doc": "Встановлює TCP з'єднання.",
+    "doc": "Establishes a TCP connection to the specified host and port.",
     "params": [
-      {"label": "host: String", "doc": "IP або домен."},
-      {"label": "port: Int", "doc": "Порт."}
+      {"label": "host: String", "doc": "The hostname or IP address."},
+      {"label": "port: Int", "doc": "The port number."}
     ]
   },
   "listen": {
     "signature": "listen(port: Int) -> Result",
-    "doc": "Слухає порт для вхідних TCP з'єднань.",
-    "params": [{"label": "port: Int", "doc": "Порт."}]
+    "doc": "Listens for incoming TCP connections on the specified port.",
+    "params": [{"label": "port: Int", "doc": "The port number to listen on."}]
   },
   "accept": {
     "signature": "accept() -> Socket",
-    "doc": "Приймає вхідне з'єднання.",
+    "doc": "Accepts an incoming connection on a listening socket.",
     "params": []
   },
   "send": {
     "signature": "send(data: String) -> Result",
-    "doc": "Відправляє дані через сокет.",
-    "params": [{"label": "data: String", "doc": "Дані для відправки."}]
+    "doc": "Sends data over the socket.",
+    "params": [{"label": "data: String", "doc": "The string data to send."}]
   },
   "recv": {
     "signature": "recv(size: Int) -> String",
-    "doc": "Отримує дані з сокета.",
-    "params": [{"label": "size: Int", "doc": "Максимальний розмір даних."}]
+    "doc": "Receives data from the socket.",
+    "params": [{"label": "size: Int", "doc": "The maximum number of bytes to receive."}]
   },
   "close": {
     "signature": "close() -> Void",
-    "doc": "Закриває з'єднання.",
+    "doc": "Closes the socket connection.",
     "params": []
   },
   "now": {
     "signature": "now() -> Int",
-    "doc": "Повертає поточний час (timestamp).",
+    "doc": "Returns the current time in milliseconds since the Unix Epoch.",
     "params": []
   },
   "sleep": {
     "signature": "sleep(ms: Int) -> Void",
-    "doc": "Призупиняє виконання на заданий час.",
-    "params": [{"label": "ms: Int", "doc": "Час у мілісекундах."}]
+    "doc": "Pauses the execution for the specified number of milliseconds.",
+    "params": [{"label": "ms: Int", "doc": "The time to sleep in milliseconds."}]
   }
 }
