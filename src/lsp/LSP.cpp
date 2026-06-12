@@ -75,6 +75,8 @@ void LSPServer::handleMessage(const json& message) {
             handleCompletion(message);
         } else if (method == "textDocument/signatureHelp") {
             handleSignatureHelp(message);
+        } else if (method == "textDocument/semanticTokens/full") {
+            handleSemanticTokens(message);
         } else if (method == "shutdown") {
             isRunning = false;
             json response = {
@@ -104,6 +106,13 @@ void LSPServer::handleInitialize(const json& message) {
                 }},
                 {"signatureHelpProvider", {
                     {"triggerCharacters", {"(", ","}}
+                }},
+                {"semanticTokensProvider", {
+                    {"legend", {
+                        {"tokenTypes", {"type", "class", "parameter", "variable", "property", "function", "method", "string", "keyword", "number", "operator"}},
+                        {"tokenModifiers", {"declaration", "defaultLibrary"}}
+                    }},
+                    {"full", true}
                 }}
             }}
         }}
@@ -611,6 +620,132 @@ void LSPServer::publishDiagnostics(const std::string& uri, const std::string& te
     };
 
     sendMessage(notification);
+}
+
+void LSPServer::handleSemanticTokens(const json& message) {
+    std::string uri = message["params"]["textDocument"]["uri"];
+    
+    json data = json::array();
+    
+    if (documents.find(uri) != documents.end()) {
+        std::string text = documents[uri];
+        Lexer lexer(text);
+        
+        int prevLine = 1;
+        int prevChar = 1;
+        
+        while (true) {
+            Token t = lexer.nextToken();
+            if (t.type == TokenType::END_OF_FILE) break;
+            if (t.type == TokenType::UNKNOWN) continue; // Skip unknowns to avoid corrupting output
+            
+            int typeIdx = -1;
+            
+            // Map TokenType to semantic token type index
+            switch (t.type) {
+                case TokenType::IDENTIFIER: typeIdx = 3; break; // variable
+                case TokenType::STRING: typeIdx = 7; break; // string
+                case TokenType::NUMBER: typeIdx = 9; break; // number
+                case TokenType::CLASS:
+                case TokenType::FN:
+                case TokenType::LET:
+                case TokenType::CONST:
+                case TokenType::VIRTUAL:
+                case TokenType::OVERRIDE:
+                case TokenType::PUBLIC:
+                case TokenType::PRIVATE:
+                case TokenType::PROTECTED:
+                case TokenType::STATIC:
+                case TokenType::PRINT:
+                case TokenType::IF:
+                case TokenType::ELSE:
+                case TokenType::WHILE:
+                case TokenType::DO:
+                case TokenType::FOR:
+                case TokenType::IN:
+                case TokenType::RETURN:
+                case TokenType::BREAK:
+                case TokenType::CONTINUE:
+                case TokenType::SWITCH:
+                case TokenType::CASE:
+                case TokenType::DEFAULT:
+                case TokenType::ABSTRACT:
+                case TokenType::INTERFACE:
+                case TokenType::TRAIT:
+                case TokenType::IMPLEMENTS:
+                case TokenType::LOAD:
+                case TokenType::DESTROY:
+                case TokenType::USING:
+                case TokenType::TRUE:
+                case TokenType::FALSE:
+                case TokenType::NIL:
+                case TokenType::THIS:
+                case TokenType::SUPER:
+                    typeIdx = 8; break; // keyword
+                case TokenType::PLUS:
+                case TokenType::MINUS:
+                case TokenType::STAR:
+                case TokenType::SLASH:
+                case TokenType::PERCENT:
+                case TokenType::PLUS_PLUS:
+                case TokenType::MINUS_MINUS:
+                case TokenType::PLUS_EQUAL:
+                case TokenType::MINUS_EQUAL:
+                case TokenType::STAR_EQUAL:
+                case TokenType::SLASH_EQUAL:
+                case TokenType::ASSIGN:
+                case TokenType::EQUAL_EQUAL:
+                case TokenType::BANG:
+                case TokenType::BANG_EQUAL:
+                case TokenType::LESS:
+                case TokenType::LESS_EQUAL:
+                case TokenType::GREATER:
+                case TokenType::GREATER_EQUAL:
+                case TokenType::AND:
+                case TokenType::OR:
+                case TokenType::BITWISE_AND:
+                case TokenType::BITWISE_OR:
+                case TokenType::BITWISE_XOR:
+                case TokenType::BITWISE_NOT:
+                case TokenType::SHIFT_LEFT:
+                case TokenType::SHIFT_RIGHT:
+                    typeIdx = 10; break; // operator
+                default:
+                    break;
+            }
+            
+            if (typeIdx != -1) {
+                // Ensure length is valid UTF-16 characters or just bytes for simple ASCII
+                // VS Code uses UTF-16 character offsets, so technically lexeme.length() is wrong for Cyrillic.
+                // For simplicity, we just use the lexeme length (or 1 if it's messy).
+                int length = t.lexeme.length();
+                if (length < 0) length = 1;
+                
+                int deltaLine = t.line - prevLine;
+                int deltaChar = t.column - (deltaLine == 0 ? prevChar : 1);
+                if (deltaChar < 0) deltaChar = 0; // Guard against negative deltas
+                
+                data.push_back(deltaLine);
+                data.push_back(deltaChar);
+                data.push_back(length);
+                data.push_back(typeIdx);
+                data.push_back(0); // modifier
+                
+                prevLine = t.line;
+                prevChar = t.column;
+            }
+        }
+    }
+    
+    json response = {
+        {"jsonrpc", "2.0"},
+        {"id", message["id"]},
+        {"result", {
+            {"data", data}
+        }}
+    };
+    
+    sendMessage(response);
 }
 
 } // namespace trypillia
