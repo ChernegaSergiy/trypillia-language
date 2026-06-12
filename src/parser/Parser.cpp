@@ -993,23 +993,25 @@ ClassNode *Parser::parseClass() {
     std::vector<FunctionNode *> methods;
     std::vector<FieldDeclNode *> fields;
 
-    AccessModifier currentAccess = AccessModifier::PUBLIC;
-
     while (currentToken.type != TokenType::RBRACE && currentToken.type != TokenType::END_OF_FILE) {
+        AccessModifier memberAccess = AccessModifier::PUBLIC;
+
         if (currentToken.type == TokenType::PUBLIC) {
             advance();
-            currentAccess = AccessModifier::PUBLIC;
+            memberAccess = AccessModifier::PUBLIC;
         } else if (currentToken.type == TokenType::PRIVATE) {
             advance();
-            currentAccess = AccessModifier::PRIVATE;
+            memberAccess = AccessModifier::PRIVATE;
         } else if (currentToken.type == TokenType::PROTECTED) {
             advance();
-            currentAccess = AccessModifier::PROTECTED;
-        } else if (currentToken.type == TokenType::ABSTRACT) {
+            memberAccess = AccessModifier::PROTECTED;
+        }
+
+        if (currentToken.type == TokenType::ABSTRACT) {
             advance();
-            methods.push_back(parseFunction(currentAccess, true));
+            methods.push_back(parseFunction(memberAccess, true));
         } else if (currentToken.type == TokenType::FN) {
-            methods.push_back(parseFunction(currentAccess));
+            methods.push_back(parseFunction(memberAccess));
         } else if (currentToken.type == TokenType::DESTROY) {
             advance();
             consume(TokenType::LBRACE);
@@ -1019,15 +1021,15 @@ ClassNode *Parser::parseClass() {
             }
             consume(TokenType::RBRACE);
             auto node = new FunctionNode("destroy", {}, body);
-            node->accessModifier = currentAccess;
+            node->accessModifier = memberAccess;
             methods.push_back(node);
         } else if (currentToken.type == TokenType::STATIC) {
             advance();
             if (currentToken.type == TokenType::FN) {
-                methods.push_back(parseFunction(currentAccess, false, true));
+                methods.push_back(parseFunction(memberAccess, false, true));
             } else if (currentToken.type == TokenType::LET || currentToken.type == TokenType::IDENTIFIER ||
                        currentToken.type == TokenType::CONST) {
-                auto field = parseFieldDecl(currentAccess);
+                auto field = parseFieldDecl(memberAccess);
                 field->isStatic = true;
                 fields.push_back(field);
             } else {
@@ -1035,7 +1037,7 @@ ClassNode *Parser::parseClass() {
             }
         } else if (currentToken.type == TokenType::LET || currentToken.type == TokenType::IDENTIFIER ||
                    currentToken.type == TokenType::CONST) {
-            fields.push_back(parseFieldDecl(currentAccess));
+            fields.push_back(parseFieldDecl(memberAccess));
         } else {
             advance();
         }
