@@ -68,6 +68,8 @@ void LSPServer::handleMessage(const json& message) {
             handleHover(message);
         } else if (method == "textDocument/definition") {
             handleDefinition(message);
+        } else if (method == "textDocument/completion") {
+            handleCompletion(message);
         } else if (method == "shutdown") {
             isRunning = false;
             json response = {
@@ -90,7 +92,11 @@ void LSPServer::handleInitialize(const json& message) {
             {"capabilities", {
                 {"textDocumentSync", 1}, // 1 = Full sync
                 {"hoverProvider", true},
-                {"definitionProvider", true}
+                {"definitionProvider", true},
+                {"completionProvider", {
+                    {"resolveProvider", false},
+                    {"triggerCharacters", {"."}}
+                }}
             }}
         }}
     };
@@ -237,6 +243,34 @@ void LSPServer::handleDefinition(const json& message) {
         {"jsonrpc", "2.0"},
         {"id", message["id"]},
         {"result", result}
+    };
+    
+    sendMessage(response);
+}
+
+void LSPServer::handleCompletion(const json& message) {
+    // Basic completion items: keywords
+    std::vector<std::string> keywords = {
+        "if", "else", "while", "do", "for", "in", "return", "break", "continue", 
+        "switch", "case", "default", "class", "fn", "let", "const", "abstract", 
+        "interface", "trait", "implements", "public", "private", "protected", 
+        "static", "virtual", "override", "load", "destroy", "using", "true", "false", "nil",
+        "this", "super", "print"
+    };
+    
+    json items = json::array();
+    for (const auto& kw : keywords) {
+        items.push_back({
+            {"label", kw},
+            {"kind", 14}, // Keyword
+            {"detail", "Keyword"}
+        });
+    }
+    
+    json response = {
+        {"jsonrpc", "2.0"},
+        {"id", message["id"]},
+        {"result", items}
     };
     
     sendMessage(response);
