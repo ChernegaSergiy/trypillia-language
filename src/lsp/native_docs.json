@@ -205,5 +205,14 @@
     "signature": "sleep(ms: Int) -> Void",
     "doc": "Pauses the execution for the specified number of milliseconds.",
     "params": [{"label": "ms: Int", "doc": "The time to sleep in milliseconds."}]
+  },
+  "Map.set": {
+    "signature": "Map.set(map: Map, key: Any, value: Any) -> Any",
+    "doc": "Sets the value for the key in the map object.",
+    "params": [
+      {"label": "map: Map", "doc": "The map object."},
+      {"label": "key: Any", "doc": "The key of the element to add or update."},
+      {"label": "value: Any", "doc": "The value of the element to add or update."}
+    ]
   }
 }
