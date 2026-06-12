@@ -498,7 +498,7 @@ void LSPServer::handleSignatureHelp(const json &message) {
                                     }
                                 }
                                 if (!docStr.empty())
-                                    documentation = docStr;
+                                documentation = docStr;
                             }
 
                             label = "fn " + funcName + "(";
