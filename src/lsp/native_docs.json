@@ -9,234 +9,237 @@
     "doc": "Reads a line of input from the console.",
     "params": [{"label": "prompt: String", "doc": "The prompt displayed to the user."}]
   },
-  "sin": {
-    "signature": "sin(angle: Number) -> Number",
+  "Math.sin": {
+    "signature": "Math.sin(angle: Number) -> Number",
     "doc": "Returns the sine of the given angle.",
     "params": [{"label": "angle: Number", "doc": "Angle in radians."}]
   },
-  "cos": {
-    "signature": "cos(angle: Number) -> Number",
+  "Math.cos": {
+    "signature": "Math.cos(angle: Number) -> Number",
     "doc": "Returns the cosine of the given angle.",
     "params": [{"label": "angle: Number", "doc": "Angle in radians."}]
   },
-  "random": {
-    "signature": "random() -> Number",
+  "Math.random": {
+    "signature": "Math.random() -> Number",
     "doc": "Returns a random float between 0.0 and 1.0.",
     "params": []
   },
-  "length": {
-    "signature": "length() -> Int",
-    "doc": "Returns the number of elements in the array or characters in the string.",
+  "Array.length": {
+    "signature": "Array.length() -> Int",
+    "doc": "Returns the number of elements in the array.",
     "params": []
   },
-  "push": {
-    "signature": "push(item: Any) -> Void",
+  "String.length": {
+    "signature": "String.length() -> Int",
+    "doc": "Returns the number of characters in the string.",
+    "params": []
+  },
+  "Array.push": {
+    "signature": "Array.push(item: Any) -> Void",
     "doc": "Adds a new element to the end of the array.",
     "params": [{"label": "item: Any", "doc": "The item to add."}]
   },
-  "pop": {
-    "signature": "pop() -> Any",
+  "Array.pop": {
+    "signature": "Array.pop() -> Any",
     "doc": "Removes the last element from the array and returns it.",
     "params": []
   },
-  "insert": {
-    "signature": "insert(index: Int, item: Any) -> Void",
+  "Array.insert": {
+    "signature": "Array.insert(index: Int, item: Any) -> Void",
     "doc": "Inserts an element at the specified index.",
     "params": [
       {"label": "index: Int", "doc": "The zero-based index at which to insert."},
       {"label": "item: Any", "doc": "The element to insert."}
     ]
   },
-  "remove": {
-    "signature": "remove(index: Int) -> Any",
+  "Array.remove": {
+    "signature": "Array.remove(index: Int) -> Any",
     "doc": "Removes the element at the specified index.",
     "params": [{"label": "index: Int", "doc": "The index of the element to remove."}]
   },
-  "reverse": {
-    "signature": "reverse() -> Array",
+  "Array.reverse": {
+    "signature": "Array.reverse() -> Array",
     "doc": "Reverses the order of elements in the array in place.",
     "params": []
   },
-  "map": {
-    "signature": "map(callback: Function) -> Array",
+  "Array.map": {
+    "signature": "Array.map(callback: Function) -> Array",
     "doc": "Creates a new array populated with the results of calling the provided function on every element.",
     "params": [{"label": "callback: Function", "doc": "Function that produces an element of the new Array."}]
   },
-  "filter": {
-    "signature": "filter(callback: Function) -> Array",
+  "Array.filter": {
+    "signature": "Array.filter(callback: Function) -> Array",
     "doc": "Creates a new array with all elements that pass the test implemented by the provided function.",
     "params": [{"label": "callback: Function", "doc": "Predicate function to test each element."}]
   },
-  "forEach": {
-    "signature": "forEach(callback: Function) -> Void",
+  "Array.forEach": {
+    "signature": "Array.forEach(callback: Function) -> Void",
     "doc": "Executes a provided function once for each array element.",
     "params": [{"label": "callback: Function", "doc": "Function to execute on each element."}]
   },
-  "split": {
-    "signature": "split(separator: String) -> Array",
+  "String.split": {
+    "signature": "String.split(separator: String) -> Array",
     "doc": "Splits a string into an array of substrings.",
     "params": [{"label": "separator: String", "doc": "The pattern describing where each split should occur."}]
   },
-  "join": {
-    "signature": "join(separator: String) -> String",
+  "Array.join": {
+    "signature": "Array.join(separator: String) -> String",
     "doc": "Creates and returns a new string by concatenating all of the elements in the array.",
     "params": [{"label": "separator: String", "doc": "Specifies a string to separate each pair of adjacent elements."}]
   },
-  "substring": {
-    "signature": "substring(start: Int, end: Int) -> String",
+  "String.substring": {
+    "signature": "String.substring(start: Int, end: Int) -> String",
     "doc": "Returns the part of the string between the start and end indexes.",
     "params": [
       {"label": "start: Int", "doc": "The index of the first character to include."},
       {"label": "end: Int", "doc": "The index of the first character to exclude."}
     ]
   },
-  "toUpper": {
-    "signature": "toUpper() -> String",
+  "String.toUpper": {
+    "signature": "String.toUpper() -> String",
     "doc": "Converts the string to uppercase.",
     "params": []
   },
-  "toLower": {
-    "signature": "toLower() -> String",
+  "String.toLower": {
+    "signature": "String.toLower() -> String",
     "doc": "Converts the string to lowercase.",
     "params": []
   },
-  "trim": {
-    "signature": "trim() -> String",
+  "String.trim": {
+    "signature": "String.trim() -> String",
     "doc": "Removes whitespace from both ends of a string.",
     "params": []
   },
-  "replace": {
-    "signature": "replace(oldVal: String, newVal: String) -> String",
+  "String.replace": {
+    "signature": "String.replace(oldVal: String, newVal: String) -> String",
     "doc": "Returns a new string with some or all matches of a pattern replaced by a replacement.",
     "params": [
       {"label": "oldVal: String", "doc": "The substring to replace."},
       {"label": "newVal: String", "doc": "The new substring."}
     ]
   },
-  "indexOf": {
-    "signature": "indexOf(search: String) -> Int",
+  "String.indexOf": {
+    "signature": "String.indexOf(search: String) -> Int",
     "doc": "Returns the index of the first occurrence of the specified value.",
     "params": [{"label": "search: String", "doc": "The string to search for."}]
   },
-  "includes": {
-    "signature": "includes(search: String) -> Bool",
-    "doc": "Determines whether the array/string includes a certain value among its entries.",
+  "Array.includes": {
+    "signature": "Array.includes(search: Any) -> Bool",
+    "doc": "Determines whether the array includes a certain value among its entries.",
+    "params": [{"label": "search: Any", "doc": "The value to search for."}]
+  },
+  "String.includes": {
+    "signature": "String.includes(search: String) -> Bool",
+    "doc": "Determines whether the string includes a certain value.",
     "params": [{"label": "search: String", "doc": "The value to search for."}]
   },
-  "startsWith": {
-    "signature": "startsWith(search: String) -> Bool",
+  "String.startsWith": {
+    "signature": "String.startsWith(search: String) -> Bool",
     "doc": "Determines whether a string begins with the characters of a specified string.",
     "params": [{"label": "search: String", "doc": "The characters to be searched for at the start of this string."}]
   },
-  "endsWith": {
-    "signature": "endsWith(search: String) -> Bool",
+  "String.endsWith": {
+    "signature": "String.endsWith(search: String) -> Bool",
     "doc": "Determines whether a string ends with the characters of a specified string.",
     "params": [{"label": "search: String", "doc": "The characters to be searched for at the end of this string."}]
   },
-  "toNumber": {
-    "signature": "toNumber() -> Number",
+  "String.toNumber": {
+    "signature": "String.toNumber() -> Number",
     "doc": "Parses a string and returns a floating point number.",
     "params": []
   },
-  "getEnv": {
-    "signature": "getEnv(name: String) -> String",
+  "OS.getEnv": {
+    "signature": "OS.getEnv(name: String) -> String",
     "doc": "Retrieves the value of an environment variable.",
     "params": [{"label": "name: String", "doc": "The name of the environment variable."}]
   },
-  "cwd": {
-    "signature": "cwd() -> String",
+  "OS.cwd": {
+    "signature": "OS.cwd() -> String",
     "doc": "Returns the current working directory.",
     "params": []
   },
-  "exec": {
-    "signature": "exec(command: String) -> String",
+  "OS.exec": {
+    "signature": "OS.exec(command: String) -> String",
     "doc": "Executes a system command.",
     "params": [{"label": "command: String", "doc": "The command to execute."}]
   },
-  "exit": {
-    "signature": "exit(code: Int) -> Void",
+  "OS.exit": {
+    "signature": "OS.exit(code: Int) -> Void",
     "doc": "Terminates the current process with the specified exit code.",
     "params": [{"label": "code: Int", "doc": "The exit code (default is 0)."}]
   },
-  "args": {
-    "signature": "args() -> Array",
-    "doc": "Returns an array containing the command-line arguments passed when the Node.js process was launched.",
+  "OS.args": {
+    "signature": "OS.args() -> Array",
+    "doc": "Returns an array containing the command-line arguments passed when the process was launched.",
     "params": []
   },
-  "connect": {
-    "signature": "connect(host: String, port: Int) -> Result",
+  "Net.connect": {
+    "signature": "Net.connect(host: String, port: Int) -> Result",
     "doc": "Establishes a TCP connection to the specified host and port.",
     "params": [
       {"label": "host: String", "doc": "The hostname or IP address."},
       {"label": "port: Int", "doc": "The port number."}
     ]
   },
-  "listen": {
-    "signature": "listen(port: Int) -> Result",
+  "Net.listen": {
+    "signature": "Net.listen(port: Int) -> Result",
     "doc": "Listens for incoming TCP connections on the specified port.",
     "params": [{"label": "port: Int", "doc": "The port number to listen on."}]
   },
-  "accept": {
-    "signature": "accept() -> Socket",
+  "Net.accept": {
+    "signature": "Net.accept() -> Socket",
     "doc": "Accepts an incoming connection on a listening socket.",
     "params": []
   },
-  "send": {
-    "signature": "send(data: String) -> Result",
+  "Net.send": {
+    "signature": "Net.send(data: String) -> Result",
     "doc": "Sends data over the socket.",
     "params": [{"label": "data: String", "doc": "The string data to send."}]
   },
-  "recv": {
-    "signature": "recv(size: Int) -> String",
+  "Net.recv": {
+    "signature": "Net.recv(size: Int) -> String",
     "doc": "Receives data from the socket.",
     "params": [{"label": "size: Int", "doc": "The maximum number of bytes to receive."}]
   },
-  "close": {
-    "signature": "close() -> Void",
+  "Net.close": {
+    "signature": "Net.close() -> Void",
     "doc": "Closes the socket connection.",
     "params": []
   },
-  "now": {
-    "signature": "now() -> Int",
+  "Time.now": {
+    "signature": "Time.now() -> Int",
     "doc": "Returns the current time in milliseconds since the Unix Epoch.",
     "params": []
   },
-  "sleep": {
-    "signature": "sleep(ms: Int) -> Void",
+  "Time.sleep": {
+    "signature": "Time.sleep(ms: Int) -> Void",
     "doc": "Pauses the execution for the specified number of milliseconds.",
     "params": [{"label": "ms: Int", "doc": "The time to sleep in milliseconds."}]
   },
   "Map.keys": {
-    "signature": "Map.keys(map: Map) -> Array",
+    "signature": "Map.keys() -> Array",
     "doc": "Returns an array of all keys in the map.",
-    "params": [{"label": "map: Map", "doc": "The map object."}]
+    "params": []
   },
   "Map.values": {
-    "signature": "Map.values(map: Map) -> Array",
+    "signature": "Map.values() -> Array",
     "doc": "Returns an array of all values in the map.",
-    "params": [{"label": "map: Map", "doc": "The map object."}]
+    "params": []
   },
   "Map.has": {
-    "signature": "Map.has(map: Map, key: Any) -> Bool",
+    "signature": "Map.has(key: Any) -> Bool",
     "doc": "Returns true if the map contains the specified key.",
-    "params": [
-      {"label": "map: Map", "doc": "The map object."},
-      {"label": "key: Any", "doc": "The key to check for."}
-    ]
+    "params": [{"label": "key: Any", "doc": "The key to check for."}]
   },
   "Map.remove": {
-    "signature": "Map.remove(map: Map, key: Any) -> Any",
+    "signature": "Map.remove(key: Any) -> Any",
     "doc": "Removes the specified key from the map and returns its value.",
-    "params": [
-      {"label": "map: Map", "doc": "The map object."},
-      {"label": "key: Any", "doc": "The key to remove."}
-    ]
+    "params": [{"label": "key: Any", "doc": "The key to remove."}]
   },
   "Map.set": {
-    "signature": "Map.set(map: Map, key: Any, value: Any) -> Any",
+    "signature": "Map.set(key: Any, value: Any) -> Any",
     "doc": "Sets the value for the key in the map object.",
     "params": [
-      {"label": "map: Map", "doc": "The map object."},
       {"label": "key: Any", "doc": "The key of the element to add or update."},
       {"label": "value: Any", "doc": "The value of the element to add or update."}
     ]
