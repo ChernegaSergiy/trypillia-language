@@ -849,6 +849,36 @@ InterpretResult VM::run(int targetFrameDepth) {
                 if (frames.size() == 256) {
                     return runtimeError(std::string("Stack overflow."));
                 }
+
+                JitFunc nativeJitFunc = nullptr;
+                auto funcPtr = function.get();
+                if (compiledFuncs.count(funcPtr)) {
+                    nativeJitFunc = compiledFuncs[funcPtr];
+                } else {
+                    nativeJitFunc = jit.compileMathFunction(function);
+                    compiledFuncs[funcPtr] = nativeJitFunc; // caches nullptr if incompatible
+                }
+
+                if (nativeJitFunc) {
+                    bool canRunJit = true;
+                    std::vector<double> jitArgs(argCount);
+                    for (int i = 0; i < argCount; ++i) {
+                        VMValue arg = peek(argCount - i - 1); // Top of stack is last argument
+                        if (std::holds_alternative<double>(arg)) {
+                            jitArgs[i] = std::get<double>(arg);
+                        } else {
+                            canRunJit = false;
+                            break;
+                        }
+                    }
+
+                    if (canRunJit) {
+                        double result = nativeJitFunc(jitArgs.data(), argCount);
+                        stack.resize(stack.size() - argCount - 1);
+                        push(result);
+                        break; // Skip standard frame push!
+                    }
+                }
                 CallFrame newFrame;
                 newFrame.closure = closure;
                 newFrame.ip = function->chunk->code.data();
