@@ -84,6 +84,32 @@ static VMValue terminalWrite(int argCount, VMValue *args) {
     return nullptr;
 }
 
+static VMValue terminalColor(int argCount, VMValue *args) {
+    if (argCount == 1 && std::holds_alternative<std::string>(args[0])) {
+        std::string color = std::get<std::string>(args[0]);
+        std::string code = "";
+        if (color == "black") code = "\033[30m";
+        else if (color == "red") code = "\033[31m";
+        else if (color == "green") code = "\033[32m";
+        else if (color == "yellow") code = "\033[33m";
+        else if (color == "blue") code = "\033[34m";
+        else if (color == "magenta") code = "\033[35m";
+        else if (color == "cyan") code = "\033[36m";
+        else if (color == "white") code = "\033[37m";
+        else if (color == "gray" || color == "grey") code = "\033[90m";
+        
+        if (!code.empty()) {
+            std::cout << code << std::flush;
+        }
+    }
+    return nullptr;
+}
+
+static VMValue terminalReset(int argCount, VMValue *args) {
+    std::cout << "\033[0m" << std::flush;
+    return nullptr;
+}
+
 void registerAll(VM *vm) {
     currentVM = vm;
     auto cls = std::make_shared<ObjClass>("Terminal");
@@ -94,6 +120,8 @@ void registerAll(VM *vm) {
     });
     cls->statics["readChar"] = std::make_shared<ObjNative>("readChar", 0, terminalReadChar);
     cls->statics["write"] = std::make_shared<ObjNative>("write", 1, terminalWrite);
+    cls->statics["color"] = std::make_shared<ObjNative>("color", 1, terminalColor);
+    cls->statics["reset"] = std::make_shared<ObjNative>("reset", 0, terminalReset);
     vm->globals["Terminal"] = cls;
 }
 
