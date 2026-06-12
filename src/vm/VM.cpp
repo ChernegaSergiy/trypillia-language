@@ -730,6 +730,13 @@ InterpretResult VM::run(int targetFrameDepth) {
                     push(instance->fields[name]);
                 } else if (instance->klass->methods.count(name)) {
                     auto method = instance->klass->methods[name];
+                    VMAccessModifier mod = VMAccessModifier::PUBLIC;
+                    if (std::holds_alternative<std::shared_ptr<ObjClosure>>(method)) {
+                        mod = std::get<std::shared_ptr<ObjClosure>>(method)->function->accessModifier;
+                    }
+                    if (!checkAccess(mod, instance->klass, callerClass)) {
+                        return runtimeError(std::string("Access error: Cannot access method '") + name + "'.");
+                    }
                     pop(); // instance
                     push(std::make_shared<ObjBoundMethod>(instance, method));
                 } else {
