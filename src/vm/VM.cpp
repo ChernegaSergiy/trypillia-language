@@ -26,9 +26,17 @@ static std::string getMethodName(const VMValue &method) {
     return "";
 }
 
-static int getMethodArity(const VMValue &method) {
+static int getMethodMinArity(const VMValue &method) {
     if (std::holds_alternative<std::shared_ptr<ObjClosure>>(method))
         return std::get<std::shared_ptr<ObjClosure>>(method)->function->arity;
+    if (std::holds_alternative<std::shared_ptr<ObjNative>>(method))
+        return std::get<std::shared_ptr<ObjNative>>(method)->arity;
+    return -1;
+}
+
+static int getMethodMaxArity(const VMValue &method) {
+    if (std::holds_alternative<std::shared_ptr<ObjClosure>>(method))
+        return std::get<std::shared_ptr<ObjClosure>>(method)->function->maxArity;
     if (std::holds_alternative<std::shared_ptr<ObjNative>>(method))
         return std::get<std::shared_ptr<ObjNative>>(method)->arity;
     return -1;
@@ -865,9 +873,18 @@ InterpretResult VM::run(int targetFrameDepth) {
 
                 if (klass->methods.count("init")) {
                     auto initMethod = klass->methods["init"];
-                    if (getMethodArity(initMethod) != -1 && argCount != getMethodArity(initMethod)) {
-                        return runtimeError(std::string("Expected ") + std::to_string(getMethodArity(initMethod)) +
+                    int minArity = getMethodMinArity(initMethod);
+                    int maxArity = getMethodMaxArity(initMethod);
+                    if (minArity != -1 && (argCount < minArity || argCount > maxArity)) {
+                        std::string expected = minArity == maxArity 
+                            ? std::to_string(minArity) 
+                            : std::to_string(minArity) + "-" + std::to_string(maxArity);
+                        return runtimeError(std::string("Expected ") + expected +
                                             " arguments but got " + std::to_string(argCount) + ".");
+                    }
+                    while (maxArity != -1 && argCount < maxArity) {
+                        push(nullptr);
+                        argCount++;
                     }
 
                     if (std::holds_alternative<std::shared_ptr<ObjClosure>>(initMethod)) {
@@ -894,17 +911,24 @@ InterpretResult VM::run(int targetFrameDepth) {
                 if (isMethodAbstract(function)) {
                     return runtimeError(std::string("Cannot call abstract method '") + getMethodName(function) + "'.");
                 }
-                int expectedArity = getMethodArity(function);
+                int minArity = getMethodMinArity(function);
+                int maxArity = getMethodMaxArity(function);
                 if (std::holds_alternative<std::shared_ptr<ObjNative>>(function)) {
-                    // Primitive methods are registered with arity + 1 because they take the receiver as args[0].
-                    // Instance methods use args[-1] for receiver, so their arity is exactly the argument count.
                     if (!std::holds_alternative<std::shared_ptr<ObjInstance>>(bound->receiver)) {
-                        if (expectedArity != -1) expectedArity -= 1;
+                        if (minArity != -1) minArity -= 1;
+                        if (maxArity != -1) maxArity -= 1;
                     }
                 }
-                if (expectedArity != -1 && argCount != expectedArity) {
-                    return runtimeError(std::string("Expected ") + std::to_string(expectedArity) +
+                if (minArity != -1 && (argCount < minArity || argCount > maxArity)) {
+                    std::string expected = minArity == maxArity 
+                        ? std::to_string(minArity) 
+                        : std::to_string(minArity) + "-" + std::to_string(maxArity);
+                    return runtimeError(std::string("Expected ") + expected +
                                         " arguments but got " + std::to_string(argCount) + ".");
+                }
+                while (maxArity != -1 && argCount < maxArity) {
+                    push(nullptr);
+                    argCount++;
                 }
                 if (frames.size() == 256) {
                     return runtimeError(std::string("Stack overflow."));
