@@ -28,8 +28,10 @@ static std::unordered_map<std::string, TokenType> keywords = {
     {"implements", TokenType::IMPLEMENTS},
     {"trait", TokenType::TRAIT},
     {"load", TokenType::LOAD},
-    {"destroy", TokenType::DESTROY},
     {"using", TokenType::USING},
+    {"namespace", TokenType::NAMESPACE},
+    {"use", TokenType::USE},
+    {"destroy", TokenType::DESTROY},
     {"switch", TokenType::SWITCH},
     {"case", TokenType::CASE},
     {"default", TokenType::DEFAULT},
@@ -408,8 +410,10 @@ std::string tokenTypeToString(TokenType type) {
         case TokenType::TRAIT: return "TRAIT";
         case TokenType::IMPLEMENTS: return "IMPLEMENTS";
         case TokenType::LOAD: return "LOAD";
-        case TokenType::DESTROY: return "DESTROY";
         case TokenType::USING: return "USING";
+        case TokenType::NAMESPACE: return "NAMESPACE";
+        case TokenType::USE: return "USE";
+        case TokenType::DESTROY: return "DESTROY";
         case TokenType::TRUE: return "TRUE";
         case TokenType::FALSE: return "FALSE";
         case TokenType::NIL: return "NIL";
