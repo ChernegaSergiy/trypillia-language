@@ -1,3 +1,4 @@
+#include <map>
 #ifndef PARSER_H
 #define PARSER_H
 
@@ -13,7 +14,10 @@ public:
 private:
     Lexer &lexer;
     Token currentToken;
-
+    std::string currentNamespace = "";
+    std::map<std::string, std::string> useAliases;
+    
+    // Core parsing methods
     void advance();
     void consume(TokenType type);
     bool match(TokenType type);
@@ -56,6 +60,8 @@ private:
     StmtNode* continueStatement();
     StmtNode* switchStatement();
     StmtNode* usingStatement();
+    StmtNode* parseNamespaceDeclaration();
+    StmtNode* parseUseStatement();
 
     // Declaration parsing methods
     ASTNode* declaration();

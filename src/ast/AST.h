@@ -668,6 +668,25 @@ public:
     void accept(ASTVisitor* visitor) override;
 };
 
+class NamespaceStmt : public StmtNode {
+public:
+    Token name;
+
+    NamespaceStmt(Token name) : name(name) {}
+
+    void accept(ASTVisitor* visitor) override;
+};
+
+class UseStmt : public StmtNode {
+public:
+    Token name;
+    Token alias;
+
+    UseStmt(Token name, Token alias) : name(name), alias(alias) {}
+
+    void accept(ASTVisitor* visitor) override;
+};
+
 class ASTVisitor {
 public:
     virtual ~ASTVisitor() = default;
@@ -713,6 +732,8 @@ public:
     virtual void visit(StaticSetExpr* node) = 0;
     virtual void visit(LoadStmt* node) = 0;
     virtual void visit(DictExpr* node) = 0;
+    virtual void visit(NamespaceStmt* node) = 0;
+    virtual void visit(UseStmt* node) = 0;
 };
 
 #endif // AST_H

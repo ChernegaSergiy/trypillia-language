@@ -1152,6 +1152,14 @@ TraitNode* Parser::parseTrait() {
 }
 
 ASTNode* Parser::declaration() {
+    if (currentToken.type == TokenType::NAMESPACE) {
+        advance();
+        return parseNamespaceDeclaration();
+    }
+    if (currentToken.type == TokenType::USE) {
+        advance();
+        return parseUseStatement();
+    }
     if (currentToken.type == TokenType::ABSTRACT) {
         advance();
         if (currentToken.type == TokenType::CLASS) {
@@ -1213,4 +1221,53 @@ void Parser::synchronize() {
         
         advance();
     }
+}
+
+StmtNode* Parser::parseNamespaceDeclaration() {
+    Token nameToken = currentToken;
+    std::string ns = "";
+    do {
+        consume(TokenType::IDENTIFIER);
+        ns += nameToken.lexeme;
+        if (match(TokenType::DOT)) {
+            ns += ".";
+            nameToken = currentToken;
+        } else {
+            break;
+        }
+    } while (true);
+    
+    consume(TokenType::SEMICOLON);
+    this->currentNamespace = ns;
+    
+    Token nsToken = nameToken;
+    nsToken.lexeme = ns;
+    return new NamespaceStmt(nsToken);
+}
+
+StmtNode* Parser::parseUseStatement() {
+    Token nameToken = currentToken;
+    std::string fqn = "";
+    std::string lastId = "";
+    do {
+        consume(TokenType::IDENTIFIER);
+        fqn += nameToken.lexeme;
+        lastId = nameToken.lexeme;
+        if (match(TokenType::DOT)) {
+            fqn += ".";
+            nameToken = currentToken;
+        } else {
+            break;
+        }
+    } while (true);
+    
+    consume(TokenType::SEMICOLON);
+    
+    this->useAliases[lastId] = fqn;
+    
+    Token fqnToken = nameToken;
+    fqnToken.lexeme = fqn;
+    Token aliasToken = nameToken;
+    aliasToken.lexeme = lastId;
+    return new UseStmt(fqnToken, aliasToken);
 }
