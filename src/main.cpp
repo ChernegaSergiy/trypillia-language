@@ -9,15 +9,48 @@
 #include <iostream>
 #include <string>
 
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#include <limits.h>
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#endif
+#endif
+
+std::string getExecutablePath(const char* argv0) {
+#ifdef _WIN32
+    char buffer[MAX_PATH];
+    GetModuleFileNameA(NULL, buffer, MAX_PATH);
+    return std::string(buffer);
+#else
+#ifdef __APPLE__
+    char buffer[PATH_MAX];
+    uint32_t size = sizeof(buffer);
+    if (_NSGetExecutablePath(buffer, &size) == 0) {
+        return std::string(buffer);
+    }
+#endif
+    char buffer[PATH_MAX];
+    ssize_t count = readlink("/proc/self/exe", buffer, PATH_MAX);
+    if (count != -1) {
+        return std::string(buffer, count);
+    }
+    return std::string(argv0);
+#endif
+}
+
 int main(int argc, char **argv) {
     std::string command;
     if (argc >= 2)
         command = argv[1];
 
+    std::string exePath = getExecutablePath(argv[0]);
     std::shared_ptr<ObjFunction> function;
 
     // 1. Check for embedded bytecode first (standalone executable)
-    function = Serializer::loadEmbeddedBytecode(argv[0]);
+    function = Serializer::loadEmbeddedBytecode(exePath);
     if (function) {
         // Run embedded bytecode
         for (int i = 1; i < argc; i++) {
@@ -81,7 +114,7 @@ int main(int argc, char **argv) {
 
     if (function) {
         if (buildStandalone) {
-            if (Serializer::buildStandalone(function, argv[0], outputFile)) {
+            if (Serializer::buildStandalone(function, exePath, outputFile)) {
                 std::cout << "Successfully built standalone executable: " << outputFile << std::endl;
             } else {
                 std::cerr << "Error building standalone executable: " << outputFile << std::endl;
