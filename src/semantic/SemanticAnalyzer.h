@@ -6,6 +6,7 @@
 
 class SemanticAnalyzer {
   public:
+    std::string currentFilename;
     SymbolTable *analyze(ASTNode *ast);
 };
 

@@ -69,6 +69,7 @@ int main(int argc, char **argv) {
     ASTNode *ast = parser.parse();
 
     SemanticAnalyzer semanticAnalyzer;
+    semanticAnalyzer.currentFilename = inputFile;
     SymbolTable *globals = semanticAnalyzer.analyze(ast);
 
     Compiler compiler;

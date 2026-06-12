@@ -10,6 +10,8 @@
 #include <stdexcept>
 
 class SemanticVisitor : public ASTVisitor {
+  public:
+    std::string currentFilename = "";
   private:
     SymbolTable *currentScope;
     std::string currentNamespace = "";
@@ -398,9 +400,23 @@ class SemanticVisitor : public ASTVisitor {
         if (path.size() >= 2 && path.front() == '"' && path.back() == '"') {
             path = path.substr(1, path.size() - 2);
         }
+
+        // Resolve relative to the current file
+        if (!path.empty() && path.front() != '/') {
+            size_t slashPos = currentFilename.find_last_of('/');
+            if (slashPos != std::string::npos) {
+                path = currentFilename.substr(0, slashPos + 1) + path;
+            }
+        }
+
+        std::string previousFilename = currentFilename;
+        currentFilename = path;
+
         std::ifstream file(path);
-        if (!file.is_open())
+        if (!file.is_open()) {
+            currentFilename = previousFilename;
             return;
+        }
         std::string source((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
         Lexer lexer(source);
         Parser parser(lexer);
@@ -409,6 +425,7 @@ class SemanticVisitor : public ASTVisitor {
             ast->accept(this);
             delete ast;
         }
+        currentFilename = previousFilename;
     }
 
     void visit(DictExpr *node) override {
@@ -432,6 +449,7 @@ SymbolTable *SemanticAnalyzer::analyze(ASTNode *ast) {
         return nullptr;
     SymbolTable *globals = new SymbolTable();
     SemanticVisitor visitor(globals);
+    visitor.currentFilename = this->currentFilename;
     ast->accept(&visitor);
     return globals;
 }
