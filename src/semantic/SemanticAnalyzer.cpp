@@ -293,6 +293,9 @@ class SemanticVisitor : public ASTVisitor {
     void visit(LambdaExpr *node) override {
         currentScope = new SymbolTable(currentScope);
         for (const auto &param : node->params) {
+            if (param.defaultValue) {
+                param.defaultValue->accept(this);
+            }
             Symbol symbol;
             symbol.name = param.name;
             symbol.type = "parameter";
@@ -320,6 +323,9 @@ class SemanticVisitor : public ASTVisitor {
 
         currentScope = new SymbolTable(currentScope);
         for (const auto &param : node->params) {
+            if (param.defaultValue) {
+                param.defaultValue->accept(this);
+            }
             Symbol paramSymbol;
             paramSymbol.name = param.name;
             paramSymbol.type = "parameter";
