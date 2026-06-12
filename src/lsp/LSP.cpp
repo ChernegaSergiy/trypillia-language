@@ -1,5 +1,6 @@
 #include "LSP.h"
 #include <sstream>
+#include "../utils/ErrorHandling.h"
 
 namespace trypillia {
 
@@ -117,24 +118,34 @@ void LSPServer::publishDiagnostics(const std::string& uri, const std::string& te
         Lexer lexer(text);
         Parser parser(lexer);
         
+        ErrorHandling::clearErrors();
+        
         try {
             ASTNode* ast = parser.parse();
             delete ast;
-        } catch (const std::exception& e) {
-            std::string errMsg = e.what();
+        } catch (...) {
+            // Exceptions might still be thrown
+        }
+        
+        // Gather errors from ErrorHandling
+        for (const auto& errMsg : ErrorHandling::getErrors()) {
             int line = 0;
-            // Basic parsing of error message to extract line if present
-            // e.g. "Line 10: Syntax error"
+            // Try to extract line number from "at line X"
+            size_t linePos = errMsg.find("at line ");
+            if (linePos != std::string::npos) {
+                line = std::stoi(errMsg.substr(linePos + 8)) - 1;
+                if (line < 0) line = 0;
+            }
             
-            json diagnostic = {
-                {"range", {
-                    {"start", {{"line", line}, {"character", 0}}},
-                    {"end", {{"line", line}, {"character", 100}}}
-                }},
-                {"severity", 1},
-                {"source", "trypillia"},
-                {"message", errMsg}
-            };
+            json diagnostic;
+            diagnostic["range"]["start"]["line"] = line;
+            diagnostic["range"]["start"]["character"] = 0;
+            diagnostic["range"]["end"]["line"] = line;
+            diagnostic["range"]["end"]["character"] = 100;
+            diagnostic["severity"] = 1;
+            diagnostic["source"] = "trypillia";
+            diagnostic["message"] = errMsg;
+            
             diagnostics.push_back(diagnostic);
         }
     } catch (...) {
