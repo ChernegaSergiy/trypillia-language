@@ -5,7 +5,10 @@ set(CMAKE_CXX_STANDARD 17)
 
 include_directories(include)
 
-file(GLOB_RECURSE SOURCES "src/*.cpp")
+file(GLOB_RECURSE CORE_SOURCES "src/*.cpp")
+list(REMOVE_ITEM CORE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
+list(REMOVE_ITEM CORE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/lsp/LSPMain.cpp")
+list(REMOVE_ITEM CORE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/lsp/LSP.cpp")
 
 include(FetchContent)
 FetchContent_Declare(
@@ -20,8 +23,11 @@ set(ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
 set(MBEDTLS_FATAL_WARNINGS OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(mbedtls)
 
-add_executable(trypillia ${SOURCES})
+add_executable(trypillia src/main.cpp ${CORE_SOURCES})
 target_link_libraries(trypillia mbedtls mbedx509 mbedcrypto)
+
+add_executable(trypillia-lsp src/lsp/LSPMain.cpp src/lsp/LSP.cpp ${CORE_SOURCES})
+target_link_libraries(trypillia-lsp mbedtls mbedx509 mbedcrypto)
 
 if(DEFINED ARTIFACT_NAME)
     set_target_properties(trypillia PROPERTIES OUTPUT_NAME "${ARTIFACT_NAME}")
