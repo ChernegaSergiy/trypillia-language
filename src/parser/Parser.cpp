@@ -94,9 +94,9 @@ ExprNode *Parser::primary() {
     }
 
     if (isArrow) {
-        std::vector<std::string> parameters;
+        std::vector<Parameter> parameters;
         if (currentToken.type == TokenType::IDENTIFIER) {
-            parameters.push_back(currentToken.lexeme);
+            parameters.push_back({currentToken.lexeme, nullptr});
             advance(); // consume ident
         } else {
             consume(TokenType::LPAREN);
@@ -104,7 +104,11 @@ ExprNode *Parser::primary() {
                 do {
                     Token param = currentToken;
                     consume(TokenType::IDENTIFIER);
-                    parameters.push_back(param.lexeme);
+                    ExprNode *defVal = nullptr;
+                    if (match(TokenType::ASSIGN)) {
+                        defVal = expression();
+                    }
+                    parameters.push_back({param.lexeme, defVal});
                 } while (match(TokenType::COMMA));
             }
             consume(TokenType::RPAREN);
@@ -293,12 +297,17 @@ ExprNode *Parser::primary() {
 
     if (match(TokenType::FN)) {
         consume(TokenType::LPAREN);
-        std::vector<std::string> parameters;
+        std::vector<Parameter> parameters;
+
         if (currentToken.type != TokenType::RPAREN) {
             do {
                 Token param = currentToken;
                 consume(TokenType::IDENTIFIER);
-                parameters.push_back(param.lexeme);
+                ExprNode *defVal = nullptr;
+                if (match(TokenType::ASSIGN)) {
+                    defVal = expression();
+                }
+                parameters.push_back({param.lexeme, defVal});
             } while (match(TokenType::COMMA));
         }
         consume(TokenType::RPAREN);
@@ -925,13 +934,17 @@ FunctionNode *Parser::parseFunction(AccessModifier accessModifier, bool isAbstra
     consume(TokenType::IDENTIFIER);
 
     consume(TokenType::LPAREN);
-    std::vector<std::string> parameters;
+    std::vector<Parameter> parameters;
 
     if (currentToken.type != TokenType::RPAREN) {
         do {
             Token param = currentToken;
             consume(TokenType::IDENTIFIER);
-            parameters.push_back(param.lexeme);
+            ExprNode *defVal = nullptr;
+            if (match(TokenType::ASSIGN)) {
+                defVal = expression();
+            }
+            parameters.push_back({param.lexeme, defVal});
         } while (match(TokenType::COMMA));
     }
 
@@ -1076,12 +1089,16 @@ InterfaceNode *Parser::parseInterface() {
             consume(TokenType::IDENTIFIER);
 
             consume(TokenType::LPAREN);
-            std::vector<std::string> parameters;
+            std::vector<Parameter> parameters;
             if (currentToken.type != TokenType::RPAREN) {
                 do {
                     Token param = currentToken;
                     consume(TokenType::IDENTIFIER);
-                    parameters.push_back(param.lexeme);
+                    ExprNode *defVal = nullptr;
+                    if (match(TokenType::ASSIGN)) {
+                        defVal = expression();
+                    }
+                    parameters.push_back({param.lexeme, defVal});
                 } while (match(TokenType::COMMA));
             }
             consume(TokenType::RPAREN);
@@ -1124,12 +1141,16 @@ TraitNode *Parser::parseTrait() {
             consume(TokenType::IDENTIFIER);
 
             consume(TokenType::LPAREN);
-            std::vector<std::string> parameters;
+            std::vector<Parameter> parameters;
             if (currentToken.type != TokenType::RPAREN) {
                 do {
                     Token param = currentToken;
                     consume(TokenType::IDENTIFIER);
-                    parameters.push_back(param.lexeme);
+                    ExprNode *defVal = nullptr;
+                    if (match(TokenType::ASSIGN)) {
+                        defVal = expression();
+                    }
+                    parameters.push_back({param.lexeme, defVal});
                 } while (match(TokenType::COMMA));
             }
             consume(TokenType::RPAREN);
