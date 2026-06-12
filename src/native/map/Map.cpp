@@ -42,6 +42,13 @@ namespace MapModule {
         return nullptr;
     }
 
+    static VMValue mapSet(int argCount, VMValue* args) {
+        if (argCount != 3 || !std::holds_alternative<std::shared_ptr<ObjMap>>(args[0])) return nullptr;
+        auto map = std::get<std::shared_ptr<ObjMap>>(args[0]);
+        map->values[args[1]] = args[2];
+        return args[2];
+    }
+
     void registerAll(VM* vm) {
         currentVM = vm;
         auto mapClass = std::make_shared<ObjClass>("Map");
@@ -50,6 +57,7 @@ namespace MapModule {
         mapClass->statics["values"] = std::make_shared<ObjNative>("values", 1, mapValues);
         mapClass->statics["has"] = std::make_shared<ObjNative>("has", 2, mapHas);
         mapClass->statics["remove"] = std::make_shared<ObjNative>("remove", 2, mapRemove);
+        mapClass->statics["set"] = std::make_shared<ObjNative>("set", 3, mapSet);
 
         vm->globals["Map"] = mapClass;
     }
