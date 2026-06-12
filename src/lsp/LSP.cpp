@@ -1,5 +1,6 @@
 #include "LSP.h"
 #include <sstream>
+#include <fstream>
 #include "../utils/ErrorHandling.h"
 
 namespace trypillia {
@@ -360,6 +361,16 @@ void LSPServer::handleSignatureHelp(const json& message) {
     
     json result = nullptr;
     
+    // Load native_docs.json if not already loaded
+    if (nativeDocs.is_null()) {
+        std::ifstream f("src/lsp/native_docs.json");
+        if (f.is_open()) {
+            f >> nativeDocs;
+        } else {
+            nativeDocs = json::object();
+        }
+    }
+    
     if (documents.find(uri) != documents.end()) {
         std::string text = documents[uri];
         
@@ -411,61 +422,115 @@ void LSPServer::handleSignatureHelp(const json& message) {
                 }
                 
                 if (!funcName.empty()) {
-                    // Search document for 'fn funcName(param1, param2)'
-                    Lexer lexer(text);
-                    std::vector<std::string> params;
                     bool found = false;
+                    std::string label = "";
+                    std::string documentation = "";
+                    json parameters = json::array();
                     
-                    while (true) {
-                        Token t = lexer.nextToken();
-                        if (t.type == TokenType::END_OF_FILE) break;
+                    // Check builtins first
+                    if (nativeDocs.contains(funcName)) {
+                        auto info = nativeDocs[funcName];
+                        label = info["signature"].get<std::string>();
+                        documentation = info["doc"].get<std::string>();
                         
-                        if (t.type == TokenType::FN) {
-                            Token nameToken = lexer.nextToken();
-                            if (nameToken.type == TokenType::IDENTIFIER && nameToken.lexeme == funcName) {
-                                Token paren = lexer.nextToken();
-                                if (paren.type == TokenType::LPAREN) {
-                                    // Parse params
-                                    while (true) {
-                                        Token p = lexer.nextToken();
-                                        if (p.type == TokenType::RPAREN || p.type == TokenType::END_OF_FILE) break;
-                                        if (p.type == TokenType::IDENTIFIER) {
-                                            params.push_back(p.lexeme);
+                        if (info.contains("params")) {
+                            for (const auto& p : info["params"]) {
+                                parameters.push_back({
+                                    {"label", p["label"].get<std::string>()},
+                                    {"documentation", {
+                                        {"kind", "markdown"},
+                                        {"value", p["doc"].get<std::string>()}
+                                    }}
+                                });
+                            }
+                        }
+                        found = true;
+                    } else {
+                        // Search document for 'fn funcName(param1, param2)'
+                        Lexer lexer(text);
+                        std::vector<std::string> params;
+                        int defLine = -1;
+                        
+                        while (true) {
+                            Token t = lexer.nextToken();
+                            if (t.type == TokenType::END_OF_FILE) break;
+                            
+                            if (t.type == TokenType::FN) {
+                                Token nameToken = lexer.nextToken();
+                                if (nameToken.type == TokenType::IDENTIFIER && nameToken.lexeme == funcName) {
+                                    defLine = nameToken.line - 1; // 0-indexed
+                                    Token paren = lexer.nextToken();
+                                    if (paren.type == TokenType::LPAREN) {
+                                        // Parse params
+                                        while (true) {
+                                            Token p = lexer.nextToken();
+                                            if (p.type == TokenType::RPAREN || p.type == TokenType::END_OF_FILE) break;
+                                            if (p.type == TokenType::IDENTIFIER) {
+                                                params.push_back(p.lexeme);
+                                            }
                                         }
+                                        found = true;
+                                        break;
                                     }
-                                    found = true;
-                                    break;
                                 }
                             }
                         }
-                    }
-                    
-                    // Also support builtin 'print'
-                    if (funcName == "print") {
-                        params.push_back("message");
-                        found = true;
+                        
+                        if (found) {
+                            // Extract documentation from comments above the function
+                            if (defLine > 0) {
+                                std::string docStr = "";
+                                std::istringstream iss(text);
+                                std::string l;
+                                std::vector<std::string> lines;
+                                while (std::getline(iss, l)) lines.push_back(l);
+                                
+                                for (int i = defLine - 1; i >= 0; --i) {
+                                    std::string cl = lines[i];
+                                    // Trim leading whitespace
+                                    size_t first = cl.find_first_not_of(" \t\r");
+                                    if (first != std::string::npos && cl.substr(first, 2) == "//") {
+                                        std::string commentLine = cl.substr(first + 2);
+                                        // Trim leading space in comment
+                                        if (!commentLine.empty() && commentLine[0] == ' ') commentLine = commentLine.substr(1);
+                                        docStr = commentLine + "\n" + docStr;
+                                    } else if (first == std::string::npos) {
+                                        continue; // Empty line, keep looking
+                                    } else {
+                                        break; // Code line, stop looking
+                                    }
+                                }
+                                if (!docStr.empty()) documentation = docStr;
+                            }
+                            
+                            label = "fn " + funcName + "(";
+                            for (size_t i = 0; i < params.size(); ++i) {
+                                parameters.push_back({
+                                    {"label", params[i]},
+                                    {"documentation", {{"kind", "markdown"}, {"value", "Аргумент `" + params[i] + "`"}}}
+                                });
+                                label += params[i];
+                                if (i < params.size() - 1) label += ", ";
+                            }
+                            label += ")";
+                        }
                     }
                     
                     if (found) {
-                        std::string label = funcName + "(";
-                        json parameters = json::array();
+                        json signature = {
+                            {"label", label},
+                            {"parameters", parameters}
+                        };
                         
-                        for (size_t i = 0; i < params.size(); ++i) {
-                            parameters.push_back({
-                                {"label", params[i]}
-                            });
-                            label += params[i];
-                            if (i < params.size() - 1) label += ", ";
+                        if (!documentation.empty()) {
+                            signature["documentation"] = {
+                                {"kind", "markdown"},
+                                {"value", documentation}
+                            };
                         }
-                        label += ")";
                         
                         result = {
-                            {"signatures", {
-                                {
-                                    {"label", label},
-                                    {"parameters", parameters}
-                                }
-                            }},
+                            {"signatures", {signature}},
                             {"activeSignature", 0},
                             {"activeParameter", activeParameter}
                         };
@@ -483,7 +548,6 @@ void LSPServer::handleSignatureHelp(const json& message) {
     
     sendMessage(response);
 }
-
 void LSPServer::publishDiagnostics(const std::string& uri, const std::string& text) {
     json diagnostics = json::array();
 

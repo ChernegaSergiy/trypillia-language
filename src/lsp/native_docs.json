@@ -1,0 +1,204 @@
+{
+  "print": {
+    "signature": "print(message: Any) -> Void",
+    "doc": "Виводить повідомлення у консоль.",
+    "params": [{"label": "message: Any", "doc": "Об'єкт або текст для виводу."}]
+  },
+  "input": {
+    "signature": "input(prompt: String) -> String",
+    "doc": "Читає рядок вводу від користувача з консолі.",
+    "params": [{"label": "prompt: String", "doc": "Текст-запит, що показується користувачеві."}]
+  },
+  "sin": {
+    "signature": "sin(angle: Number) -> Number",
+    "doc": "Повертає синус кута.",
+    "params": [{"label": "angle: Number", "doc": "Кут у радіанах."}]
+  },
+  "cos": {
+    "signature": "cos(angle: Number) -> Number",
+    "doc": "Повертає косинус кута.",
+    "params": [{"label": "angle: Number", "doc": "Кут у радіанах."}]
+  },
+  "random": {
+    "signature": "random() -> Number",
+    "doc": "Повертає випадкове число від 0.0 до 1.0.",
+    "params": []
+  },
+  "length": {
+    "signature": "length() -> Int",
+    "doc": "Повертає кількість елементів.",
+    "params": []
+  },
+  "push": {
+    "signature": "push(item: Any) -> Void",
+    "doc": "Додає новий елемент в кінець масиву.",
+    "params": [{"label": "item: Any", "doc": "Елемент, який потрібно додати."}]
+  },
+  "pop": {
+    "signature": "pop() -> Any",
+    "doc": "Видаляє останній елемент з масиву та повертає його.",
+    "params": []
+  },
+  "insert": {
+    "signature": "insert(index: Int, item: Any) -> Void",
+    "doc": "Вставляє елемент за вказаним індексом.",
+    "params": [
+      {"label": "index: Int", "doc": "Індекс для вставки."},
+      {"label": "item: Any", "doc": "Елемент для вставки."}
+    ]
+  },
+  "remove": {
+    "signature": "remove(index: Int) -> Any",
+    "doc": "Видаляє елемент за індексом.",
+    "params": [{"label": "index: Int", "doc": "Індекс елемента."}]
+  },
+  "reverse": {
+    "signature": "reverse() -> Array",
+    "doc": "Обертає порядок елементів у масиві.",
+    "params": []
+  },
+  "map": {
+    "signature": "map(callback: Function) -> Array",
+    "doc": "Створює новий масив, викликаючи передану функцію для кожного елемента.",
+    "params": [{"label": "callback: Function", "doc": "Функція обробки елемента."}]
+  },
+  "filter": {
+    "signature": "filter(callback: Function) -> Array",
+    "doc": "Фільтрує масив за допомогою переданої функції-предиката.",
+    "params": [{"label": "callback: Function", "doc": "Функція-умова."}]
+  },
+  "forEach": {
+    "signature": "forEach(callback: Function) -> Void",
+    "doc": "Виконує передану функцію для кожного елемента масиву.",
+    "params": [{"label": "callback: Function", "doc": "Функція для виконання."}]
+  },
+  "split": {
+    "signature": "split(separator: String) -> Array",
+    "doc": "Розбиває рядок на масив підрядків.",
+    "params": [{"label": "separator: String", "doc": "Символ або рядок-роздільник."}]
+  },
+  "join": {
+    "signature": "join(separator: String) -> String",
+    "doc": "Об'єднує елементи масиву в єдиний рядок.",
+    "params": [{"label": "separator: String", "doc": "Рядок, що буде вставлений між елементами."}]
+  },
+  "substring": {
+    "signature": "substring(start: Int, end: Int) -> String",
+    "doc": "Повертає підрядок.",
+    "params": [
+      {"label": "start: Int", "doc": "Початковий індекс."},
+      {"label": "end: Int", "doc": "Кінцевий індекс."}
+    ]
+  },
+  "toUpper": {
+    "signature": "toUpper() -> String",
+    "doc": "Переводить рядок у верхній регістр.",
+    "params": []
+  },
+  "toLower": {
+    "signature": "toLower() -> String",
+    "doc": "Переводить рядок у нижній регістр.",
+    "params": []
+  },
+  "trim": {
+    "signature": "trim() -> String",
+    "doc": "Видаляє пробіли на початку та в кінці рядка.",
+    "params": []
+  },
+  "replace": {
+    "signature": "replace(oldVal: String, newVal: String) -> String",
+    "doc": "Замінює підрядок у рядку.",
+    "params": [
+      {"label": "oldVal: String", "doc": "Що замінити."},
+      {"label": "newVal: String", "doc": "На що замінити."}
+    ]
+  },
+  "indexOf": {
+    "signature": "indexOf(search: String) -> Int",
+    "doc": "Повертає індекс першого входження підрядка.",
+    "params": [{"label": "search: String", "doc": "Підрядок для пошуку."}]
+  },
+  "includes": {
+    "signature": "includes(search: String) -> Bool",
+    "doc": "Перевіряє, чи міститься підрядок у рядку.",
+    "params": [{"label": "search: String", "doc": "Підрядок для пошуку."}]
+  },
+  "startsWith": {
+    "signature": "startsWith(search: String) -> Bool",
+    "doc": "Перевіряє, чи починається рядок з вказаного підрядка.",
+    "params": [{"label": "search: String", "doc": "Підрядок для пошуку."}]
+  },
+  "endsWith": {
+    "signature": "endsWith(search: String) -> Bool",
+    "doc": "Перевіряє, чи закінчується рядок вказаним підрядком.",
+    "params": [{"label": "search: String", "doc": "Підрядок для пошуку."}]
+  },
+  "getEnv": {
+    "signature": "getEnv(name: String) -> String",
+    "doc": "Отримує значення змінної середовища.",
+    "params": [{"label": "name: String", "doc": "Назва змінної середовища."}]
+  },
+  "cwd": {
+    "signature": "cwd() -> String",
+    "doc": "Повертає поточну робочу директорію.",
+    "params": []
+  },
+  "exec": {
+    "signature": "exec(command: String) -> String",
+    "doc": "Виконує системну команду.",
+    "params": [{"label": "command: String", "doc": "Команда для виконання."}]
+  },
+  "exit": {
+    "signature": "exit(code: Int) -> Void",
+    "doc": "Завершує роботу програми.",
+    "params": [{"label": "code: Int", "doc": "Код завершення."}]
+  },
+  "args": {
+    "signature": "args() -> Array",
+    "doc": "Повертає аргументи командного рядка.",
+    "params": []
+  },
+  "connect": {
+    "signature": "connect(host: String, port: Int) -> Result",
+    "doc": "Встановлює TCP з'єднання.",
+    "params": [
+      {"label": "host: String", "doc": "IP або домен."},
+      {"label": "port: Int", "doc": "Порт."}
+    ]
+  },
+  "listen": {
+    "signature": "listen(port: Int) -> Result",
+    "doc": "Слухає порт для вхідних TCP з'єднань.",
+    "params": [{"label": "port: Int", "doc": "Порт."}]
+  },
+  "accept": {
+    "signature": "accept() -> Socket",
+    "doc": "Приймає вхідне з'єднання.",
+    "params": []
+  },
+  "send": {
+    "signature": "send(data: String) -> Result",
+    "doc": "Відправляє дані через сокет.",
+    "params": [{"label": "data: String", "doc": "Дані для відправки."}]
+  },
+  "recv": {
+    "signature": "recv(size: Int) -> String",
+    "doc": "Отримує дані з сокета.",
+    "params": [{"label": "size: Int", "doc": "Максимальний розмір даних."}]
+  },
+  "close": {
+    "signature": "close() -> Void",
+    "doc": "Закриває з'єднання.",
+    "params": []
+  },
+  "now": {
+    "signature": "now() -> Int",
+    "doc": "Повертає поточний час (timestamp).",
+    "params": []
+  },
+  "sleep": {
+    "signature": "sleep(ms: Int) -> Void",
+    "doc": "Призупиняє виконання на заданий час.",
+    "params": [{"label": "ms: Int", "doc": "Час у мілісекундах."}]
+  }
+}

@@ -34,6 +34,7 @@ private:
 
     bool isRunning = true;
     std::unordered_map<std::string, std::string> documents;
+    json nativeDocs;
 };
 
 } // namespace trypillia
