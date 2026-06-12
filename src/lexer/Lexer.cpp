@@ -41,60 +41,62 @@ static std::unordered_map<std::string, TokenType> keywords = {
     {"static", TokenType::STATIC}
 };
 
-Lexer::Lexer(const std::string &source) : source(source), currentIndex(0), line(1) {}
+Lexer::Lexer(const std::string &source) : source(source), currentIndex(0), line(1), column(1) {}
 
 Token Lexer::nextToken() {
     skipWhitespace();
     
+    int startColumn = column;
+    
     if (isAtEnd()) {
-        return {TokenType::END_OF_FILE, "", line};
+        return {TokenType::END_OF_FILE, "", line, column};
     }
     
     char c = advance();
     
     if (std::isalpha(c) || c == '_') {
-        return identifier();
+        return identifier(startColumn);
     }
     
     if (std::isdigit(c)) {
-        return number();
+        return number(startColumn);
     }
     
     switch (c) {
-        case '(': return {TokenType::LPAREN, "(", line};
-        case ')': return {TokenType::RPAREN, ")", line};
-        case '{': return {TokenType::LBRACE, "{", line};
-        case '}': return {TokenType::RBRACE, "}", line};
-        case '[': return {TokenType::LBRACKET, "[", line};
-        case ']': return {TokenType::RBRACKET, "]", line};
-        case ',': return {TokenType::COMMA, ",", line};
-        case '.': return {TokenType::DOT, ".", line};
-        case ';': return {TokenType::SEMICOLON, ";", line};
+        case '(': return {TokenType::LPAREN, "(", line, startColumn};
+        case ')': return {TokenType::RPAREN, ")", line, startColumn};
+        case '{': return {TokenType::LBRACE, "{", line, startColumn};
+        case '}': return {TokenType::RBRACE, "}", line, startColumn};
+        case '[': return {TokenType::LBRACKET, "[", line, startColumn};
+        case ']': return {TokenType::RBRACKET, "]", line, startColumn};
+        case ',': return {TokenType::COMMA, ",", line, startColumn};
+        case '.': return {TokenType::DOT, ".", line, startColumn};
+        case ';': return {TokenType::SEMICOLON, ";", line, startColumn};
         case '+':
             if (match('+')) {
-                return {TokenType::PLUS_PLUS, "++", line};
+                return {TokenType::PLUS_PLUS, "++", line, startColumn};
             } else if (match('=')) {
-                return {TokenType::PLUS_EQUAL, "+=", line};
+                return {TokenType::PLUS_EQUAL, "+=", line, startColumn};
             } else {
-                return {TokenType::PLUS, "+", line};
+                return {TokenType::PLUS, "+", line, startColumn};
             }
         case '-':
             if (match('-')) {
-                return {TokenType::MINUS_MINUS, "--", line};
+                return {TokenType::MINUS_MINUS, "--", line, startColumn};
             } else if (match('=')) {
-                return {TokenType::MINUS_EQUAL, "-=", line};
+                return {TokenType::MINUS_EQUAL, "-=", line, startColumn};
             } else {
-                return {TokenType::MINUS, "-", line};
+                return {TokenType::MINUS, "-", line, startColumn};
             }
         case '*':
             if (match('=')) {
-                return {TokenType::STAR_EQUAL, "*=", line};
+                return {TokenType::STAR_EQUAL, "*=", line, startColumn};
             } else {
-                return {TokenType::STAR, "*", line};
+                return {TokenType::STAR, "*", line, startColumn};
             }
         case '/': 
             if (match('=')) {
-                return {TokenType::SLASH_EQUAL, "/=", line};
+                return {TokenType::SLASH_EQUAL, "/=", line, startColumn};
             } else if (match('/')) {
                 // Comment extends to the end of the line
                 while (peek() != '\n' && !isAtEnd()) {
@@ -102,63 +104,63 @@ Token Lexer::nextToken() {
                 }
                 return nextToken();
             } else {
-                return {TokenType::SLASH, "/", line};
+                return {TokenType::SLASH, "/", line, startColumn};
             }
-        case '%': return {TokenType::PERCENT, "%", line};
+        case '%': return {TokenType::PERCENT, "%", line, startColumn};
         case '=': 
             if (match('=')) {
-                return {TokenType::EQUAL_EQUAL, "==", line};
+                return {TokenType::EQUAL_EQUAL, "==", line, startColumn};
             } else if (match('>')) {
-                return {TokenType::ARROW, "=>", line};
+                return {TokenType::ARROW, "=>", line, startColumn};
             } else {
-                return {TokenType::ASSIGN, "=", line};
+                return {TokenType::ASSIGN, "=", line, startColumn};
             }
         case '!': 
             if (match('=')) {
-                return {TokenType::BANG_EQUAL, "!=", line};
+                return {TokenType::BANG_EQUAL, "!=", line, startColumn};
             } else {
-                return {TokenType::BANG, "!", line};
+                return {TokenType::BANG, "!", line, startColumn};
             }
         case '<': 
             if (match('=')) {
-                return {TokenType::LESS_EQUAL, "<=", line};
+                return {TokenType::LESS_EQUAL, "<=", line, startColumn};
             } else if (match('<')) {
-                return {TokenType::SHIFT_LEFT, "<<", line};
+                return {TokenType::SHIFT_LEFT, "<<", line, startColumn};
             } else {
-                return {TokenType::LESS, "<", line};
+                return {TokenType::LESS, "<", line, startColumn};
             }
         case '>': 
             if (match('=')) {
-                return {TokenType::GREATER_EQUAL, ">=", line};
+                return {TokenType::GREATER_EQUAL, ">=", line, startColumn};
             } else if (match('>')) {
-                return {TokenType::SHIFT_RIGHT, ">>", line};
+                return {TokenType::SHIFT_RIGHT, ">>", line, startColumn};
             } else {
-                return {TokenType::GREATER, ">", line};
+                return {TokenType::GREATER, ">", line, startColumn};
             }
-        case '"': return string();
-        case '?': return {TokenType::QUESTION, "?", line};
+        case '"': return string(startColumn);
+        case '?': return {TokenType::QUESTION, "?", line, startColumn};
         case ':':
             if (match(':')) {
-                return {TokenType::COLON_COLON, "::", line};
+                return {TokenType::COLON_COLON, "::", line, startColumn};
             }
-            return {TokenType::COLON, ":", line};
+            return {TokenType::COLON, ":", line, startColumn};
         case '&':
             if (match('&')) {
-                return {TokenType::AND, "&&", line};
+                return {TokenType::AND, "&&", line, startColumn};
             } else {
-                return {TokenType::BITWISE_AND, "&", line};
+                return {TokenType::BITWISE_AND, "&", line, startColumn};
             }
         case '|':
             if (match('|')) {
-                return {TokenType::OR, "||", line};
+                return {TokenType::OR, "||", line, startColumn};
             } else {
-                return {TokenType::BITWISE_OR, "|", line};
+                return {TokenType::BITWISE_OR, "|", line, startColumn};
             }
-        case '^': return {TokenType::BITWISE_XOR, "^", line};
-        case '~': return {TokenType::BITWISE_NOT, "~", line};
+        case '^': return {TokenType::BITWISE_XOR, "^", line, startColumn};
+        case '~': return {TokenType::BITWISE_NOT, "~", line, startColumn};
     }
     
-    return {TokenType::UNKNOWN, std::string(1, c), line};
+    return {TokenType::UNKNOWN, std::string(1, c), line, startColumn};
 }
 
 void Lexer::skipWhitespace() {
@@ -172,7 +174,8 @@ void Lexer::skipWhitespace() {
                 break;
             case '\n':
                 line++;
-                advance();
+                column = 1;
+                currentIndex++;
                 break;
             default:
                 return;
@@ -181,7 +184,9 @@ void Lexer::skipWhitespace() {
 }
 
 char Lexer::advance() {
-    return source[currentIndex++];
+    char c = source[currentIndex++];
+    column++;
+    return c;
 }
 
 bool Lexer::match(char expected) {
@@ -190,6 +195,7 @@ bool Lexer::match(char expected) {
     }
     
     currentIndex++;
+    column++;
     return true;
 }
 
@@ -207,7 +213,7 @@ char Lexer::peekNext() {
     return source[currentIndex + 1];
 }
 
-Token Lexer::identifier() {
+Token Lexer::identifier(int startColumn) {
     size_t start = currentIndex - 1;
     
     while (std::isalnum(peek()) || peek() == '_') {
@@ -218,13 +224,13 @@ Token Lexer::identifier() {
     
     auto it = keywords.find(text);
     if (it != keywords.end()) {
-        return {it->second, text, line};
+        return {it->second, text, line, startColumn};
     }
     
-    return {TokenType::IDENTIFIER, text, line};
+    return {TokenType::IDENTIFIER, text, line, startColumn};
 }
 
-Token Lexer::number() {
+Token Lexer::number(int startColumn) {
     size_t start = currentIndex - 1;
     
     while (std::isdigit(peek())) {
@@ -242,15 +248,16 @@ Token Lexer::number() {
     }
     
     std::string text = source.substr(start, currentIndex - start);
-    return {TokenType::NUMBER, text, line};
+    return {TokenType::NUMBER, text, line, startColumn};
 }
 
-Token Lexer::string() {
+Token Lexer::string(int startColumn) {
     std::string value = "";
     
     while (peek() != '"' && !isAtEnd()) {
         if (peek() == '\n') {
             line++;
+            column = 1;
         }
         char c = peek();
         advance();
@@ -295,30 +302,32 @@ Token Lexer::string() {
     
     if (isAtEnd()) {
         
-        return {TokenType::UNKNOWN, "", line};
+        return {TokenType::UNKNOWN, "", line, startColumn};
     }
     
     // Consume the closing "
     advance();
     
-    return {TokenType::STRING, value, line};
+    return {TokenType::STRING, value, line, startColumn};
 }
 
 Token Lexer::scanToken() {
     skipWhitespace();
     
+    int startColumn = column;
+    
     if (isAtEnd()) {
-        return {TokenType::END_OF_FILE, "", line};
+        return {TokenType::END_OF_FILE, "", line, column};
     }
     
     char c = advance();
     
     if (std::isalpha(c)) {
-        return identifier();
+        return identifier(startColumn);
     }
     
     if (std::isdigit(c)) {
-        return number();
+        return number(startColumn);
     }
     
     // Other token types would be handled here

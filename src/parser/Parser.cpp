@@ -17,7 +17,7 @@ void Parser::consume(TokenType type) {
         advance();
     } else {
         std::string message = "Expected token type " + std::to_string(static_cast<int>(type)) + 
-                            ", got " + std::to_string(static_cast<int>(currentToken.type)) + " at line " + std::to_string(currentToken.line);
+                            ", got " + std::to_string(static_cast<int>(currentToken.type)) + " at line " + std::to_string(currentToken.line) + ":" + std::to_string(currentToken.column);
         ErrorHandling::reportError(message);
         throw std::runtime_error(message);
     }
@@ -195,8 +195,17 @@ ExprNode* Parser::primary() {
             }
             return result;
         }
-
-        return new LiteralExpr(literal);
+        std::string cleanedStr = "";
+        for (size_t i = 0; i < str.length(); i++) {
+            if (str[i] == '\\' && i + 1 < str.length() && (str[i+1] == '{' || str[i+1] == '}')) {
+                cleanedStr += str[i+1];
+                i++;
+            } else {
+                cleanedStr += str[i];
+            }
+        }
+        Token t = literal; t.lexeme = cleanedStr;
+        return new LiteralExpr(t);
     }
     
     if (currentToken.type == TokenType::NUMBER) {
@@ -289,7 +298,8 @@ ExprNode* Parser::primary() {
         return new LambdaExpr(parameters, body);
     }
 
-    throw std::runtime_error("Unexpected token in expression: " + currentToken.lexeme);
+    std::string errMsg = "Unexpected token in expression: " + currentToken.lexeme + " at line " + std::to_string(currentToken.line) + ":" + std::to_string(currentToken.column);
+    throw std::runtime_error(errMsg);
 }
 
 // Call expressions and member access

@@ -130,18 +130,28 @@ void LSPServer::publishDiagnostics(const std::string& uri, const std::string& te
         // Gather errors from ErrorHandling
         for (const auto& errMsg : ErrorHandling::getErrors()) {
             int line = 0;
-            // Try to extract line number from "at line X"
+            int col = 0;
+            // Try to extract line and column number from "at line X" or "at line X:Y"
             size_t linePos = errMsg.find("at line ");
             if (linePos != std::string::npos) {
-                line = std::stoi(errMsg.substr(linePos + 8)) - 1;
+                size_t colonPos = errMsg.find(":", linePos + 8);
+                if (colonPos != std::string::npos) {
+                    line = std::stoi(errMsg.substr(linePos + 8, colonPos - (linePos + 8))) - 1;
+                    size_t endPos = errMsg.find_first_not_of("0123456789", colonPos + 1);
+                    col = std::stoi(errMsg.substr(colonPos + 1, endPos - (colonPos + 1))) - 1;
+                } else {
+                    line = std::stoi(errMsg.substr(linePos + 8)) - 1;
+                }
+                
                 if (line < 0) line = 0;
+                if (col < 0) col = 0;
             }
             
             json diagnostic;
             diagnostic["range"]["start"]["line"] = line;
-            diagnostic["range"]["start"]["character"] = 0;
+            diagnostic["range"]["start"]["character"] = col;
             diagnostic["range"]["end"]["line"] = line;
-            diagnostic["range"]["end"]["character"] = 100;
+            diagnostic["range"]["end"]["character"] = col > 0 ? col + 1 : 100;
             diagnostic["severity"] = 1;
             diagnostic["source"] = "trypillia";
             diagnostic["message"] = errMsg;
