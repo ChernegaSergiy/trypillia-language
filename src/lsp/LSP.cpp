@@ -506,7 +506,7 @@ void LSPServer::handleSignatureHelp(const json &message) {
                                 parameters.push_back(
                                     {{"label", params[i]},
                                      {"documentation",
-                                      {{"kind", "markdown"}, {"value", "Аргумент `" + params[i] + "`"}}}});
+                                      {{"kind", "markdown"}, {"value", "Argument `" + params[i] + "`"}}}});
                                 label += params[i];
                                 if (i < params.size() - 1)
                                     label += ", ";
