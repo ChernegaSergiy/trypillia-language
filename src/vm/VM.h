@@ -2,6 +2,7 @@
 #define TRYPILLIA_VM_H
 
 #include "Chunk.h"
+#include "JIT.h"
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -39,6 +40,9 @@ class VM {
 
     VM();
     ~VM();
+
+    JITCompiler jit;
+    std::unordered_map<void*, JitFunc> compiledFuncs;
 
     InterpretResult interpret(std::shared_ptr<ObjFunction> function);
 };
