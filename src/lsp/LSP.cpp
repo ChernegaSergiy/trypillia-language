@@ -66,6 +66,8 @@ void LSPServer::handleMessage(const json& message) {
             handleDidChange(message);
         } else if (method == "textDocument/hover") {
             handleHover(message);
+        } else if (method == "textDocument/definition") {
+            handleDefinition(message);
         } else if (method == "shutdown") {
             isRunning = false;
             json response = {
@@ -88,7 +90,7 @@ void LSPServer::handleInitialize(const json& message) {
             {"capabilities", {
                 {"textDocumentSync", 1}, // 1 = Full sync
                 {"hoverProvider", true},
-                {"definitionProvider", false}
+                {"definitionProvider", true}
             }}
         }}
     };
@@ -164,6 +166,70 @@ void LSPServer::handleHover(const json& message) {
                     {"value", hoverText}
                 }}
             };
+        }
+    }
+    
+    json response = {
+        {"jsonrpc", "2.0"},
+        {"id", message["id"]},
+        {"result", result}
+    };
+    
+    sendMessage(response);
+}
+
+void LSPServer::handleDefinition(const json& message) {
+    std::string uri = message["params"]["textDocument"]["uri"];
+    int line = message["params"]["position"]["line"];
+    int character = message["params"]["position"]["character"];
+    
+    int targetLine = line + 1;
+    json result = nullptr;
+    
+    if (documents.find(uri) != documents.end()) {
+        std::string text = documents[uri];
+        Lexer lexer(text);
+        
+        Token targetToken = {TokenType::UNKNOWN, "", 0, 0};
+        std::vector<Token> allTokens;
+        
+        while (true) {
+            Token t = lexer.nextToken();
+            if (t.type == TokenType::END_OF_FILE) break;
+            allTokens.push_back(t);
+            
+            int tokenStartCol = t.column - 1;
+            int tokenEndCol = tokenStartCol + t.lexeme.length();
+            
+            if (t.line == targetLine && character >= tokenStartCol && character <= tokenEndCol) {
+                targetToken = t;
+            }
+        }
+        
+        if (targetToken.type == TokenType::IDENTIFIER) {
+            // Find where this identifier was defined (let, const, fn, class, etc.)
+            for (size_t i = 0; i < allTokens.size() - 1; ++i) {
+                if ((allTokens[i].type == TokenType::LET ||
+                     allTokens[i].type == TokenType::CONST ||
+                     allTokens[i].type == TokenType::FN ||
+                     allTokens[i].type == TokenType::CLASS ||
+                     allTokens[i].type == TokenType::INTERFACE ||
+                     allTokens[i].type == TokenType::TRAIT) && 
+                    allTokens[i+1].type == TokenType::IDENTIFIER &&
+                    allTokens[i+1].lexeme == targetToken.lexeme) {
+                    
+                    // Found definition!
+                    Token defToken = allTokens[i+1];
+                    result = {
+                        {"uri", uri},
+                        {"range", {
+                            {"start", {{"line", defToken.line - 1}, {"character", defToken.column - 1}}},
+                            {"end", {{"line", defToken.line - 1}, {"character", defToken.column - 1 + defToken.lexeme.length()}}}
+                        }}
+                    };
+                    break;
+                }
+            }
         }
     }
     
