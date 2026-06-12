@@ -564,7 +564,7 @@ class CompilerVisitor : public ASTVisitor {
         CompilerVisitor funcCompiler(func->chunk.get(), compiler_filename, globalSymbols, this);
         funcCompiler.beginScope();
         for (const auto &param : node->params)
-            funcCompiler.locals.push_back({param, 1, false});
+            funcCompiler.locals.push_back({param.name, 1, false});
         for (auto &stmt : node->body)
             stmt->accept(&funcCompiler);
         funcCompiler.emitBytes(static_cast<uint8_t>(OpCode::OP_NIL), static_cast<uint8_t>(OpCode::OP_RETURN));
@@ -703,7 +703,7 @@ class CompilerVisitor : public ASTVisitor {
 
         funcCompiler.beginScope();
         for (const auto &param : node->params) {
-            funcCompiler.locals.push_back({param, 1, false});
+            funcCompiler.locals.push_back({param.name, 1, false});
         }
 
         for (auto &stmt : node->body) {
@@ -754,7 +754,7 @@ class CompilerVisitor : public ASTVisitor {
         funcCompiler.beginScope();
 
         for (const auto &param : node->params) {
-            funcCompiler.locals.push_back({param, 1});
+            funcCompiler.locals.push_back({param.name, 1, false});
         }
 
         if (node->name == "init" && classNode) {
