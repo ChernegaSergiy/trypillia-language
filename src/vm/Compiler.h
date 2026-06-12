@@ -4,6 +4,7 @@
 #include <string>
 #include "../ast/AST.h"
 #include "Chunk.h"
+#include "../symbol/SymbolTable.h"
 
 class Compiler {
 public:
@@ -11,7 +12,7 @@ public:
     ~Compiler() = default;
 
     std::string currentFilename = "<unknown>";
-    std::shared_ptr<ObjFunction> compile(ASTNode* ast);
+    std::shared_ptr<ObjFunction> compile(ASTNode* ast, SymbolTable* globals = nullptr);
 };
 
 #endif // TRYPILLIA_COMPILER_H

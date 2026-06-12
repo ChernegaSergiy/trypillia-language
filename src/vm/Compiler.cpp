@@ -12,6 +12,7 @@ class CompilerVisitor : public ASTVisitor {
 private:
     Chunk* chunk;
     std::string compiler_filename;
+    SymbolTable* globalSymbols;
 
     struct Local {
         std::string name;
@@ -56,15 +57,16 @@ private:
     }
 
     std::string resolveName(const std::string& name) {
-        if (useAliases.find(name) != useAliases.end()) {
+        if (useAliases.count(name)) {
             return useAliases[name];
         }
-        // If it's a native symbol, don't prefix it
-        if (nativeSymbols && nativeSymbols->resolve(name)) {
-            return name;
-        }
         if (!currentNamespace.empty() && name.find('.') == std::string::npos) {
-            return currentNamespace + "." + name;
+            std::string fullPath = currentNamespace + "." + name;
+            if (globalSymbols) {
+                if (globalSymbols->resolve(fullPath)) return fullPath;
+                if (globalSymbols->resolve(name)) return name;
+            }
+            return fullPath;
         }
         return name;
     }
@@ -113,24 +115,14 @@ public:
     std::vector<LoopContext> loops;
     std::string currentNamespace = "";
     std::map<std::string, std::string> useAliases;
-    SymbolTable* nativeSymbols = nullptr;
 
-    CompilerVisitor(Chunk* chunk, const std::string& fname, CompilerVisitor* enc = nullptr) : chunk(chunk), compiler_filename(fname), enclosing(enc) {
+    CompilerVisitor(Chunk* chunk, const std::string& fname, SymbolTable* symbols, CompilerVisitor* enc = nullptr) 
+        : chunk(chunk), compiler_filename(fname), globalSymbols(symbols), enclosing(enc) {
         if (enc) {
             this->currentNamespace = enc->currentNamespace;
             this->useAliases = enc->useAliases;
-            this->nativeSymbols = enc->nativeSymbols;
-        } else {
-            this->nativeSymbols = new SymbolTable();
-            StdLib::registerSymbols(this->nativeSymbols);
         }
         locals.push_back({"", 0, false});
-    }
-
-    ~CompilerVisitor() {
-        if (enclosing == nullptr && nativeSymbols != nullptr) {
-            delete nativeSymbols;
-        }
     }
 
     void emitByte(uint8_t byte) {
@@ -155,9 +147,7 @@ public:
 
     void patchJump(int offset) {
         int jump = static_cast<int>(chunk->code.size() - offset - 2);
-        if (jump > 65535) {
-            ErrorHandling::reportError("Too much code to jump over.");
-        }
+        if (jump > 65535) ErrorHandling::reportError("Too much code to jump over.");
         chunk->code[offset] = (jump >> 8) & 0xff;
         chunk->code[offset + 1] = jump & 0xff;
     }
@@ -178,7 +168,6 @@ public:
 
     void visit(BinaryExpr* node) override {
         currentLine = node->op.line;
-        
         if (node->op.type == TokenType::AND) {
             node->left->accept(this);
             int endJump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE));
@@ -196,7 +185,7 @@ public:
             patchJump(endJump);
             return;
         }
-        
+
         node->left->accept(this);
         node->right->accept(this);
 
@@ -206,11 +195,20 @@ public:
             case TokenType::STAR: emitByte(static_cast<uint8_t>(OpCode::OP_MULTIPLY)); break;
             case TokenType::SLASH: emitByte(static_cast<uint8_t>(OpCode::OP_DIVIDE)); break;
             case TokenType::EQUAL_EQUAL: emitByte(static_cast<uint8_t>(OpCode::OP_EQUAL)); break;
-            case TokenType::BANG_EQUAL: emitByte(static_cast<uint8_t>(OpCode::OP_EQUAL)); emitByte(static_cast<uint8_t>(OpCode::OP_NOT)); break;
+            case TokenType::BANG_EQUAL: 
+                emitByte(static_cast<uint8_t>(OpCode::OP_EQUAL));
+                emitByte(static_cast<uint8_t>(OpCode::OP_NOT));
+                break;
             case TokenType::LESS: emitByte(static_cast<uint8_t>(OpCode::OP_LESS)); break;
-            case TokenType::LESS_EQUAL: emitByte(static_cast<uint8_t>(OpCode::OP_GREATER)); emitByte(static_cast<uint8_t>(OpCode::OP_NOT)); break;
+            case TokenType::LESS_EQUAL: 
+                emitByte(static_cast<uint8_t>(OpCode::OP_GREATER));
+                emitByte(static_cast<uint8_t>(OpCode::OP_NOT));
+                break;
             case TokenType::GREATER: emitByte(static_cast<uint8_t>(OpCode::OP_GREATER)); break;
-            case TokenType::GREATER_EQUAL: emitByte(static_cast<uint8_t>(OpCode::OP_LESS)); emitByte(static_cast<uint8_t>(OpCode::OP_NOT)); break;
+            case TokenType::GREATER_EQUAL: 
+                emitByte(static_cast<uint8_t>(OpCode::OP_LESS));
+                emitByte(static_cast<uint8_t>(OpCode::OP_NOT));
+                break;
             case TokenType::BITWISE_AND: emitByte(static_cast<uint8_t>(OpCode::OP_BIT_AND)); break;
             case TokenType::BITWISE_OR: emitByte(static_cast<uint8_t>(OpCode::OP_BIT_OR)); break;
             case TokenType::BITWISE_XOR: emitByte(static_cast<uint8_t>(OpCode::OP_BIT_XOR)); break;
@@ -252,8 +250,7 @@ public:
         } else if ((arg = resolveUpvalue(node->name.lexeme)) != -1) {
             emitBytes(static_cast<uint8_t>(OpCode::OP_GET_UPVALUE), static_cast<uint8_t>(arg));
         } else {
-            std::string actualName = resolveName(node->name.lexeme);
-            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(actualName)));
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(resolveName(node->name.lexeme))));
         }
     }
     void visit(AssignExpr* node) override {
@@ -265,8 +262,7 @@ public:
         } else if ((arg = resolveUpvalue(node->name.lexeme)) != -1) {
             emitBytes(static_cast<uint8_t>(OpCode::OP_SET_UPVALUE), static_cast<uint8_t>(arg));
         } else {
-            std::string actualName = resolveName(node->name.lexeme);
-            emitBytes(static_cast<uint8_t>(OpCode::OP_SET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(actualName)));
+            emitBytes(static_cast<uint8_t>(OpCode::OP_SET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(resolveName(node->name.lexeme))));
         }
     }
     void visit(CompoundAssignExpr* node) override {
@@ -277,12 +273,11 @@ public:
         } else if ((upArg = resolveUpvalue(node->name.lexeme)) != -1) {
             emitBytes(static_cast<uint8_t>(OpCode::OP_GET_UPVALUE), static_cast<uint8_t>(upArg));
         } else {
-            std::string actualName = resolveName(node->name.lexeme);
-            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(actualName)));
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(resolveName(node->name.lexeme))));
         }
-        
+
         node->value->accept(this);
-        
+
         switch (node->op.type) {
             case TokenType::PLUS_EQUAL: emitByte(static_cast<uint8_t>(OpCode::OP_ADD)); break;
             case TokenType::MINUS_EQUAL: emitByte(static_cast<uint8_t>(OpCode::OP_SUBTRACT)); break;
@@ -290,87 +285,62 @@ public:
             case TokenType::SLASH_EQUAL: emitByte(static_cast<uint8_t>(OpCode::OP_DIVIDE)); break;
             default: break;
         }
-        
+
         if (arg != -1) {
             emitBytes(static_cast<uint8_t>(OpCode::OP_SET_LOCAL), static_cast<uint8_t>(arg));
         } else if (upArg != -1) {
             emitBytes(static_cast<uint8_t>(OpCode::OP_SET_UPVALUE), static_cast<uint8_t>(upArg));
         } else {
-            std::string actualName = resolveName(node->name.lexeme);
-            emitBytes(static_cast<uint8_t>(OpCode::OP_SET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(actualName)));
+            emitBytes(static_cast<uint8_t>(OpCode::OP_SET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(resolveName(node->name.lexeme))));
         }
     }
     void visit(CallExpr* node) override {
         currentLine = node->paren.line;
         node->callee->accept(this);
-        for (auto& arg : node->arguments) {
-            arg->accept(this);
-        }
+        for (auto& arg : node->arguments) arg->accept(this);
         emitBytes(static_cast<uint8_t>(OpCode::OP_CALL), static_cast<uint8_t>(node->arguments.size()));
     }
     void visit(VarStmt* node) override {
-        if (node->initializer) {
-            node->initializer->accept(this);
-        } else {
-            emitByte(static_cast<uint8_t>(OpCode::OP_NIL));
-        }
-        
-        if (scopeDepth > 0) {
-            locals.push_back({node->name.lexeme, scopeDepth, false});
-        } else {
+        if (node->initializer) node->initializer->accept(this);
+        else emitByte(static_cast<uint8_t>(OpCode::OP_NIL));
+        if (scopeDepth > 0) locals.push_back({node->name.lexeme, scopeDepth, false});
+        else {
             std::string actualName = node->name.lexeme;
-            if (!currentNamespace.empty()) {
-                actualName = currentNamespace + "." + actualName;
-            }
+            if (!currentNamespace.empty()) actualName = currentNamespace + "." + actualName;
             emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), static_cast<uint8_t>(chunk->addConstant(actualName)));
         }
     }
     void visit(BlockStmt* node) override {
         beginScope();
-        for (auto& stmt : node->statements) {
-            stmt->accept(this);
-        }
+        for (auto& stmt : node->statements) stmt->accept(this);
         endScope();
     }
     void visit(IfStmt* node) override {
         node->condition->accept(this);
-
         int thenJump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE));
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
-
         node->thenBranch->accept(this);
-
         int elseJump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP));
-
         patchJump(thenJump);
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
-
-        if (node->elseBranch) {
-            node->elseBranch->accept(this);
-        }
+        if (node->elseBranch) node->elseBranch->accept(this);
         patchJump(elseJump);
     }
     void visit(WhileStmt* node) override {
         int loopStart = static_cast<int>(chunk->code.size());
         loops.push_back({loopStart, scopeDepth, {}, {}});
-
         node->condition->accept(this);
         int exitJump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE));
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
-        
         node->body->accept(this);
-        
         LoopContext loop = loops.back();
         loops.pop_back();
-
         for (int continueJump : loop.continueJumps) {
             patchJump(continueJump);
         }
-
         emitLoop(loopStart);
         patchJump(exitJump);
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
-
         for (int breakJump : loop.breakJumps) {
             patchJump(breakJump);
         }
@@ -378,23 +348,18 @@ public:
     void visit(DoWhileStmt* node) override {
         int loopStart = static_cast<int>(chunk->code.size());
         loops.push_back({loopStart, scopeDepth, {}, {}});
-
         node->body->accept(this);
-
         LoopContext loop = loops.back();
         loops.pop_back();
-
         for (int continueJump : loop.continueJumps) {
             patchJump(continueJump);
         }
-
         node->condition->accept(this);
         int exitJump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE));
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
         emitLoop(loopStart);
         patchJump(exitJump);
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
-
         for (int breakJump : loop.breakJumps) {
             patchJump(breakJump);
         }
@@ -408,185 +373,117 @@ public:
         emitByte(static_cast<uint8_t>(OpCode::OP_RETURN));
     }
     void visit(BreakStmt* node) override {
-        if (loops.empty()) {
-            std::cerr << "Cannot 'break' outside of a loop." << std::endl;
-            return;
-        }
-        int loopScopeDepth = loops.back().scopeDepth;
-        for (int i = static_cast<int>(locals.size()) - 1; i >= 0 && locals[i].depth > loopScopeDepth; i--) {
+        if (loops.empty()) return;
+        int depth = loops.back().scopeDepth;
+        for (int i = static_cast<int>(locals.size()) - 1; i >= 0 && locals[i].depth > depth; i--) {
             emitByte(static_cast<uint8_t>(OpCode::OP_POP));
         }
-        int jump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP));
-        loops.back().breakJumps.push_back(jump);
+        loops.back().breakJumps.push_back(emitJump(static_cast<uint8_t>(OpCode::OP_JUMP)));
     }
     void visit(ContinueStmt* node) override {
-        if (loops.empty()) {
-            std::cerr << "Cannot 'continue' outside of a loop." << std::endl;
-            return;
-        }
-        int loopScopeDepth = loops.back().scopeDepth;
-        for (int i = static_cast<int>(locals.size()) - 1; i >= 0 && locals[i].depth > loopScopeDepth; i--) {
+        if (loops.empty()) return;
+        int depth = loops.back().scopeDepth;
+        for (int i = static_cast<int>(locals.size()) - 1; i >= 0 && locals[i].depth > depth; i--) {
             emitByte(static_cast<uint8_t>(OpCode::OP_POP));
         }
-        int jump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP));
-        loops.back().continueJumps.push_back(jump);
+        loops.back().continueJumps.push_back(emitJump(static_cast<uint8_t>(OpCode::OP_JUMP)));
     }
     void visit(ForStmt* node) override {
         beginScope();
         if (node->initializer) node->initializer->accept(this);
-        
         int loopStart = static_cast<int>(chunk->code.size());
         loops.push_back({loopStart, scopeDepth, {}, {}});
-
         int exitJump = -1;
-        
         if (node->condition) {
             node->condition->accept(this);
             exitJump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE));
             emitByte(static_cast<uint8_t>(OpCode::OP_POP));
         }
-        
         node->body->accept(this);
-        
         LoopContext loop = loops.back();
         loops.pop_back();
-
         for (int continueJump : loop.continueJumps) {
             patchJump(continueJump);
         }
-        
         if (node->increment) {
             node->increment->accept(this);
             emitByte(static_cast<uint8_t>(OpCode::OP_POP));
         }
-        
         emitLoop(loopStart);
-        
         if (exitJump != -1) {
             patchJump(exitJump);
             emitByte(static_cast<uint8_t>(OpCode::OP_POP));
         }
-
         for (int breakJump : loop.breakJumps) {
             patchJump(breakJump);
         }
-        
         endScope();
     }
     void visit(ForeachStmt* node) override {
         beginScope();
-
         node->iterable->accept(this);
         locals.push_back({"<iterable>", scopeDepth});
         int iterableLocal = static_cast<int>(locals.size()) - 1;
-
         emitBytes(static_cast<uint8_t>(OpCode::OP_CONSTANT), static_cast<uint8_t>(chunk->addConstant(0.0)));
         locals.push_back({"<index>", scopeDepth});
         int indexLocal = static_cast<int>(locals.size()) - 1;
-        
         int loopStart = static_cast<int>(chunk->code.size());
         loops.push_back({loopStart, scopeDepth, {}, {}});
-
         emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), static_cast<uint8_t>(iterableLocal));
         emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), static_cast<uint8_t>(indexLocal));
         emitByte(static_cast<uint8_t>(OpCode::OP_ITER_HAS_NEXT));
-        
         int exitJump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE));
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
-        
         beginScope();
-        
         emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), static_cast<uint8_t>(iterableLocal));
         emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), static_cast<uint8_t>(indexLocal));
         emitByte(static_cast<uint8_t>(OpCode::OP_INDEX_GET));
-        
         locals.push_back({node->name.lexeme, scopeDepth});
-        
         node->body->accept(this);
-        
         endScope();
-        
         LoopContext loop = loops.back();
         loops.pop_back();
-        for (int continueJump : loop.continueJumps) {
-            patchJump(continueJump);
-        }
-        
+        for (int continueJump : loop.continueJumps) patchJump(continueJump);
         emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), static_cast<uint8_t>(indexLocal));
         emitBytes(static_cast<uint8_t>(OpCode::OP_CONSTANT), static_cast<uint8_t>(chunk->addConstant(1.0)));
-        emitByte(static_cast<uint8_t>(OpCode::OP_ADD));
-        emitBytes(static_cast<uint8_t>(OpCode::OP_SET_LOCAL), static_cast<uint8_t>(indexLocal));
-        emitByte(static_cast<uint8_t>(OpCode::OP_POP));
-        
+        emitBytes(static_cast<uint8_t>(OpCode::OP_ADD), static_cast<uint8_t>(OpCode::OP_SET_LOCAL));
+        emitBytes(static_cast<uint8_t>(indexLocal), static_cast<uint8_t>(OpCode::OP_POP));
         emitLoop(loopStart);
-        
         patchJump(exitJump);
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
-        
-        for (int breakJump : loop.breakJumps) {
-            patchJump(breakJump);
-        }
-        
+        for (int breakJump : loop.breakJumps) patchJump(breakJump);
         endScope();
     }
     void visit(SwitchStmt* node) override {
         node->expression->accept(this);
-
         std::vector<int> endJumps;
-
         for (auto& case_ : node->cases) {
             if (case_.value) {
                 emitByte(static_cast<uint8_t>(OpCode::OP_DUP));
                 case_.value->accept(this);
                 emitByte(static_cast<uint8_t>(OpCode::OP_EQUAL));
-
                 int nextCaseJump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE));
                 emitByte(static_cast<uint8_t>(OpCode::OP_POP)); 
-
-                for (auto* stmt : case_.body) {
-                    stmt->accept(this);
-                }
-
+                for (auto* stmt : case_.body) stmt->accept(this);
                 endJumps.push_back(emitJump(static_cast<uint8_t>(OpCode::OP_JUMP)));
-
                 patchJump(nextCaseJump);
                 emitByte(static_cast<uint8_t>(OpCode::OP_POP)); 
-            } else {
-                for (auto* stmt : case_.body) {
-                    stmt->accept(this);
-                }
-            }
+            } else for (auto* stmt : case_.body) stmt->accept(this);
         }
-
-        for (int jump : endJumps) {
-            patchJump(jump);
-        }
-
+        for (int jump : endJumps) patchJump(jump);
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
     }
     void visit(UsingStmt* node) override {
         beginScope();
-        
         node->declaration->accept(this);
-        
         node->body->accept(this);
-        
-        // We know the resource variable is at the top of the local stack for this block
-        // Wait, if it's an ExpressionStmt, there is no local variable in `locals`.
-        // If it's a VarStmt, the variable is in `locals`.
         if (dynamic_cast<VarStmt*>(node->declaration)) {
             uint8_t slot = static_cast<uint8_t>(locals.size() - 1);
             emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), slot);
             emitBytes(static_cast<uint8_t>(OpCode::OP_PROPERTY_GET), static_cast<uint8_t>(chunk->addConstant("destroy")));
             emitBytes(static_cast<uint8_t>(OpCode::OP_CALL), 0);
             emitByte(static_cast<uint8_t>(OpCode::OP_POP));
-        } else if (dynamic_cast<ExpressionStmt*>(node->declaration)) {
-            // No name to retrieve it by, so `using(File.open())` without let doesn't have a way to call destroy right now
-            // Because the ExpressionStmt evaluates the expression and immediately POPs the result.
-            // Oh! We should probably throw a parse error if it's not a var declaration.
-            // But for now let's just ignore.
         }
-        
         endScope();
     }
     void visit(LambdaExpr* node) override {
@@ -595,28 +492,14 @@ public:
         func->arity = static_cast<int>(node->params.size());
         func->chunk = std::make_shared<Chunk>();
         func->filename = compiler_filename;
-
-        CompilerVisitor funcCompiler(func->chunk.get(), compiler_filename, this);
-        
+        CompilerVisitor funcCompiler(func->chunk.get(), compiler_filename, globalSymbols, this);
         funcCompiler.beginScope();
-        for (const auto& param : node->params) {
-            funcCompiler.locals.push_back({param, 1, false});
-        }
-        
-        for (auto& stmt : node->body) {
-            stmt->accept(&funcCompiler);
-        }
-        
-        funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_NIL));
-        funcCompiler.emitByte(static_cast<uint8_t>(OpCode::OP_RETURN));
-        
+        for (const auto& param : node->params) funcCompiler.locals.push_back({param, 1, false});
+        for (auto& stmt : node->body) stmt->accept(&funcCompiler);
+        funcCompiler.emitBytes(static_cast<uint8_t>(OpCode::OP_NIL), static_cast<uint8_t>(OpCode::OP_RETURN));
         func->upvalueCount = static_cast<int>(funcCompiler.upvalues.size());
-
         emitBytes(static_cast<uint8_t>(OpCode::OP_CLOSURE), static_cast<uint8_t>(chunk->addConstant(func)));
-        for (const auto& upval : funcCompiler.upvalues) {
-            emitByte(upval.isLocal ? 1 : 0);
-            emitByte(upval.index);
-        }
+        for (const auto& upval : funcCompiler.upvalues) { emitByte(upval.isLocal ? 1 : 0); emitByte(upval.index); }
     }
     void visit(UnaryExpr* node) override {
         currentLine = node->op.line;
@@ -637,10 +520,6 @@ public:
         }
     }
     void visit(SuperExpr* node) override {
-        if (currentParentName.empty()) {
-            std::cerr << "Cannot use 'super' in a class with no superclass." << std::endl;
-            return;
-        }
         for (int i = static_cast<int>(locals.size()) - 1; i >= 0; i--) {
             if (locals[i].name == "this") {
                 emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), static_cast<uint8_t>(i));
@@ -667,8 +546,8 @@ public:
             emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), static_cast<uint8_t>(arg));
             emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), static_cast<uint8_t>(arg));
         } else {
-            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(node->name.lexeme)));
-            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(node->name.lexeme)));
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(resolveName(node->name.lexeme))));
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(resolveName(node->name.lexeme))));
         }
         
         emitBytes(static_cast<uint8_t>(OpCode::OP_CONSTANT), static_cast<uint8_t>(chunk->addConstant(1.0)));
@@ -682,7 +561,7 @@ public:
         if (arg != -1) {
             emitBytes(static_cast<uint8_t>(OpCode::OP_SET_LOCAL), static_cast<uint8_t>(arg));
         } else {
-            emitBytes(static_cast<uint8_t>(OpCode::OP_SET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(node->name.lexeme)));
+            emitBytes(static_cast<uint8_t>(OpCode::OP_SET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(resolveName(node->name.lexeme))));
         }
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
     }
@@ -720,14 +599,19 @@ public:
         node->value->accept(this);
         emitByte(static_cast<uint8_t>(OpCode::OP_INDEX_SET));
     }
+    
     void visit(FunctionNode* node) override {
         auto func = std::make_shared<ObjFunction>();
-        func->name = node->name;
+        std::string actualName = node->name;
+        if (!currentNamespace.empty() && node->name != "init" && enclosing == nullptr) {
+            actualName = currentNamespace + "." + actualName;
+        }
+        func->name = actualName;
         func->arity = static_cast<int>(node->params.size());
         func->chunk = std::make_shared<Chunk>();
         func->filename = compiler_filename;
 
-        CompilerVisitor funcCompiler(func->chunk.get(), compiler_filename, this);
+        CompilerVisitor funcCompiler(func->chunk.get(), compiler_filename, globalSymbols, this);
         
         funcCompiler.beginScope();
         for (const auto& param : node->params) {
@@ -749,7 +633,7 @@ public:
             emitByte(upval.index);
         }
 
-        emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), static_cast<uint8_t>(chunk->addConstant(node->name)));
+        emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), static_cast<uint8_t>(chunk->addConstant(actualName)));
     }
     void visit(FieldDeclNode* node) override {}
     VMAccessModifier getVMAccessModifier(AccessModifier am) {
@@ -767,7 +651,7 @@ public:
         func->accessModifier = getVMAccessModifier(node->accessModifier);
         func->enclosingClassName = currentClassName;
 
-        CompilerVisitor funcCompiler(func->chunk.get(), compiler_filename);
+        CompilerVisitor funcCompiler(func->chunk.get(), compiler_filename, globalSymbols, this);
         
         funcCompiler.currentClassName = currentClassName;
         funcCompiler.currentParentName = currentParentName;
@@ -900,22 +784,20 @@ public:
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
     }
     void visit(StaticGetExpr* node) override {
-        currentLine = node->memberName.line;
         int arg = resolveLocal(node->className.lexeme);
         if (arg != -1) {
             emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), static_cast<uint8_t>(arg));
         } else {
-            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(node->className.lexeme)));
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(resolveName(node->className.lexeme))));
         }
         emitBytes(static_cast<uint8_t>(OpCode::OP_PROPERTY_GET), static_cast<uint8_t>(chunk->addConstant(node->memberName.lexeme)));
     }
     void visit(StaticCallExpr* node) override {
-        currentLine = node->paren.line;
         int arg = resolveLocal(node->className.lexeme);
         if (arg != -1) {
             emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), static_cast<uint8_t>(arg));
         } else {
-            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(node->className.lexeme)));
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(resolveName(node->className.lexeme))));
         }
         emitBytes(static_cast<uint8_t>(OpCode::OP_PROPERTY_GET), static_cast<uint8_t>(chunk->addConstant(node->memberName.lexeme)));
         
@@ -925,13 +807,12 @@ public:
         emitBytes(static_cast<uint8_t>(OpCode::OP_CALL), static_cast<uint8_t>(node->arguments.size()));
     }
     void visit(StaticSetExpr* node) override {
-        currentLine = node->memberName.line;
         node->value->accept(this);
         int arg = resolveLocal(node->className.lexeme);
         if (arg != -1) {
             emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), static_cast<uint8_t>(arg));
         } else {
-            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(node->className.lexeme)));
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL), static_cast<uint8_t>(chunk->addConstant(resolveName(node->className.lexeme))));
         }
         emitBytes(static_cast<uint8_t>(OpCode::OP_PROPERTY_SET), static_cast<uint8_t>(chunk->addConstant(node->memberName.lexeme)));
     }
@@ -980,22 +861,12 @@ public:
     }
 };
 
-std::shared_ptr<ObjFunction> Compiler::compile(ASTNode* ast) {
-    if (!ast) {
-        ErrorHandling::reportError("AST is null");
-        return nullptr;
-    }
-
+std::shared_ptr<ObjFunction> Compiler::compile(ASTNode* ast, SymbolTable* globals) {
+    if (!ast) return nullptr;
     auto script = std::make_shared<ObjFunction>();
-    script->name = "<script>";
-    script->chunk = std::make_shared<Chunk>();
-    script->filename = currentFilename;
-
-    CompilerVisitor visitor(script->chunk.get(), currentFilename);
+    script->name = "<script>"; script->chunk = std::make_shared<Chunk>(); script->filename = currentFilename;
+    CompilerVisitor visitor(script->chunk.get(), currentFilename, globals);
     ast->accept(&visitor);
-
-    visitor.emitByte(static_cast<uint8_t>(OpCode::OP_NIL));
-    visitor.emitByte(static_cast<uint8_t>(OpCode::OP_RETURN));
-
+    visitor.emitBytes(static_cast<uint8_t>(OpCode::OP_NIL), static_cast<uint8_t>(OpCode::OP_RETURN));
     return script;
 }

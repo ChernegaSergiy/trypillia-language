@@ -2,10 +2,11 @@
 #define SEMANTIC_ANALYZER_H
 
 #include "../ast/AST.h"
+#include "../symbol/SymbolTable.h"
 
 class SemanticAnalyzer {
 public:
-    void analyze(ASTNode* ast);
+    SymbolTable* analyze(ASTNode* ast);
 };
 
 #endif // SEMANTIC_ANALYZER_H

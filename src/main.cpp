@@ -69,11 +69,13 @@ int main(int argc, char** argv) {
         ASTNode* ast = parser.parse();
 
         SemanticAnalyzer semanticAnalyzer;
-        semanticAnalyzer.analyze(ast);
+        SymbolTable* globals = semanticAnalyzer.analyze(ast);
 
     Compiler compiler;
     compiler.currentFilename = inputFile;
-    function = compiler.compile(ast);
+    function = compiler.compile(ast, globals);
+
+    if (globals) delete globals;
 
     if (function) {
         if (buildStandalone) {
