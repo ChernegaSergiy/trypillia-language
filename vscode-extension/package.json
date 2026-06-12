@@ -26,6 +26,13 @@
         ],
         "configuration": "./language-configuration.json"
       }
+    ],
+    "grammars": [
+      {
+        "language": "trypillia",
+        "scopeName": "source.trypillia",
+        "path": "./syntaxes/trypillia.tmLanguage.json"
+      }
     ]
   },
   "scripts": {
