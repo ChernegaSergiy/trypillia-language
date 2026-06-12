@@ -56,7 +56,6 @@ int main(int argc, char **argv) {
         for (int i = 1; i < argc; i++) {
             StdLib::OSModule::commandLineArgs.push_back(argv[i]);
         }
-        std::cout << "\n--- Bytecode VM Execution (Standalone) ---\n";
         VM vm;
         vm.interpret(function);
         return 0;
@@ -121,7 +120,6 @@ int main(int argc, char **argv) {
                 return 1;
             }
         } else {
-            std::cout << "\n--- Bytecode VM Execution ---\n";
             VM vm;
             vm.interpret(function);
         }
