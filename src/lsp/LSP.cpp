@@ -64,6 +64,8 @@ void LSPServer::handleMessage(const json& message) {
             handleDidOpen(message);
         } else if (method == "textDocument/didChange") {
             handleDidChange(message);
+        } else if (method == "textDocument/hover") {
+            handleHover(message);
         } else if (method == "shutdown") {
             isRunning = false;
             json response = {
@@ -85,7 +87,7 @@ void LSPServer::handleInitialize(const json& message) {
         {"result", {
             {"capabilities", {
                 {"textDocumentSync", 1}, // 1 = Full sync
-                {"hoverProvider", false},
+                {"hoverProvider", true},
                 {"definitionProvider", false}
             }}
         }}
@@ -109,6 +111,69 @@ void LSPServer::handleDidChange(const json& message) {
     std::string text = message["params"]["contentChanges"][0]["text"];
     documents[uri] = text;
     publishDiagnostics(uri, text);
+}
+
+void LSPServer::handleHover(const json& message) {
+    std::string uri = message["params"]["textDocument"]["uri"];
+    int line = message["params"]["position"]["line"];
+    int character = message["params"]["position"]["character"];
+    
+    // We get the line from 0-indexed, but lexer uses 1-indexed
+    int targetLine = line + 1;
+    
+    json result = nullptr;
+    
+    if (documents.find(uri) != documents.end()) {
+        std::string text = documents[uri];
+        Lexer lexer(text);
+        
+        Token targetToken = {TokenType::UNKNOWN, "", 0, 0};
+        
+        while (true) {
+            Token t = lexer.nextToken();
+            if (t.type == TokenType::END_OF_FILE) break;
+            
+            // Check if token covers the given position
+            // t.column is 1-indexed. character is 0-indexed
+            int tokenStartCol = t.column - 1;
+            int tokenEndCol = tokenStartCol + t.lexeme.length();
+            
+            if (t.line == targetLine && character >= tokenStartCol && character <= tokenEndCol) {
+                targetToken = t;
+                break;
+            }
+        }
+        
+        if (targetToken.type != TokenType::UNKNOWN && targetToken.type != TokenType::END_OF_FILE) {
+            std::string hoverText = "";
+            
+            // Simple type determination for hover
+            if (targetToken.type == TokenType::IDENTIFIER) {
+                hoverText = "**Identifier**: `" + targetToken.lexeme + "`";
+            } else if (targetToken.type == TokenType::NUMBER) {
+                hoverText = "**Number**: `" + targetToken.lexeme + "`";
+            } else if (targetToken.type == TokenType::STRING) {
+                hoverText = "**String Literal**";
+            } else {
+                hoverText = "**Keyword/Operator**: `" + targetToken.lexeme + "`";
+            }
+            
+            result = {
+                {"contents", {
+                    {"kind", "markdown"},
+                    {"value", hoverText}
+                }}
+            };
+        }
+    }
+    
+    json response = {
+        {"jsonrpc", "2.0"},
+        {"id", message["id"]},
+        {"result", result}
+    };
+    
+    sendMessage(response);
 }
 
 void LSPServer::publishDiagnostics(const std::string& uri, const std::string& text) {

@@ -22,6 +22,7 @@ private:
     void handleInitialized(const json& message);
     void handleDidOpen(const json& message);
     void handleDidChange(const json& message);
+    void handleHover(const json& message);
     
     void publishDiagnostics(const std::string& uri, const std::string& text);
     
