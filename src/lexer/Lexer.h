@@ -39,6 +39,7 @@ struct Token {
     TokenType type;
     std::string lexeme;
     int line;
+    int column;
 };
 
 class Lexer {
@@ -50,6 +51,7 @@ private:
     std::string source;
     size_t currentIndex;
     int line;
+    int column;
 
     char advance();
     bool match(char expected);
