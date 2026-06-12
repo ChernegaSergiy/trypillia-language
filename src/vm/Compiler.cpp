@@ -63,8 +63,12 @@ private:
         if (!currentNamespace.empty() && name.find('.') == std::string::npos) {
             std::string fullPath = currentNamespace + "." + name;
             if (globalSymbols) {
-                if (globalSymbols->resolve(fullPath)) return fullPath;
-                if (globalSymbols->resolve(name)) return name;
+                if (globalSymbols->resolve(fullPath)) {
+                    return fullPath;
+                }
+                if (globalSymbols->resolve(name)) {
+                    return name;
+                }
             }
             return fullPath;
         }
@@ -72,7 +76,9 @@ private:
     }
 
     int resolveUpvalue(const std::string& name) {
-        if (enclosing == nullptr) return -1;
+        if (enclosing == nullptr) {
+            return -1;
+        }
 
         int local = enclosing->resolveLocal(name);
         if (local != -1) {
@@ -147,7 +153,9 @@ public:
 
     void patchJump(int offset) {
         int jump = static_cast<int>(chunk->code.size() - offset - 2);
-        if (jump > 65535) ErrorHandling::reportError("Too much code to jump over.");
+        if (jump > 65535) {
+            ErrorHandling::reportError("Too much code to jump over.");
+        }
         chunk->code[offset] = (jump >> 8) & 0xff;
         chunk->code[offset + 1] = jump & 0xff;
     }
@@ -155,7 +163,9 @@ public:
     void emitLoop(int loopStart) {
         emitByte(static_cast<uint8_t>(OpCode::OP_LOOP));
         int offset = static_cast<int>(chunk->code.size() - loopStart + 2);
-        if (offset > 65535) ErrorHandling::reportError("Loop body too large.");
+        if (offset > 65535) {
+            ErrorHandling::reportError("Loop body too large.");
+        }
         emitByte((offset >> 8) & 0xff);
         emitByte(offset & 0xff);
     }
@@ -301,12 +311,18 @@ public:
         emitBytes(static_cast<uint8_t>(OpCode::OP_CALL), static_cast<uint8_t>(node->arguments.size()));
     }
     void visit(VarStmt* node) override {
-        if (node->initializer) node->initializer->accept(this);
-        else emitByte(static_cast<uint8_t>(OpCode::OP_NIL));
-        if (scopeDepth > 0) locals.push_back({node->name.lexeme, scopeDepth, false});
-        else {
+        if (node->initializer) {
+            node->initializer->accept(this);
+        } else {
+            emitByte(static_cast<uint8_t>(OpCode::OP_NIL));
+        }
+        if (scopeDepth > 0) {
+            locals.push_back({node->name.lexeme, scopeDepth, false});
+        } else {
             std::string actualName = node->name.lexeme;
-            if (!currentNamespace.empty()) actualName = currentNamespace + "." + actualName;
+            if (!currentNamespace.empty()) {
+                actualName = currentNamespace + "." + actualName;
+            }
             emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), static_cast<uint8_t>(chunk->addConstant(actualName)));
         }
     }
@@ -323,7 +339,9 @@ public:
         int elseJump = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP));
         patchJump(thenJump);
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
-        if (node->elseBranch) node->elseBranch->accept(this);
+        if (node->elseBranch) {
+            node->elseBranch->accept(this);
+        }
         patchJump(elseJump);
     }
     void visit(WhileStmt* node) override {
@@ -373,7 +391,9 @@ public:
         emitByte(static_cast<uint8_t>(OpCode::OP_RETURN));
     }
     void visit(BreakStmt* node) override {
-        if (loops.empty()) return;
+        if (loops.empty()) {
+            return;
+        }
         int depth = loops.back().scopeDepth;
         for (int i = static_cast<int>(locals.size()) - 1; i >= 0 && locals[i].depth > depth; i--) {
             emitByte(static_cast<uint8_t>(OpCode::OP_POP));
@@ -381,7 +401,9 @@ public:
         loops.back().breakJumps.push_back(emitJump(static_cast<uint8_t>(OpCode::OP_JUMP)));
     }
     void visit(ContinueStmt* node) override {
-        if (loops.empty()) return;
+        if (loops.empty()) {
+            return;
+        }
         int depth = loops.back().scopeDepth;
         for (int i = static_cast<int>(locals.size()) - 1; i >= 0 && locals[i].depth > depth; i--) {
             emitByte(static_cast<uint8_t>(OpCode::OP_POP));
@@ -390,7 +412,9 @@ public:
     }
     void visit(ForStmt* node) override {
         beginScope();
-        if (node->initializer) node->initializer->accept(this);
+        if (node->initializer) {
+            node->initializer->accept(this);
+        }
         int loopStart = static_cast<int>(chunk->code.size());
         loops.push_back({loopStart, scopeDepth, {}, {}});
         int exitJump = -1;
@@ -637,8 +661,12 @@ public:
     }
     void visit(FieldDeclNode* node) override {}
     VMAccessModifier getVMAccessModifier(AccessModifier am) {
-        if (am == AccessModifier::PRIVATE) return VMAccessModifier::PRIVATE;
-        if (am == AccessModifier::PROTECTED) return VMAccessModifier::PROTECTED;
+        if (am == AccessModifier::PRIVATE) {
+            return VMAccessModifier::PRIVATE;
+        }
+        if (am == AccessModifier::PROTECTED) {
+            return VMAccessModifier::PROTECTED;
+        }
         return VMAccessModifier::PUBLIC;
     }
 
@@ -742,7 +770,9 @@ public:
         }
         bool hasInit = false;
         for (auto& method : node->methods) {
-            if (method->name == "init") hasInit = true;
+            if (method->name == "init") {
+                hasInit = true;
+            }
             compileMethod(method, node);
         }
         if (!hasInit) {
@@ -862,11 +892,18 @@ public:
 };
 
 std::shared_ptr<ObjFunction> Compiler::compile(ASTNode* ast, SymbolTable* globals) {
-    if (!ast) return nullptr;
+    if (!ast) {
+        return nullptr;
+    }
+    
     auto script = std::make_shared<ObjFunction>();
-    script->name = "<script>"; script->chunk = std::make_shared<Chunk>(); script->filename = currentFilename;
+    script->name = "<script>";
+    script->chunk = std::make_shared<Chunk>();
+    script->filename = currentFilename;
+    
     CompilerVisitor visitor(script->chunk.get(), currentFilename, globals);
     ast->accept(&visitor);
+    
     visitor.emitBytes(static_cast<uint8_t>(OpCode::OP_NIL), static_cast<uint8_t>(OpCode::OP_RETURN));
     return script;
 }
