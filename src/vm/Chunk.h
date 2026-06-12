@@ -110,6 +110,7 @@ struct ObjNative {
 struct ObjFunction {
     std::string name;
     int arity;
+    int maxArity;
     std::shared_ptr<Chunk> chunk;
     bool isAbstract = false;
     std::unordered_map<std::string, VMValue> statics;
@@ -118,7 +119,7 @@ struct ObjFunction {
     std::string filename = "";
     int upvalueCount = 0;
 
-    ObjFunction() : arity(0), upvalueCount(0) {
+    ObjFunction() : arity(0), maxArity(0), upvalueCount(0) {
     }
 };
 
