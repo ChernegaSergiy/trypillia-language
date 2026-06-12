@@ -35,6 +35,32 @@ class CompilerVisitor : public ASTVisitor {
         scopeDepth++;
     }
 
+    void compileDefaultParameters(const std::vector<Parameter>& params) {
+        int slot = 1;
+        for (const auto &param : params) {
+            if (param.defaultValue) {
+                emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), static_cast<uint8_t>(slot));
+                emitByte(static_cast<uint8_t>(OpCode::OP_NIL));
+                emitByte(static_cast<uint8_t>(OpCode::OP_EQUAL));
+
+                int jumpOverInit = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE));
+                emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+
+                param.defaultValue->accept(this);
+
+                emitBytes(static_cast<uint8_t>(OpCode::OP_SET_LOCAL), static_cast<uint8_t>(slot));
+                emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+
+                int jumpEnd = emitJump(static_cast<uint8_t>(OpCode::OP_JUMP));
+
+                patchJump(jumpOverInit);
+                emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+                patchJump(jumpEnd);
+            }
+            slot++;
+        }
+    }
+
     void endScope() {
         scopeDepth--;
         while (locals.size() > 0 && locals.back().depth > scopeDepth) {
@@ -570,6 +596,7 @@ class CompilerVisitor : public ASTVisitor {
         funcCompiler.beginScope();
         for (const auto &param : node->params)
             funcCompiler.locals.push_back({param.name, 1, false});
+        funcCompiler.compileDefaultParameters(node->params);
         for (auto &stmt : node->body)
             stmt->accept(&funcCompiler);
         funcCompiler.emitBytes(static_cast<uint8_t>(OpCode::OP_NIL), static_cast<uint8_t>(OpCode::OP_RETURN));
@@ -715,6 +742,7 @@ class CompilerVisitor : public ASTVisitor {
         for (const auto &param : node->params) {
             funcCompiler.locals.push_back({param.name, 1, false});
         }
+        funcCompiler.compileDefaultParameters(node->params);
 
         for (auto &stmt : node->body) {
             stmt->accept(&funcCompiler);
@@ -771,6 +799,7 @@ class CompilerVisitor : public ASTVisitor {
         for (const auto &param : node->params) {
             funcCompiler.locals.push_back({param.name, 1, false});
         }
+        funcCompiler.compileDefaultParameters(node->params);
 
         if (node->name == "init" && classNode) {
             for (auto field : classNode->fields) {
