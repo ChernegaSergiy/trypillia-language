@@ -12,6 +12,14 @@ Trypillia is a modern, fast, and elegantly designed programming language built f
 - **Performant VM**: Runs on a custom-built Virtual Machine optimized for speed and execution safety.
 - **Multithreading**: Native support for background Workers.
 
+## Performance
+
+Trypillia features a highly optimized backend, including a custom AsmJit-based **Static Register Allocator** that completely eliminates memory accesses during loop execution. 
+
+In pure mathematical operations, Trypillia's JIT executes exactly as fast as V8 (Node.js) and is **15x faster than Python**. 
+
+Check out the detailed cross-language comparison in [BENCHMARKS.md](BENCHMARKS.md).
+
 ## Installation & Build
 
 Trypillia is built using CMake and a modern C++ compiler.
