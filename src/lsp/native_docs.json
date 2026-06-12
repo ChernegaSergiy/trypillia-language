@@ -206,6 +206,32 @@
     "doc": "Pauses the execution for the specified number of milliseconds.",
     "params": [{"label": "ms: Int", "doc": "The time to sleep in milliseconds."}]
   },
+  "Map.keys": {
+    "signature": "Map.keys(map: Map) -> Array",
+    "doc": "Returns an array of all keys in the map.",
+    "params": [{"label": "map: Map", "doc": "The map object."}]
+  },
+  "Map.values": {
+    "signature": "Map.values(map: Map) -> Array",
+    "doc": "Returns an array of all values in the map.",
+    "params": [{"label": "map: Map", "doc": "The map object."}]
+  },
+  "Map.has": {
+    "signature": "Map.has(map: Map, key: Any) -> Bool",
+    "doc": "Returns true if the map contains the specified key.",
+    "params": [
+      {"label": "map: Map", "doc": "The map object."},
+      {"label": "key: Any", "doc": "The key to check for."}
+    ]
+  },
+  "Map.remove": {
+    "signature": "Map.remove(map: Map, key: Any) -> Any",
+    "doc": "Removes the specified key from the map and returns its value.",
+    "params": [
+      {"label": "map: Map", "doc": "The map object."},
+      {"label": "key: Any", "doc": "The key to remove."}
+    ]
+  },
   "Map.set": {
     "signature": "Map.set(map: Map, key: Any, value: Any) -> Any",
     "doc": "Sets the value for the key in the map object.",
