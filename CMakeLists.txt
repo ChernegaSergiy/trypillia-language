@@ -38,10 +38,16 @@ if(HAVE_LIBATOMIC OR ANDROID OR CMAKE_SYSTEM_NAME MATCHES "Android|Linux")
 endif()
 
 # Explicitly link filesystem for older compilers (Clang 9 in Termux)
-find_library(CXXFS_LIB NAMES c++fs stdc++fs)
+find_library(CXXFS_LIB NAMES c++fs stdc++fs c++experimental)
 if(CXXFS_LIB)
     target_link_libraries(trypillia ${CXXFS_LIB})
     target_link_libraries(trypillia-lsp ${CXXFS_LIB})
+elseif(ANDROID OR CMAKE_SYSTEM_NAME MATCHES "Android|Linux")
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 11.0)
+        # LLVM/Clang < 11 shipped filesystem in libc++experimental.a
+        target_link_libraries(trypillia c++experimental)
+        target_link_libraries(trypillia-lsp c++experimental)
+    endif()
 endif()
 
 if(DEFINED ARTIFACT_NAME)
