@@ -473,8 +473,6 @@ std::string tokenTypeToString(TokenType type) {
         return "PROTECTED";
     case TokenType::STATIC:
         return "STATIC";
-    case TokenType::PRINT:
-        return "PRINT";
     case TokenType::IF:
         return "IF";
     case TokenType::ELSE:

@@ -1219,7 +1219,6 @@ void Parser::synchronize() {
         case TokenType::LET:
         case TokenType::IF:
         case TokenType::WHILE:
-        case TokenType::PRINT:
         case TokenType::LOAD:
             return;
         default:

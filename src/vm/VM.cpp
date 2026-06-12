@@ -234,7 +234,6 @@ InterpretResult VM::run(int targetFrameDepth) {
             push(constant);
             break;
         }
-
         case static_cast<uint8_t>(OpCode::OP_TRUE): {
             push(true);
             break;
@@ -532,19 +531,7 @@ InterpretResult VM::run(int targetFrameDepth) {
             pop();
             break;
         }
-        case static_cast<uint8_t>(OpCode::OP_PRINT): {
-            VMValue value = pop();
-            if (std::holds_alternative<double>(value)) {
-                std::cout << std::get<double>(value) << std::endl;
-            } else if (std::holds_alternative<std::string>(value)) {
-                std::cout << std::get<std::string>(value) << std::endl;
-            } else if (std::holds_alternative<bool>(value)) {
-                std::cout << (std::get<bool>(value) ? "true" : "false") << std::endl;
-            } else if (std::holds_alternative<std::nullptr_t>(value)) {
-                std::cout << "nil" << std::endl;
-            }
-            break;
-        }
+
         case static_cast<uint8_t>(OpCode::OP_BUILD_LIST): {
             uint8_t count = READ_BYTE();
             std::vector<VMValue> elements(count);

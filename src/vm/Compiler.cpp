@@ -272,10 +272,7 @@ class CompilerVisitor : public ASTVisitor {
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
     }
 
-    void visit(PrintStmt *node) override {
-        node->expression->accept(this);
-        emitByte(static_cast<uint8_t>(OpCode::OP_PRINT));
-    }
+
 
     void visit(VariableExpr *node) override {
         currentLine = node->name.line;

@@ -1,4 +1,4 @@
-﻿#include "AST.h"
+#include "AST.h"
 
 // Implementation of accept methods for each AST node type
 
@@ -71,10 +71,6 @@ void CallExpr::accept(ASTVisitor *visitor) {
 }
 
 void ExpressionStmt::accept(ASTVisitor *visitor) {
-    visitor->visit(this);
-}
-
-void PrintStmt::accept(ASTVisitor *visitor) {
     visitor->visit(this);
 }
 

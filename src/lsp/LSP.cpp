@@ -620,7 +620,6 @@ void LSPServer::handleSemanticTokens(const json &message) {
             case TokenType::PRIVATE:
             case TokenType::PROTECTED:
             case TokenType::STATIC:
-            case TokenType::PRINT:
             case TokenType::IF:
             case TokenType::ELSE:
             case TokenType::WHILE:

@@ -322,19 +322,6 @@ class IndexSetExpr : public ExprNode {
     void accept(ASTVisitor *visitor) override;
 };
 
-class PrintStmt : public StmtNode {
-  public:
-    ExprNode *expression;
-
-    PrintStmt(ExprNode *expression) : expression(expression) {
-    }
-    ~PrintStmt() {
-        delete expression;
-    }
-
-    void accept(ASTVisitor *visitor) override;
-};
-
 class VarStmt : public StmtNode {
   public:
     Token name;
@@ -733,7 +720,6 @@ class ASTVisitor {
     virtual void visit(CompoundAssignExpr *node) = 0;
     virtual void visit(CallExpr *node) = 0;
     virtual void visit(ExpressionStmt *node) = 0;
-    virtual void visit(PrintStmt *node) = 0;
     virtual void visit(VarStmt *node) = 0;
     virtual void visit(BlockStmt *node) = 0;
     virtual void visit(IfStmt *node) = 0;

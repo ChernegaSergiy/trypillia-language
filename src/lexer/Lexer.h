@@ -69,7 +69,6 @@ enum class TokenType {
     PRIVATE,
     PROTECTED,
     STATIC,
-    PRINT,
     IF,
     ELSE,
     WHILE,

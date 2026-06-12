@@ -184,9 +184,7 @@ class SemanticVisitor : public ASTVisitor {
         node->expression->accept(this);
     }
 
-    void visit(PrintStmt *node) override {
-        node->expression->accept(this);
-    }
+
 
     void visit(VarStmt *node) override {
         if (node->initializer) {
