@@ -70,6 +70,8 @@ void LSPServer::handleMessage(const json& message) {
             handleDefinition(message);
         } else if (method == "textDocument/completion") {
             handleCompletion(message);
+        } else if (method == "textDocument/signatureHelp") {
+            handleSignatureHelp(message);
         } else if (method == "shutdown") {
             isRunning = false;
             json response = {
@@ -96,6 +98,9 @@ void LSPServer::handleInitialize(const json& message) {
                 {"completionProvider", {
                     {"resolveProvider", false},
                     {"triggerCharacters", {"."}}
+                }},
+                {"signatureHelpProvider", {
+                    {"triggerCharacters", {"(", ","}}
                 }}
             }}
         }}
@@ -343,6 +348,137 @@ void LSPServer::handleCompletion(const json& message) {
         {"jsonrpc", "2.0"},
         {"id", message["id"]},
         {"result", items}
+    };
+    
+    sendMessage(response);
+}
+
+void LSPServer::handleSignatureHelp(const json& message) {
+    std::string uri = message["params"]["textDocument"]["uri"];
+    int line = message["params"]["position"]["line"];
+    int character = message["params"]["position"]["character"];
+    
+    json result = nullptr;
+    
+    if (documents.find(uri) != documents.end()) {
+        std::string text = documents[uri];
+        
+        // Extract line text up to the cursor
+        std::string lineText = "";
+        int currentLine = 0;
+        size_t lineStart = 0;
+        
+        for (size_t i = 0; i < text.length(); ++i) {
+            if (currentLine == line) {
+                lineStart = i;
+                break;
+            }
+            if (text[i] == '\n') currentLine++;
+        }
+        
+        if (currentLine == line) {
+            size_t len = character;
+            if (lineStart + len > text.length()) len = text.length() - lineStart;
+            lineText = text.substr(lineStart, len);
+            
+            // Find the last '(' and count commas after it
+            int activeParameter = 0;
+            int parenPos = -1;
+            
+            for (int i = lineText.length() - 1; i >= 0; --i) {
+                if (lineText[i] == ')') {
+                    break; // Ended, not in signature
+                }
+                if (lineText[i] == ',') {
+                    activeParameter++;
+                } else if (lineText[i] == '(') {
+                    parenPos = i;
+                    break;
+                }
+            }
+            
+            if (parenPos != -1) {
+                // Find function name before '('
+                std::string funcName = "";
+                for (int i = parenPos - 1; i >= 0; --i) {
+                    if (std::isspace(lineText[i])) {
+                        if (!funcName.empty()) break;
+                    } else if (std::isalnum(lineText[i]) || lineText[i] == '_') {
+                        funcName = lineText[i] + funcName;
+                    } else {
+                        break;
+                    }
+                }
+                
+                if (!funcName.empty()) {
+                    // Search document for 'fn funcName(param1, param2)'
+                    Lexer lexer(text);
+                    std::vector<std::string> params;
+                    bool found = false;
+                    
+                    while (true) {
+                        Token t = lexer.nextToken();
+                        if (t.type == TokenType::END_OF_FILE) break;
+                        
+                        if (t.type == TokenType::FN) {
+                            Token nameToken = lexer.nextToken();
+                            if (nameToken.type == TokenType::IDENTIFIER && nameToken.lexeme == funcName) {
+                                Token paren = lexer.nextToken();
+                                if (paren.type == TokenType::LPAREN) {
+                                    // Parse params
+                                    while (true) {
+                                        Token p = lexer.nextToken();
+                                        if (p.type == TokenType::RPAREN || p.type == TokenType::END_OF_FILE) break;
+                                        if (p.type == TokenType::IDENTIFIER) {
+                                            params.push_back(p.lexeme);
+                                        }
+                                    }
+                                    found = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Also support builtin 'print'
+                    if (funcName == "print") {
+                        params.push_back("message");
+                        found = true;
+                    }
+                    
+                    if (found) {
+                        std::string label = funcName + "(";
+                        json parameters = json::array();
+                        
+                        for (size_t i = 0; i < params.size(); ++i) {
+                            parameters.push_back({
+                                {"label", params[i]}
+                            });
+                            label += params[i];
+                            if (i < params.size() - 1) label += ", ";
+                        }
+                        label += ")";
+                        
+                        result = {
+                            {"signatures", {
+                                {
+                                    {"label", label},
+                                    {"parameters", parameters}
+                                }
+                            }},
+                            {"activeSignature", 0},
+                            {"activeParameter", activeParameter}
+                        };
+                    }
+                }
+            }
+        }
+    }
+    
+    json response = {
+        {"jsonrpc", "2.0"},
+        {"id", message["id"]},
+        {"result", result}
     };
     
     sendMessage(response);
