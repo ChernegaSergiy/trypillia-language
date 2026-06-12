@@ -107,7 +107,6 @@ JitFunc JITCompiler::compileMathFunction(std::shared_ptr<ObjFunction> function) 
             }
             default:
                 // Unsupported opcode, fallback to standard VM
-                std::cout << "[JIT] Unsupported opcode: " << (int)op << std::endl;
                 return nullptr;
         }
     }
@@ -120,6 +119,5 @@ JitFunc JITCompiler::compileMathFunction(std::shared_ptr<ObjFunction> function) 
     if (err != asmjit::kErrorOk) {
         return nullptr;
     }
-    std::cout << "[JIT] Successfully compiled function!" << std::endl;
     return fn;
 }
