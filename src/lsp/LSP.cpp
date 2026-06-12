@@ -394,7 +394,7 @@ void LSPServer::handleSignatureHelp(const json &message) {
                     if (std::isspace(lineText[i])) {
                         if (!funcName.empty())
                             break;
-                    } else if (std::isalnum(lineText[i]) || lineText[i] == '_') {
+                    } else if (std::isalnum(lineText[i]) || lineText[i] == '_' || lineText[i] == '.') {
                         funcName = lineText[i] + funcName;
                     } else {
                         break;
@@ -408,8 +408,24 @@ void LSPServer::handleSignatureHelp(const json &message) {
                     json parameters = json::array();
 
                     // Check builtins first
+                    std::string matchedKey = "";
                     if (nativeDocs.contains(funcName)) {
-                        auto info = nativeDocs[funcName];
+                        matchedKey = funcName;
+                    } else {
+                        size_t dotPos = funcName.find_last_of('.');
+                        std::string shortName = (dotPos != std::string::npos) ? funcName.substr(dotPos + 1) : funcName;
+                        std::string suffix = "." + shortName;
+                        for (auto& el : nativeDocs.items()) {
+                            std::string k = el.key();
+                            if (k == shortName || (k.length() >= suffix.length() && k.compare(k.length() - suffix.length(), suffix.length(), suffix) == 0)) {
+                                matchedKey = k;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!matchedKey.empty()) {
+                        auto info = nativeDocs[matchedKey];
                         label = info["signature"].get<std::string>();
                         documentation = info["doc"].get<std::string>();
 
