@@ -17,7 +17,7 @@ vscode-extension/
 
 ## Development and Build
 
-Node.js and `npm` are required to work with the extension.
+Node.js and `npm` are required to work with the extension. Follow these steps:
 
 1. **Install dependencies:**
    ```bash
