@@ -294,7 +294,7 @@ class SemanticVisitor : public ASTVisitor {
         currentScope = new SymbolTable(currentScope);
         for (const auto &param : node->params) {
             Symbol symbol;
-            symbol.name = param;
+            symbol.name = param.name;
             symbol.type = "parameter";
             symbol.isConst = false;
             currentScope->define(symbol);
@@ -321,7 +321,7 @@ class SemanticVisitor : public ASTVisitor {
         currentScope = new SymbolTable(currentScope);
         for (const auto &param : node->params) {
             Symbol paramSymbol;
-            paramSymbol.name = param;
+            paramSymbol.name = param.name;
             paramSymbol.type = "parameter";
             currentScope->define(paramSymbol);
         }
