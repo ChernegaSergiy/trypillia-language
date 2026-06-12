@@ -752,6 +752,36 @@ InterpretResult VM::run(int targetFrameDepth) {
                 } else {
                     return runtimeError(std::string("Undefined static property '") + name + "'.");
                 }
+            } else if (std::holds_alternative<std::string>(instanceVal)) {
+                if (globals.count("String")) {
+                    auto klass = std::get<std::shared_ptr<ObjClass>>(globals["String"]);
+                    if (klass->statics.count(name)) {
+                        pop(); // pop string
+                        push(std::make_shared<ObjBoundMethod>(instanceVal, klass->statics[name]));
+                        break;
+                    }
+                }
+                return runtimeError(std::string("Undefined property '") + name + "' on String.");
+            } else if (std::holds_alternative<std::shared_ptr<ObjList>>(instanceVal)) {
+                if (globals.count("List")) {
+                    auto klass = std::get<std::shared_ptr<ObjClass>>(globals["List"]);
+                    if (klass->statics.count(name)) {
+                        pop(); // pop list
+                        push(std::make_shared<ObjBoundMethod>(instanceVal, klass->statics[name]));
+                        break;
+                    }
+                }
+                return runtimeError(std::string("Undefined property '") + name + "' on List.");
+            } else if (std::holds_alternative<std::shared_ptr<ObjMap>>(instanceVal)) {
+                if (globals.count("Map")) {
+                    auto klass = std::get<std::shared_ptr<ObjClass>>(globals["Map"]);
+                    if (klass->statics.count(name)) {
+                        pop(); // pop map
+                        push(std::make_shared<ObjBoundMethod>(instanceVal, klass->statics[name]));
+                        break;
+                    }
+                }
+                return runtimeError(std::string("Undefined property '") + name + "' on Map.");
             } else {
                 return runtimeError(std::string("Only instances and classes have properties."));
             }
@@ -857,8 +887,12 @@ InterpretResult VM::run(int targetFrameDepth) {
                 if (isMethodAbstract(function)) {
                     return runtimeError(std::string("Cannot call abstract method '") + getMethodName(function) + "'.");
                 }
-                if (getMethodArity(function) != -1 && argCount != getMethodArity(function)) {
-                    return runtimeError(std::string("Expected ") + std::to_string(getMethodArity(function)) +
+                int expectedArity = getMethodArity(function);
+                if (std::holds_alternative<std::shared_ptr<ObjNative>>(function)) {
+                    if (expectedArity != -1) expectedArity -= 1;
+                }
+                if (expectedArity != -1 && argCount != expectedArity) {
+                    return runtimeError(std::string("Expected ") + std::to_string(expectedArity) +
                                         " arguments but got " + std::to_string(argCount) + ".");
                 }
                 if (frames.size() == 256) {
@@ -877,7 +911,7 @@ InterpretResult VM::run(int targetFrameDepth) {
                     frame = &frames.back();
                 } else {
                     auto native = std::get<std::shared_ptr<ObjNative>>(function);
-                    VMValue result = native->function(argCount, stack.data() + stack.size() - argCount);
+                    VMValue result = native->function(argCount + 1, stack.data() + stack.size() - argCount - 1);
                     stack.resize(stack.size() - argCount - 1);
                     push(result);
                     frame = &frames.back();

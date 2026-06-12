@@ -80,9 +80,9 @@ struct ObjInstance {
 };
 
 struct ObjBoundMethod {
-    std::shared_ptr<ObjInstance> receiver;
+    VMValue receiver;
     VMValue method;
-    ObjBoundMethod(std::shared_ptr<ObjInstance> r, VMValue m) : receiver(r), method(m) {
+    ObjBoundMethod(VMValue r, VMValue m) : receiver(r), method(m) {
     }
 };
 
