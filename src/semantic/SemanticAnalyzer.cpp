@@ -410,6 +410,8 @@ class SemanticVisitor : public ASTVisitor {
         }
 
         std::string previousFilename = currentFilename;
+        std::string previousNamespace = currentNamespace;
+        std::map<std::string, std::string> previousUseAliases = useAliases;
         currentFilename = path;
 
         std::ifstream file(path);
@@ -426,6 +428,8 @@ class SemanticVisitor : public ASTVisitor {
             delete ast;
         }
         currentFilename = previousFilename;
+        currentNamespace = previousNamespace;
+        useAliases = previousUseAliases;
     }
 
     void visit(DictExpr *node) override {

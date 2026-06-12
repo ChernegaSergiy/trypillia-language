@@ -954,10 +954,14 @@ class CompilerVisitor : public ASTVisitor {
 
         if (ast) {
             std::string old_fname = compiler_filename;
+            std::string old_namespace = currentNamespace;
+            std::map<std::string, std::string> old_useAliases = useAliases;
             compiler_filename = path;
             ast->accept(this);
             delete ast;
             compiler_filename = old_fname;
+            currentNamespace = old_namespace;
+            useAliases = old_useAliases;
         }
     }
 
