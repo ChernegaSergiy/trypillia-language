@@ -133,6 +133,11 @@
     "doc": "Determines whether a string ends with the characters of a specified string.",
     "params": [{"label": "search: String", "doc": "The characters to be searched for at the end of this string."}]
   },
+  "toNumber": {
+    "signature": "toNumber() -> Number",
+    "doc": "Parses a string and returns a floating point number.",
+    "params": []
+  },
   "getEnv": {
     "signature": "getEnv(name: String) -> String",
     "doc": "Retrieves the value of an environment variable.",
