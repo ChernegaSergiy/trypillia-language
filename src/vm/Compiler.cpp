@@ -239,6 +239,9 @@ class CompilerVisitor : public ASTVisitor {
         case TokenType::SLASH:
             emitByte(static_cast<uint8_t>(OpCode::OP_DIVIDE));
             break;
+        case TokenType::PERCENT:
+            emitByte(static_cast<uint8_t>(OpCode::OP_MOD));
+            break;
         case TokenType::EQUAL_EQUAL:
             emitByte(static_cast<uint8_t>(OpCode::OP_EQUAL));
             break;
