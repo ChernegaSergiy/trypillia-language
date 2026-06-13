@@ -35,6 +35,22 @@ Check out the detailed cross-language comparison in [BENCHMARKS.md](BENCHMARKS.m
 
 ## Installation & Build
 
+### Quick Install
+
+You can install and compile Trypillia quickly using the following one-liners:
+
+**Linux / macOS** (Bash):
+```bash
+curl -fsSL https://raw.githubusercontent.com/ChernegaSergiy/trypillia-language/main/install.sh | bash
+```
+
+**Windows** (PowerShell):
+```powershell
+irm https://raw.githubusercontent.com/ChernegaSergiy/trypillia-language/main/install.ps1 | iex
+```
+
+### Building from Source
+
 Trypillia is built using CMake and a modern C++ compiler.
 
 ```bash
