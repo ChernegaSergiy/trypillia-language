@@ -22,6 +22,7 @@ enum class OpCode : uint8_t {
     OP_SUBTRACT,
     OP_MULTIPLY,
     OP_DIVIDE,
+    OP_MOD,
     OP_NOT,
     OP_NEGATE,
     OP_EQUAL,
