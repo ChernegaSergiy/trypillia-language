@@ -36,6 +36,10 @@ static std::string stringifyValue(const VMValue &val, int indent = -1, int curre
                 res += "\\r";
             else if (c == '\t')
                 res += "\\t";
+            else if (c == '\b')
+                res += "\\b";
+            else if (c == '\f')
+                res += "\\f";
             else
                 res += c;
         }
@@ -140,10 +144,30 @@ class JsonParser {
                     res += '\r';
                 else if (src[pos] == 't')
                     res += '\t';
+                else if (src[pos] == 'b')
+                    res += '\b';
+                else if (src[pos] == 'f')
+                    res += '\f';
                 else if (src[pos] == 'u' && pos + 4 < src.length()) {
                     std::string hexStr = src.substr(pos + 1, 4);
                     try {
                         int codePoint = std::stoi(hexStr, nullptr, 16);
+                        pos += 4;
+                        
+                        // Handle surrogate pairs
+                        if (codePoint >= 0xD800 && codePoint <= 0xDBFF) {
+                            if (pos + 6 < src.length() && src[pos + 1] == '\\' && src[pos + 2] == 'u') {
+                                std::string hexStr2 = src.substr(pos + 3, 4);
+                                try {
+                                    int lowSurrogate = std::stoi(hexStr2, nullptr, 16);
+                                    if (lowSurrogate >= 0xDC00 && lowSurrogate <= 0xDFFF) {
+                                        codePoint = 0x10000 + (((codePoint - 0xD800) << 10) | (lowSurrogate - 0xDC00));
+                                        pos += 6;
+                                    }
+                                } catch (...) {}
+                            }
+                        }
+
                         if (codePoint <= 0x7F) {
                             res += static_cast<char>(codePoint);
                         } else if (codePoint <= 0x7FF) {
@@ -162,7 +186,6 @@ class JsonParser {
                     } catch (...) {
                         res += src[pos];
                     }
-                    pos += 4;
                 } else
                     res += src[pos];
             } else {
