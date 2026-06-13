@@ -301,6 +301,69 @@ Token Lexer::string(int startColumn) {
             case 'e':
                 value += '\x1b';
                 break; // \e for Escape is useful
+            case 'b':
+                value += '\b';
+                break;
+            case 'f':
+                value += '\f';
+                break;
+            case 'v':
+                value += '\v';
+                break;
+            case '0':
+                value += '\0';
+                break;
+            case 'u': {
+                if (currentIndex + 3 < source.length()) {
+                    std::string hexStr = source.substr(currentIndex, 4);
+                    bool isHex = true;
+                    for (char h : hexStr) {
+                        if (!std::isxdigit(h)) isHex = false;
+                    }
+                    if (isHex) {
+                        int codePoint = std::stoi(hexStr, nullptr, 16);
+                        currentIndex += 4;
+                        column += 4;
+                        
+                        if (codePoint >= 0xD800 && codePoint <= 0xDBFF) {
+                            if (currentIndex + 5 < source.length() && source[currentIndex] == '\\' && source[currentIndex+1] == 'u') {
+                                std::string hexStr2 = source.substr(currentIndex + 2, 4);
+                                bool isHex2 = true;
+                                for (char h : hexStr2) {
+                                    if (!std::isxdigit(h)) isHex2 = false;
+                                }
+                                if (isHex2) {
+                                    int lowSurrogate = std::stoi(hexStr2, nullptr, 16);
+                                    if (lowSurrogate >= 0xDC00 && lowSurrogate <= 0xDFFF) {
+                                        codePoint = 0x10000 + (((codePoint - 0xD800) << 10) | (lowSurrogate - 0xDC00));
+                                        currentIndex += 6;
+                                        column += 6;
+                                    }
+                                }
+                            }
+                        }
+
+                        if (codePoint <= 0x7F) {
+                            value += static_cast<char>(codePoint);
+                        } else if (codePoint <= 0x7FF) {
+                            value += static_cast<char>(0xC0 | ((codePoint >> 6) & 0x1F));
+                            value += static_cast<char>(0x80 | (codePoint & 0x3F));
+                        } else if (codePoint <= 0xFFFF) {
+                            value += static_cast<char>(0xE0 | ((codePoint >> 12) & 0x0F));
+                            value += static_cast<char>(0x80 | ((codePoint >> 6) & 0x3F));
+                            value += static_cast<char>(0x80 | (codePoint & 0x3F));
+                        } else if (codePoint <= 0x10FFFF) {
+                            value += static_cast<char>(0xF0 | ((codePoint >> 18) & 0x07));
+                            value += static_cast<char>(0x80 | ((codePoint >> 12) & 0x3F));
+                            value += static_cast<char>(0x80 | ((codePoint >> 6) & 0x3F));
+                            value += static_cast<char>(0x80 | (codePoint & 0x3F));
+                        }
+                        break;
+                    }
+                }
+                value += "\\u";
+                break;
+            }
             case 'x': {
                 if (currentIndex + 1 < source.length()) {
                     std::string hexStr = source.substr(currentIndex, 2);
@@ -312,8 +375,8 @@ Token Lexer::string(int startColumn) {
                     if (isHex) {
                         char hexChar = static_cast<char>(std::stoi(hexStr, nullptr, 16));
                         value += hexChar;
-                        advance();
-                        advance();
+                        currentIndex += 2;
+                        column += 2;
                         break;
                     }
                 }
