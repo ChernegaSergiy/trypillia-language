@@ -312,6 +312,16 @@ InterpretResult VM::run(int targetFrameDepth) {
             }
             break;
         }
+        case static_cast<uint8_t>(OpCode::OP_MOD): {
+            VMValue b = pop();
+            VMValue a = pop();
+            if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
+                push(std::fmod(std::get<double>(a), std::get<double>(b)));
+            } else {
+                return runtimeError("Operands must be numbers.");
+            }
+            break;
+        }
         case static_cast<uint8_t>(OpCode::OP_BIT_AND): {
             VMValue b = pop();
             VMValue a = pop();
