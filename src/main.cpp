@@ -5,6 +5,7 @@
 #include "vm/Compiler.h"
 #include "vm/VM.h"
 #include "vm/serializer/Serializer.h"
+#include "ast/ASTOptimizer.h"
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -99,6 +100,8 @@ int main(int argc, char **argv) {
     Lexer lexer(sourceCode);
     Parser parser(lexer);
     ASTNode *ast = parser.parse();
+
+    ASTOptimizer::optimize(ast);
 
     SemanticAnalyzer semanticAnalyzer;
     semanticAnalyzer.currentFilename = inputFile;
