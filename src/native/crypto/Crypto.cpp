@@ -111,9 +111,9 @@ static std::string sha1_raw(const std::string &input) {
 }
 
 static VMValue cryptoSha1(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::string>(args[0]))
+    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
         return nullptr;
-    std::string input = std::get<std::string>(args[0]);
+    std::string input = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
     std::string raw = sha1_raw(input);
 
     std::stringstream hexStream;
@@ -124,17 +124,17 @@ static VMValue cryptoSha1(int argCount, VMValue *args) {
 }
 
 static VMValue cryptoSha1Base64(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::string>(args[0]))
+    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
         return nullptr;
-    std::string input = std::get<std::string>(args[0]);
+    std::string input = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
     std::string raw = sha1_raw(input);
     return makeResultOk(currentVM, base64_encode(raw));
 }
 
 static VMValue cryptoBase64Encode(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::string>(args[0]))
+    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
         return nullptr;
-    std::string input = std::get<std::string>(args[0]);
+    std::string input = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
     return makeResultOk(currentVM, base64_encode(input));
 }
 

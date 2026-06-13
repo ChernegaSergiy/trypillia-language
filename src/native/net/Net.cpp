@@ -141,11 +141,11 @@ static std::string makeHttpRequest(const std::string &host, int port, const std:
 }
 
 static VMValue httpGet(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::string>(args[0]))
+    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
         return nullptr;
     std::string host, path;
     int port;
-    if (!parseUrl(std::get<std::string>(args[0]), host, port, path))
+    if (!parseUrl(std::get<std::shared_ptr<ObjString>>(args[0])->flatten(), host, port, path))
         return makeResultErr(currentVM, "Invalid URL");
 
     std::string req = "GET " + path + " HTTP/1.1\r\nHost: " + host + "\r\nConnection: close\r\n\r\n";
@@ -160,14 +160,14 @@ static VMValue httpGet(int argCount, VMValue *args) {
 }
 
 static VMValue httpPost(int argCount, VMValue *args) {
-    if (argCount != 2 || !std::holds_alternative<std::string>(args[0]) || !std::holds_alternative<std::string>(args[1]))
+    if (argCount != 2 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]) || !std::holds_alternative<std::shared_ptr<ObjString>>(args[1]))
         return nullptr;
     std::string host, path;
     int port;
-    if (!parseUrl(std::get<std::string>(args[0]), host, port, path))
+    if (!parseUrl(std::get<std::shared_ptr<ObjString>>(args[0])->flatten(), host, port, path))
         return makeResultErr(currentVM, "Invalid URL");
 
-    std::string payload = std::get<std::string>(args[1]);
+    std::string payload = std::get<std::shared_ptr<ObjString>>(args[1])->flatten();
     std::string req = "POST " + path + " HTTP/1.1\r\nHost: " + host +
                       "\r\nContent-Type: application/json\r\nContent-Length: " + std::to_string(payload.length()) + "\r\nConnection: close\r\n\r\n" +
                       payload;
@@ -192,11 +192,11 @@ static void freeSocket(void *data) {
 }
 
 static VMValue socketConnect(int argCount, VMValue *args) {
-    if (argCount != 2 || !std::holds_alternative<std::string>(args[0]) || !std::holds_alternative<double>(args[1]))
+    if (argCount != 2 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]) || !std::holds_alternative<double>(args[1]))
         return nullptr;
     SocketData *data = new SocketData();
     mbedtls_net_init(&data->fd);
-    if (mbedtls_net_connect(&data->fd, std::get<std::string>(args[0]).c_str(),
+    if (mbedtls_net_connect(&data->fd, std::get<std::shared_ptr<ObjString>>(args[0])->flatten().c_str(),
                             std::to_string((int)std::get<double>(args[1])).c_str(), MBEDTLS_NET_PROTO_TCP) != 0) {
         delete data;
         return makeResultErr(currentVM, "Connect failed");
@@ -242,7 +242,7 @@ static VMValue socketAccept(int argCount, VMValue *args) {
 static VMValue socketSend(int argCount, VMValue *args) {
     auto inst = std::get<std::shared_ptr<ObjInstance>>(args[-1]);
     SocketData *data = (SocketData *)inst->nativeData;
-    std::string p = std::get<std::string>(args[0]);
+    std::string p = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
     return makeResultOk(currentVM, mbedtls_net_send(&data->fd, (const unsigned char *)p.c_str(), p.length()) >= 0);
 }
 

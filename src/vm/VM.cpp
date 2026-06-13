@@ -261,23 +261,22 @@ InterpretResult VM::run(int targetFrameDepth) {
             VMValue a = pop();
             if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
                 push(std::get<double>(a) + std::get<double>(b));
-            } else if (std::holds_alternative<std::string>(a) && std::holds_alternative<std::string>(b)) {
-                push(std::get<std::string>(a) + std::get<std::string>(b));
-            } else if (std::holds_alternative<std::string>(a) && std::holds_alternative<double>(b)) {
+            } else if (std::holds_alternative<std::shared_ptr<ObjString>>(a) && std::holds_alternative<std::shared_ptr<ObjString>>(b)) {
+                push(std::make_shared<ObjString>(std::get<std::shared_ptr<ObjString>>(a), std::get<std::shared_ptr<ObjString>>(b)));
+            } else if (std::holds_alternative<std::shared_ptr<ObjString>>(a) && std::holds_alternative<double>(b)) {
                 double val = std::get<double>(b);
-                // Remove trailing zeros for integers
                 std::string strVal = std::to_string(val);
                 strVal.erase(strVal.find_last_not_of('0') + 1, std::string::npos);
                 if (strVal.back() == '.')
                     strVal.pop_back();
-                push(std::get<std::string>(a) + strVal);
-            } else if (std::holds_alternative<double>(a) && std::holds_alternative<std::string>(b)) {
+                push(std::make_shared<ObjString>(std::get<std::shared_ptr<ObjString>>(a), std::make_shared<ObjString>(strVal)));
+            } else if (std::holds_alternative<double>(a) && std::holds_alternative<std::shared_ptr<ObjString>>(b)) {
                 double val = std::get<double>(a);
                 std::string strVal = std::to_string(val);
                 strVal.erase(strVal.find_last_not_of('0') + 1, std::string::npos);
                 if (strVal.back() == '.')
                     strVal.pop_back();
-                push(strVal + std::get<std::string>(b));
+                push(std::make_shared<ObjString>(std::make_shared<ObjString>(strVal), std::get<std::shared_ptr<ObjString>>(b)));
             } else {
                 return runtimeError(std::string("Operands must be numbers or strings."));
             }
@@ -373,8 +372,8 @@ InterpretResult VM::run(int targetFrameDepth) {
             VMValue a = pop();
             if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
                 push(std::get<double>(a) == std::get<double>(b));
-            } else if (std::holds_alternative<std::string>(a) && std::holds_alternative<std::string>(b)) {
-                push(std::get<std::string>(a) == std::get<std::string>(b));
+            } else if (std::holds_alternative<std::shared_ptr<ObjString>>(a) && std::holds_alternative<std::shared_ptr<ObjString>>(b)) {
+                push(std::get<std::shared_ptr<ObjString>>(a)->flatten() == std::get<std::shared_ptr<ObjString>>(b)->flatten());
             } else if (std::holds_alternative<bool>(a) && std::holds_alternative<bool>(b)) {
                 push(std::get<bool>(a) == std::get<bool>(b));
             } else if (std::holds_alternative<std::nullptr_t>(a) && std::holds_alternative<std::nullptr_t>(b)) {
@@ -506,8 +505,8 @@ InterpretResult VM::run(int targetFrameDepth) {
                     auto list = std::get<std::shared_ptr<ObjList>>(iterableVal);
                     push(index < list->elements.size());
                     break;
-                } else if (std::holds_alternative<std::string>(iterableVal)) {
-                    auto str = std::get<std::string>(iterableVal);
+                } else if (std::holds_alternative<std::shared_ptr<ObjString>>(iterableVal)) {
+                    auto str = std::get<std::shared_ptr<ObjString>>(iterableVal)->flatten();
                     push(index < utf8_length(str));
                     break;
                 }
@@ -519,12 +518,12 @@ InterpretResult VM::run(int targetFrameDepth) {
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL): {
-            std::string name = std::get<std::string>(READ_CONSTANT());
+            std::string name = std::get<std::shared_ptr<ObjString>>(READ_CONSTANT())->flatten();
             globals[name] = pop();
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_GET_GLOBAL): {
-            std::string name = std::get<std::string>(READ_CONSTANT());
+            std::string name = std::get<std::shared_ptr<ObjString>>(READ_CONSTANT())->flatten();
             if (globals.find(name) == globals.end()) {
                 return runtimeError(std::string("Undefined variable '") + name + "'.");
             }
@@ -532,7 +531,7 @@ InterpretResult VM::run(int targetFrameDepth) {
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_SET_GLOBAL): {
-            std::string name = std::get<std::string>(READ_CONSTANT());
+            std::string name = std::get<std::shared_ptr<ObjString>>(READ_CONSTANT())->flatten();
             if (globals.find(name) == globals.end()) {
                 return runtimeError(std::string("Undefined variable '") + name + "'.");
             }
@@ -579,8 +578,8 @@ InterpretResult VM::run(int targetFrameDepth) {
                 } else {
                     return runtimeError(std::string("List index must be a number."));
                 }
-            } else if (std::holds_alternative<std::string>(listVal)) {
-                auto str = std::get<std::string>(listVal);
+            } else if (std::holds_alternative<std::shared_ptr<ObjString>>(listVal)) {
+                auto str = std::get<std::shared_ptr<ObjString>>(listVal)->flatten();
                 if (std::holds_alternative<double>(index)) {
                     int i = static_cast<int>(std::get<double>(index));
                     int len = utf8_length(str);
@@ -631,12 +630,12 @@ InterpretResult VM::run(int targetFrameDepth) {
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_CLASS): {
-            std::string name = std::get<std::string>(READ_CONSTANT());
+            std::string name = std::get<std::shared_ptr<ObjString>>(READ_CONSTANT())->flatten();
             push(std::make_shared<ObjClass>(name));
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_ABSTRACT_CLASS): {
-            std::string name = std::get<std::string>(READ_CONSTANT());
+            std::string name = std::get<std::shared_ptr<ObjString>>(READ_CONSTANT())->flatten();
             auto klass = std::make_shared<ObjClass>(name);
             klass->isAbstract = true;
             push(klass);
@@ -673,7 +672,7 @@ InterpretResult VM::run(int targetFrameDepth) {
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_GET_SUPER): {
-            std::string methodName = std::get<std::string>(READ_CONSTANT());
+            std::string methodName = std::get<std::shared_ptr<ObjString>>(READ_CONSTANT())->flatten();
             VMValue superclassVal = pop();
             VMValue receiverVal = pop();
             auto superclass = std::get<std::shared_ptr<ObjClass>>(superclassVal);
@@ -687,7 +686,7 @@ InterpretResult VM::run(int targetFrameDepth) {
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_METHOD): {
-            std::string name = std::get<std::string>(READ_CONSTANT());
+            std::string name = std::get<std::shared_ptr<ObjString>>(READ_CONSTANT())->flatten();
             VMValue methodVal = pop();
             VMValue classVal = peek(0);
             auto method = methodVal;
@@ -696,7 +695,7 @@ InterpretResult VM::run(int targetFrameDepth) {
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_ABSTRACT_METHOD): {
-            std::string name = std::get<std::string>(READ_CONSTANT());
+            std::string name = std::get<std::shared_ptr<ObjString>>(READ_CONSTANT())->flatten();
             VMValue methodVal = pop();
             VMValue classVal = peek(0);
             auto method = methodVal;
@@ -709,7 +708,7 @@ InterpretResult VM::run(int targetFrameDepth) {
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_STATIC_METHOD): {
-            std::string name = std::get<std::string>(READ_CONSTANT());
+            std::string name = std::get<std::shared_ptr<ObjString>>(READ_CONSTANT())->flatten();
             VMValue methodVal = pop();
             VMValue classVal = peek(0);
             auto klass = std::get<std::shared_ptr<ObjClass>>(classVal);
@@ -717,7 +716,7 @@ InterpretResult VM::run(int targetFrameDepth) {
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_FIELD_MODIFIER): {
-            std::string name = std::get<std::string>(READ_CONSTANT());
+            std::string name = std::get<std::shared_ptr<ObjString>>(READ_CONSTANT())->flatten();
             VMAccessModifier modifier = static_cast<VMAccessModifier>(READ_BYTE());
             VMValue classVal = peek(0);
             auto klass = std::get<std::shared_ptr<ObjClass>>(classVal);
@@ -725,7 +724,7 @@ InterpretResult VM::run(int targetFrameDepth) {
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_PROPERTY_GET): {
-            std::string name = std::get<std::string>(READ_CONSTANT());
+            std::string name = std::get<std::shared_ptr<ObjString>>(READ_CONSTANT())->flatten();
             VMValue instanceVal = peek(0);
             std::string callerClass = frame->closure ? frame->closure->function->enclosingClassName : "";
 
@@ -771,7 +770,7 @@ InterpretResult VM::run(int targetFrameDepth) {
                 } else {
                     return runtimeError(std::string("Undefined static property '") + name + "'.");
                 }
-            } else if (std::holds_alternative<std::string>(instanceVal)) {
+            } else if (std::holds_alternative<std::shared_ptr<ObjString>>(instanceVal)) {
                 if (globals.count("String")) {
                     auto klass = std::get<std::shared_ptr<ObjClass>>(globals["String"]);
                     if (klass->statics.count(name)) {
@@ -807,7 +806,7 @@ InterpretResult VM::run(int targetFrameDepth) {
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_PROPERTY_SET): {
-            std::string name = std::get<std::string>(READ_CONSTANT());
+            std::string name = std::get<std::shared_ptr<ObjString>>(READ_CONSTANT())->flatten();
             VMValue value = pop();
             VMValue instanceVal = pop();
             std::string callerClass = frame->closure ? frame->closure->function->enclosingClassName : "";

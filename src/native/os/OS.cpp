@@ -22,9 +22,9 @@ std::vector<std::string> commandLineArgs;
 thread_local VM *currentVM = nullptr;
 
 static VMValue osGetEnv(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::string>(args[0]))
+    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
         return nullptr;
-    const char *val = std::getenv(std::get<std::string>(args[0]).c_str());
+    const char *val = std::getenv(std::get<std::shared_ptr<ObjString>>(args[0])->flatten().c_str());
     return val ? makeResultOk(currentVM, std::string(val)) : makeResultErr(currentVM, "Not found");
 }
 
@@ -37,9 +37,9 @@ static VMValue osCwd(int argCount, VMValue *args) {
 }
 
 static VMValue osExec(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::string>(args[0]))
+    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
         return nullptr;
-    std::string cmd = std::get<std::string>(args[0]);
+    std::string cmd = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
     std::string result;
     std::array<char, 128> buffer;
 

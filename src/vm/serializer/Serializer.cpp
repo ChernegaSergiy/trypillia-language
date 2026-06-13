@@ -148,10 +148,10 @@ void Serializer::writeValue(std::ofstream &out, const VMValue &value) {
         out.write(reinterpret_cast<const char *>(&type), 1);
         double d = std::get<double>(value);
         out.write(reinterpret_cast<const char *>(&d), sizeof(d));
-    } else if (std::holds_alternative<std::string>(value)) {
+    } else if (std::holds_alternative<std::shared_ptr<ObjString>>(value)) {
         uint8_t type = VAL_STRING;
         out.write(reinterpret_cast<const char *>(&type), 1);
-        writeString(out, std::get<std::string>(value));
+        writeString(out, std::get<std::shared_ptr<ObjString>>(value)->flatten());
     } else if (std::holds_alternative<std::shared_ptr<ObjFunction>>(value)) {
         uint8_t type = VAL_FUNCTION;
         out.write(reinterpret_cast<const char *>(&type), 1);

@@ -22,10 +22,84 @@ struct ObjClass;
 struct ObjInstance;
 struct ObjBoundMethod;
 
-using VMValue =
-    std::variant<std::nullptr_t, bool, double, std::string, std::shared_ptr<ObjFunction>, std::shared_ptr<ObjClosure>,
+struct ObjString {
+    mutable std::string flatData;
+    mutable std::shared_ptr<ObjString> left;
+    mutable std::shared_ptr<ObjString> right;
+    size_t length;
+    mutable bool isFlat;
+
+    ObjString(std::string s) : flatData(std::move(s)), left(nullptr), right(nullptr), length(flatData.length()), isFlat(true) {}
+    ObjString(std::shared_ptr<ObjString> l, std::shared_ptr<ObjString> r) : left(l), right(r), length(l->length + r->length), isFlat(false) {}
+
+    std::string flatten() const {
+        if (isFlat) return flatData;
+
+        std::vector<const ObjString*> stack;
+        std::string result;
+        result.reserve(length);
+
+        stack.push_back(this);
+
+        while (!stack.empty()) {
+            const ObjString* current = stack.back();
+            stack.pop_back();
+
+            if (current->isFlat) {
+                result += current->flatData;
+            } else {
+                if (current->right) stack.push_back(current->right.get());
+                if (current->left) stack.push_back(current->left.get());
+            }
+        }
+
+        flatData = std::move(result);
+        left = nullptr;
+        right = nullptr;
+        isFlat = true;
+        return flatData;
+    }
+
+    ~ObjString() {
+        if (!left && !right) return;
+
+        std::vector<std::shared_ptr<ObjString>> stack;
+        if (left) stack.push_back(std::move(left));
+        if (right) stack.push_back(std::move(right));
+
+        while (!stack.empty()) {
+            auto current = std::move(stack.back());
+            stack.pop_back();
+
+            if (current->left) {
+                if (current->left.use_count() == 1) stack.push_back(std::move(current->left));
+                else current->left.reset();
+            }
+            if (current->right) {
+                if (current->right.use_count() == 1) stack.push_back(std::move(current->right));
+                else current->right.reset();
+            }
+        }
+    }
+};
+
+struct VMValue : public std::variant<std::nullptr_t, bool, double, std::shared_ptr<ObjString>, std::shared_ptr<ObjFunction>, std::shared_ptr<ObjClosure>,
                  std::shared_ptr<ObjNative>, std::shared_ptr<ObjList>, std::shared_ptr<ObjMap>,
-                 std::shared_ptr<ObjClass>, std::shared_ptr<ObjInstance>, std::shared_ptr<ObjBoundMethod>>;
+                 std::shared_ptr<ObjClass>, std::shared_ptr<ObjInstance>, std::shared_ptr<ObjBoundMethod>> {
+    using variant::variant;
+
+    VMValue() : variant() {}
+    VMValue(const std::string& s) : variant(std::make_shared<ObjString>(s)) {}
+    VMValue(const char* s) : variant(std::make_shared<ObjString>(std::string(s))) {}
+
+    bool operator==(const VMValue& other) const {
+        if (this->index() != other.index()) return false;
+        if (std::holds_alternative<std::shared_ptr<ObjString>>(*this)) {
+            return std::get<std::shared_ptr<ObjString>>(*this)->flatten() == std::get<std::shared_ptr<ObjString>>(other)->flatten();
+        }
+        return static_cast<const variant&>(*this) == static_cast<const variant&>(other);
+    }
+};
 
 using NativeFn = VMValue (*)(int argCount, VMValue *args);
 
@@ -33,8 +107,8 @@ struct VMValueHash {
     std::size_t operator()(const VMValue &v) const {
         if (std::holds_alternative<double>(v))
             return std::hash<double>{}(std::get<double>(v));
-        if (std::holds_alternative<std::string>(v))
-            return std::hash<std::string>{}(std::get<std::string>(v));
+        if (std::holds_alternative<std::shared_ptr<ObjString>>(v))
+            return std::hash<std::string>{}(std::get<std::shared_ptr<ObjString>>(v)->flatten());
         if (std::holds_alternative<bool>(v))
             return std::hash<bool>{}(std::get<bool>(v));
         if (std::holds_alternative<std::nullptr_t>(v))
@@ -159,7 +233,7 @@ class Chunk {
 
     int addConstant(VMValue value) {
         // Simple deduplication to avoid exceeding 255 constants
-        if (std::holds_alternative<std::string>(value) || std::holds_alternative<double>(value) ||
+        if (std::holds_alternative<std::shared_ptr<ObjString>>(value) || std::holds_alternative<double>(value) ||
             std::holds_alternative<bool>(value)) {
             for (size_t i = 0; i < constants.size(); i++) {
                 if (constants[i] == value) {

@@ -19,12 +19,12 @@ static void freeFile(void *nativeData) {
 }
 
 static VMValue fileOpen(int argCount, VMValue *args) {
-    if (argCount < 1 || argCount > 2 || !std::holds_alternative<std::string>(args[0]))
+    if (argCount < 1 || argCount > 2 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
         return nullptr;
-    std::string path = std::get<std::string>(args[0]);
+    std::string path = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
     std::string mode = "r";
-    if (argCount == 2 && std::holds_alternative<std::string>(args[1])) {
-        mode = std::get<std::string>(args[1]);
+    if (argCount == 2 && std::holds_alternative<std::shared_ptr<ObjString>>(args[1])) {
+        mode = std::get<std::shared_ptr<ObjString>>(args[1])->flatten();
     }
 
     std::ios_base::openmode fmode = std::ios_base::in;
@@ -68,7 +68,7 @@ static VMValue fileRead(int argCount, VMValue *args) {
 }
 
 static VMValue fileWrite(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::string>(args[0]))
+    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
         return false;
     VMValue receiver = args[-1];
     if (!std::holds_alternative<std::shared_ptr<ObjInstance>>(receiver))
@@ -79,7 +79,7 @@ static VMValue fileWrite(int argCount, VMValue *args) {
     if (!file || !file->is_open())
         return makeResultErr(currentVM, "File is not open");
 
-    std::string content = std::get<std::string>(args[0]);
+    std::string content = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
     *file << content;
     return makeResultOk(currentVM, true);
 }
@@ -100,16 +100,16 @@ static VMValue fileClose(int argCount, VMValue *args) {
 }
 
 static VMValue fileExists(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::string>(args[0]))
+    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
         return false;
-    std::string path = std::get<std::string>(args[0]);
+    std::string path = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
     return std::filesystem::exists(path);
 }
 
 static VMValue fileRemove(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::string>(args[0]))
+    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
         return false;
-    std::string path = std::get<std::string>(args[0]);
+    std::string path = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
     if (std::filesystem::exists(path)) {
         return std::filesystem::remove(path);
     }

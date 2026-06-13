@@ -7,12 +7,12 @@ namespace RegexModule {
 thread_local VM *currentVM = nullptr;
 
 static VMValue regexTest(int argCount, VMValue *args) {
-    if (argCount != 2 || !std::holds_alternative<std::string>(args[0]) ||
-        !std::holds_alternative<std::string>(args[1])) {
+    if (argCount != 2 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]) ||
+        !std::holds_alternative<std::shared_ptr<ObjString>>(args[1])) {
         return nullptr;
     }
-    std::string pattern = std::get<std::string>(args[0]);
-    std::string text = std::get<std::string>(args[1]);
+    std::string pattern = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
+    std::string text = std::get<std::shared_ptr<ObjString>>(args[1])->flatten();
 
     try {
         std::regex re(pattern);
@@ -23,12 +23,12 @@ static VMValue regexTest(int argCount, VMValue *args) {
 }
 
 static VMValue regexMatch(int argCount, VMValue *args) {
-    if (argCount != 2 || !std::holds_alternative<std::string>(args[0]) ||
-        !std::holds_alternative<std::string>(args[1])) {
+    if (argCount != 2 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]) ||
+        !std::holds_alternative<std::shared_ptr<ObjString>>(args[1])) {
         return nullptr;
     }
-    std::string pattern = std::get<std::string>(args[0]);
-    std::string text = std::get<std::string>(args[1]);
+    std::string pattern = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
+    std::string text = std::get<std::shared_ptr<ObjString>>(args[1])->flatten();
 
     try {
         std::regex re(pattern);
@@ -47,13 +47,13 @@ static VMValue regexMatch(int argCount, VMValue *args) {
 }
 
 static VMValue regexReplace(int argCount, VMValue *args) {
-    if (argCount != 3 || !std::holds_alternative<std::string>(args[0]) ||
-        !std::holds_alternative<std::string>(args[1]) || !std::holds_alternative<std::string>(args[2])) {
+    if (argCount != 3 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]) ||
+        !std::holds_alternative<std::shared_ptr<ObjString>>(args[1]) || !std::holds_alternative<std::shared_ptr<ObjString>>(args[2])) {
         return nullptr;
     }
-    std::string pattern = std::get<std::string>(args[0]);
-    std::string text = std::get<std::string>(args[1]);
-    std::string replacement = std::get<std::string>(args[2]);
+    std::string pattern = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
+    std::string text = std::get<std::shared_ptr<ObjString>>(args[1])->flatten();
+    std::string replacement = std::get<std::shared_ptr<ObjString>>(args[2])->flatten();
 
     try {
         std::regex re(pattern);

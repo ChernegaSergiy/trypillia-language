@@ -26,10 +26,10 @@ static VMValue timeSleep(int argCount, VMValue *args) {
 }
 
 static VMValue timeFormat(int argCount, VMValue *args) {
-    if (argCount != 2 || !std::holds_alternative<double>(args[0]) || !std::holds_alternative<std::string>(args[1]))
+    if (argCount != 2 || !std::holds_alternative<double>(args[0]) || !std::holds_alternative<std::shared_ptr<ObjString>>(args[1]))
         return nullptr;
     double timestamp = std::get<double>(args[0]);
-    std::string format = std::get<std::string>(args[1]);
+    std::string format = std::get<std::shared_ptr<ObjString>>(args[1])->flatten();
 
     std::time_t time = static_cast<std::time_t>(timestamp);
     std::tm *tm_info = std::localtime(&time);

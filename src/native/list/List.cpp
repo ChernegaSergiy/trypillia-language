@@ -69,15 +69,15 @@ static VMValue listReverse(int argCount, VMValue *args) {
 
 static VMValue listJoin(int argCount, VMValue *args) {
     if (argCount != 2 || !std::holds_alternative<std::shared_ptr<ObjList>>(args[0]) ||
-        !std::holds_alternative<std::string>(args[1]))
+        !std::holds_alternative<std::shared_ptr<ObjString>>(args[1]))
         return nullptr;
     auto list = std::get<std::shared_ptr<ObjList>>(args[0]);
-    std::string delim = std::get<std::string>(args[1]);
+    std::string delim = std::get<std::shared_ptr<ObjString>>(args[1])->flatten();
 
     std::string result = "";
     for (size_t i = 0; i < list->elements.size(); i++) {
-        if (std::holds_alternative<std::string>(list->elements[i])) {
-            result += std::get<std::string>(list->elements[i]);
+        if (std::holds_alternative<std::shared_ptr<ObjString>>(list->elements[i])) {
+            result += std::get<std::shared_ptr<ObjString>>(list->elements[i])->flatten();
         } else if (std::holds_alternative<double>(list->elements[i])) {
             result += std::to_string(std::get<double>(list->elements[i])); // Basic cast
         }

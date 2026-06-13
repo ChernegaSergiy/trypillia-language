@@ -93,7 +93,7 @@ static VMValue wsServerAccept(int argCount, VMValue *args) {
     auto shaFn = std::get<std::shared_ptr<ObjNative>>(cryptoClass->statics["sha1Base64"]);
     VMValue res = shaFn->function(1, shaArg);
 
-    std::string acceptKey = std::get<std::string>(std::get<std::shared_ptr<ObjInstance>>(res)->fields["value"]);
+    std::string acceptKey = std::get<std::shared_ptr<ObjString>>(std::get<std::shared_ptr<ObjInstance>>(res)->fields["value"])->flatten();
     std::string response =
         "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " +
         acceptKey + "\r\n\r\n";
@@ -109,7 +109,7 @@ static VMValue wsServerAccept(int argCount, VMValue *args) {
 static VMValue wsSend(int argCount, VMValue *args) {
     auto inst = std::get<std::shared_ptr<ObjInstance>>(args[-1]);
     WSClientData *data = (WSClientData *)inst->nativeData;
-    std::string msg = std::get<std::string>(args[0]);
+    std::string msg = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
     std::vector<uint8_t> frame = {0x81};
     size_t len = msg.length();
 

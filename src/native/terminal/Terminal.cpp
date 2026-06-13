@@ -78,15 +78,15 @@ static VMValue terminalReadChar(int argCount, VMValue *args) {
 }
 
 static VMValue terminalWrite(int argCount, VMValue *args) {
-    if (argCount == 1 && std::holds_alternative<std::string>(args[0])) {
-        std::cout << std::get<std::string>(args[0]) << std::flush;
+    if (argCount == 1 && std::holds_alternative<std::shared_ptr<ObjString>>(args[0])) {
+        std::cout << std::get<std::shared_ptr<ObjString>>(args[0])->flatten() << std::flush;
     }
     return nullptr;
 }
 
 static VMValue terminalColor(int argCount, VMValue *args) {
-    if (argCount == 1 && std::holds_alternative<std::string>(args[0])) {
-        std::string color = std::get<std::string>(args[0]);
+    if (argCount == 1 && std::holds_alternative<std::shared_ptr<ObjString>>(args[0])) {
+        std::string color = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
         std::string code = "";
         if (color == "black") code = "\033[30m";
         else if (color == "red") code = "\033[31m";

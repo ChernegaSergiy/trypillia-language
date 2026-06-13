@@ -73,9 +73,9 @@ static void workerThreadEntry(std::string scriptPath, std::shared_ptr<WorkerChan
 }
 
 static VMValue workerCreate(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::string>(args[0]))
+    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
         return makeResultErr(currentVM, "Expected script path");
-    std::string path = std::get<std::string>(args[0]);
+    std::string path = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
 
     auto klass = std::get<std::shared_ptr<ObjClass>>(currentVM->globals["Worker"]);
     auto instance = std::make_shared<ObjInstance>(klass);
@@ -98,7 +98,7 @@ static VMValue workerCreate(int argCount, VMValue *args) {
 }
 
 static VMValue workerSend(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::string>(args[0]))
+    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
         return nullptr;
 
     VMValue receiver = args[-1];
@@ -109,7 +109,7 @@ static VMValue workerSend(int argCount, VMValue *args) {
         return makeResultErr(currentVM, "Worker is dead");
 
     std::lock_guard<std::mutex> lock(data->channel->mtwMutex);
-    data->channel->mainToWorker.push(std::get<std::string>(args[0]));
+    data->channel->mainToWorker.push(std::get<std::shared_ptr<ObjString>>(args[0])->flatten());
     data->channel->mtwCond.notify_one();
 
     return makeResultOk(currentVM, true);
@@ -140,13 +140,13 @@ static VMValue workerReceive(int argCount, VMValue *args) {
 }
 
 static VMValue workerSelfSend(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::string>(args[0]))
+    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
         return nullptr;
     if (!currentWorkerChannel)
         return makeResultErr(currentVM, "Not in a worker thread");
 
     std::lock_guard<std::mutex> lock(currentWorkerChannel->wtmMutex);
-    currentWorkerChannel->workerToMain.push(std::get<std::string>(args[0]));
+    currentWorkerChannel->workerToMain.push(std::get<std::shared_ptr<ObjString>>(args[0])->flatten());
     currentWorkerChannel->wtmCond.notify_one();
 
     return makeResultOk(currentVM, true);

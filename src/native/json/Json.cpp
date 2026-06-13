@@ -22,8 +22,8 @@ static std::string stringifyValue(const VMValue &val, int indent = -1, int curre
         ss << d;
         return ss.str();
     }
-    if (std::holds_alternative<std::string>(val)) {
-        std::string s = std::get<std::string>(val);
+    if (std::holds_alternative<std::shared_ptr<ObjString>>(val)) {
+        std::string s = std::get<std::shared_ptr<ObjString>>(val)->flatten();
         std::string res = "\"";
         for (char c : s) {
             if (c == '"')
@@ -83,7 +83,7 @@ static std::string stringifyValue(const VMValue &val, int indent = -1, int curre
             first = false;
 
             res += indentStr;
-            if (std::holds_alternative<std::string>(k)) {
+            if (std::holds_alternative<std::shared_ptr<ObjString>>(k)) {
                 res += stringifyValue(k, -1, 0) + ":" + sp + stringifyValue(v, indent, nextIndent);
             } else {
                 std::stringstream ss;
@@ -279,9 +279,9 @@ class JsonParser {
 };
 
 static VMValue jsonParse(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::string>(args[0]))
+    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
         return nullptr;
-    std::string jsonStr = std::get<std::string>(args[0]);
+    std::string jsonStr = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
     JsonParser parser(jsonStr);
     return parser.parseValue();
 }

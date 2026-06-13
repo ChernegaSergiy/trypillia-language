@@ -15,11 +15,11 @@ static std::string stringify(const VMValue& val, bool inContainer = false) {
         if (s.back() == '.') s.pop_back();
         if (s.empty()) return "0";
         return s;
-    } else if (std::holds_alternative<std::string>(val)) {
+    } else if (std::holds_alternative<std::shared_ptr<ObjString>>(val)) {
         if (inContainer) {
-            return "\"" + std::get<std::string>(val) + "\"";
+            return "\"" + std::get<std::shared_ptr<ObjString>>(val)->flatten() + "\"";
         } else {
-            return std::get<std::string>(val);
+            return std::get<std::shared_ptr<ObjString>>(val)->flatten();
         }
     } else if (std::holds_alternative<bool>(val)) {
         return std::get<bool>(val) ? "true" : "false";
@@ -71,8 +71,8 @@ static VMValue printNative(int argCount, VMValue *args) {
 }
 
 static VMValue inputNative(int argCount, VMValue *args) {
-    if (argCount == 1 && std::holds_alternative<std::string>(args[0])) {
-        std::cout << std::get<std::string>(args[0]);
+    if (argCount == 1 && std::holds_alternative<std::shared_ptr<ObjString>>(args[0])) {
+        std::cout << std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
     }
     std::string line;
     std::getline(std::cin, line);
