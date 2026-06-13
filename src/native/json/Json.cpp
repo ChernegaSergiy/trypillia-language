@@ -121,6 +121,7 @@ static VMValue jsonStringify(int argCount, VMValue *args) {
 class JsonParser {
     const std::string &src;
     size_t pos = 0;
+    const int MAX_DEPTH = 512;
 
     void skipWhitespace() {
         while (pos < src.length() && std::isspace(src[pos]))
@@ -188,7 +189,8 @@ class JsonParser {
         }
     }
 
-    VMValue parseArray() {
+    VMValue parseArray(int depth) {
+        if (depth > MAX_DEPTH) return nullptr;
         pos++; // skip [
         skipWhitespace();
         std::vector<VMValue> elements;
@@ -197,7 +199,7 @@ class JsonParser {
             return std::make_shared<ObjList>(elements);
         }
         while (pos < src.length()) {
-            elements.push_back(parseValue());
+            elements.push_back(parseValue(depth + 1));
             skipWhitespace();
             if (pos < src.length() && src[pos] == ',') {
                 pos++;
@@ -212,7 +214,8 @@ class JsonParser {
         return std::make_shared<ObjList>(elements);
     }
 
-    VMValue parseObject() {
+    VMValue parseObject(int depth) {
+        if (depth > MAX_DEPTH) return nullptr;
         pos++; // skip {
         skipWhitespace();
         auto map = std::make_shared<ObjMap>();
@@ -230,7 +233,7 @@ class JsonParser {
                 break;
             pos++;
             skipWhitespace();
-            VMValue value = parseValue();
+            VMValue value = parseValue(depth + 1);
             map->values[key] = value;
             skipWhitespace();
             if (pos < src.length() && src[pos] == ',') {
@@ -249,7 +252,8 @@ class JsonParser {
     JsonParser(const std::string &src) : src(src) {
     }
 
-    VMValue parseValue() {
+    VMValue parseValue(int depth = 0) {
+        if (depth > MAX_DEPTH) return nullptr;
         skipWhitespace();
         if (pos >= src.length())
             return nullptr;
@@ -257,9 +261,9 @@ class JsonParser {
         if (c == '"')
             return parseString();
         if (c == '[')
-            return parseArray();
+            return parseArray(depth);
         if (c == '{')
-            return parseObject();
+            return parseObject(depth);
         if (std::isdigit(c) || c == '-')
             return parseNumber();
         if (src.compare(pos, 4, "true") == 0) {
