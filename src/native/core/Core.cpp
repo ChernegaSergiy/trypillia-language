@@ -144,6 +144,50 @@ static VMValue resultUnwrapErr(int argCount, VMValue *args) {
     return instance->fields["error"];
 }
 
+// --- WeakRef ---
+static VMValue weakRefInit(int argCount, VMValue *args) {
+    VMValue receiver = args[-1];
+    if (!std::holds_alternative<std::shared_ptr<ObjInstance>>(receiver))
+        return nullptr;
+    auto instance = std::get<std::shared_ptr<ObjInstance>>(receiver);
+
+    if (argCount != 1) return nullptr;
+
+    auto weakObj = std::make_shared<ObjWeakRef>();
+    VMValue val = args[0];
+
+    if (std::holds_alternative<std::shared_ptr<ObjString>>(val)) {
+        weakObj->weakRef = std::weak_ptr<ObjString>(std::get<std::shared_ptr<ObjString>>(val));
+    } else if (std::holds_alternative<std::shared_ptr<ObjList>>(val)) {
+        weakObj->weakRef = std::weak_ptr<ObjList>(std::get<std::shared_ptr<ObjList>>(val));
+    } else if (std::holds_alternative<std::shared_ptr<ObjMap>>(val)) {
+        weakObj->weakRef = std::weak_ptr<ObjMap>(std::get<std::shared_ptr<ObjMap>>(val));
+    } else if (std::holds_alternative<std::shared_ptr<ObjInstance>>(val)) {
+        weakObj->weakRef = std::weak_ptr<ObjInstance>(std::get<std::shared_ptr<ObjInstance>>(val));
+    } else if (std::holds_alternative<std::shared_ptr<ObjClosure>>(val)) {
+        weakObj->weakRef = std::weak_ptr<ObjClosure>(std::get<std::shared_ptr<ObjClosure>>(val));
+    } else if (std::holds_alternative<std::shared_ptr<ObjFunction>>(val)) {
+        weakObj->weakRef = std::weak_ptr<ObjFunction>(std::get<std::shared_ptr<ObjFunction>>(val));
+    } else if (std::holds_alternative<std::shared_ptr<ObjClass>>(val)) {
+        weakObj->weakRef = std::weak_ptr<ObjClass>(std::get<std::shared_ptr<ObjClass>>(val));
+    }
+
+    instance->fields["_ref"] = weakObj;
+    return nullptr;
+}
+
+static VMValue weakRefLock(int argCount, VMValue *args) {
+    VMValue receiver = args[-1];
+    auto instance = std::get<std::shared_ptr<ObjInstance>>(receiver);
+    if (instance->fields.find("_ref") == instance->fields.end()) return nullptr;
+    
+    auto ref = instance->fields["_ref"];
+    if (std::holds_alternative<std::shared_ptr<ObjWeakRef>>(ref)) {
+        return std::get<std::shared_ptr<ObjWeakRef>>(ref)->lock();
+    }
+    return nullptr;
+}
+
 void registerAll(VM *vm) {
     currentVM = vm;
     vm->defineNative("print", -1, printNative);
@@ -161,6 +205,11 @@ void registerAll(VM *vm) {
     resultClass->methods["unwrap"] = std::make_shared<ObjNative>("unwrap", 0, resultUnwrap);
     resultClass->methods["unwrapErr"] = std::make_shared<ObjNative>("unwrapErr", 0, resultUnwrapErr);
     vm->globals["Result"] = resultClass;
+
+    auto weakRefClass = std::make_shared<ObjClass>("WeakRef");
+    weakRefClass->methods["init"] = std::make_shared<ObjNative>("init", 1, weakRefInit);
+    weakRefClass->methods["lock"] = std::make_shared<ObjNative>("lock", 0, weakRefLock);
+    vm->globals["WeakRef"] = weakRefClass;
 }
 
 void registerSymbols(SymbolTable *scope) {
@@ -183,6 +232,7 @@ void registerSymbols(SymbolTable *scope) {
     };
     addClass("Error");
     addClass("Result");
+    addClass("WeakRef");
 }
 
 } // namespace Core

@@ -21,6 +21,7 @@ struct ObjMap;
 struct ObjClass;
 struct ObjInstance;
 struct ObjBoundMethod;
+struct ObjWeakRef;
 
 struct ObjString {
     mutable std::string flatData;
@@ -85,7 +86,7 @@ struct ObjString {
 
 struct VMValue : public std::variant<std::nullptr_t, bool, double, std::shared_ptr<ObjString>, std::shared_ptr<ObjFunction>, std::shared_ptr<ObjClosure>,
                  std::shared_ptr<ObjNative>, std::shared_ptr<ObjList>, std::shared_ptr<ObjMap>,
-                 std::shared_ptr<ObjClass>, std::shared_ptr<ObjInstance>, std::shared_ptr<ObjBoundMethod>> {
+                 std::shared_ptr<ObjClass>, std::shared_ptr<ObjInstance>, std::shared_ptr<ObjBoundMethod>, std::shared_ptr<ObjWeakRef>> {
     using variant::variant;
 
     VMValue() : variant() {}
@@ -157,6 +158,44 @@ struct ObjBoundMethod {
     VMValue receiver;
     VMValue method;
     ObjBoundMethod(VMValue r, VMValue m) : receiver(r), method(m) {
+    }
+};
+
+struct ObjWeakRef {
+    std::variant<std::monostate, 
+                 std::weak_ptr<ObjString>, 
+                 std::weak_ptr<ObjFunction>, 
+                 std::weak_ptr<ObjClosure>,
+                 std::weak_ptr<ObjNative>, 
+                 std::weak_ptr<ObjList>, 
+                 std::weak_ptr<ObjMap>,
+                 std::weak_ptr<ObjClass>, 
+                 std::weak_ptr<ObjInstance>, 
+                 std::weak_ptr<ObjBoundMethod>> weakRef;
+
+    ObjWeakRef() : weakRef(std::monostate{}) {}
+
+    VMValue lock() const {
+        if (std::holds_alternative<std::weak_ptr<ObjString>>(weakRef)) {
+            if (auto p = std::get<std::weak_ptr<ObjString>>(weakRef).lock()) return p;
+        } else if (std::holds_alternative<std::weak_ptr<ObjFunction>>(weakRef)) {
+            if (auto p = std::get<std::weak_ptr<ObjFunction>>(weakRef).lock()) return p;
+        } else if (std::holds_alternative<std::weak_ptr<ObjClosure>>(weakRef)) {
+            if (auto p = std::get<std::weak_ptr<ObjClosure>>(weakRef).lock()) return p;
+        } else if (std::holds_alternative<std::weak_ptr<ObjNative>>(weakRef)) {
+            if (auto p = std::get<std::weak_ptr<ObjNative>>(weakRef).lock()) return p;
+        } else if (std::holds_alternative<std::weak_ptr<ObjList>>(weakRef)) {
+            if (auto p = std::get<std::weak_ptr<ObjList>>(weakRef).lock()) return p;
+        } else if (std::holds_alternative<std::weak_ptr<ObjMap>>(weakRef)) {
+            if (auto p = std::get<std::weak_ptr<ObjMap>>(weakRef).lock()) return p;
+        } else if (std::holds_alternative<std::weak_ptr<ObjClass>>(weakRef)) {
+            if (auto p = std::get<std::weak_ptr<ObjClass>>(weakRef).lock()) return p;
+        } else if (std::holds_alternative<std::weak_ptr<ObjInstance>>(weakRef)) {
+            if (auto p = std::get<std::weak_ptr<ObjInstance>>(weakRef).lock()) return p;
+        } else if (std::holds_alternative<std::weak_ptr<ObjBoundMethod>>(weakRef)) {
+            if (auto p = std::get<std::weak_ptr<ObjBoundMethod>>(weakRef).lock()) return p;
+        }
+        return nullptr;
     }
 };
 
