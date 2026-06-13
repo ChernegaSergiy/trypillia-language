@@ -49,8 +49,20 @@ static bool parseUrl(const std::string &url, std::string &host, int &port, std::
     return true;
 }
 
+#include <psa/crypto.h>
+
+static mbedtls_x509_crt cacert;
+static bool is_psa_initialized = false;
+
 static std::string makeHttpRequest(const std::string &host, int port, const std::string &requestStr, bool &success,
                                    std::string &errorMsg) {
+    if (!is_psa_initialized) {
+        psa_crypto_init();
+        mbedtls_x509_crt_init(&cacert);
+        mbedtls_x509_crt_parse_file(&cacert, "/etc/ssl/certs/ca-certificates.crt");
+        is_psa_initialized = true;
+    }
+
     mbedtls_net_context fd;
     mbedtls_net_init(&fd);
 
@@ -80,20 +92,31 @@ static std::string makeHttpRequest(const std::string &host, int port, const std:
             return "";
         }
 
+        mbedtls_ssl_conf_max_version(&conf, MBEDTLS_SSL_MAJOR_VERSION_3, MBEDTLS_SSL_MINOR_VERSION_3);
         mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_NONE);
         mbedtls_ssl_conf_rng(&conf, mbedtls_ctr_drbg_random, &ctr_drbg);
         mbedtls_ssl_setup(&ssl, &conf);
         mbedtls_ssl_set_hostname(&ssl, host.c_str());
         mbedtls_ssl_set_bio(&ssl, &fd, mbedtls_net_send, mbedtls_net_recv, NULL);
 
-        while (mbedtls_ssl_handshake(&ssl) != 0)
-            ;
+        int ret;
+        while ((ret = mbedtls_ssl_handshake(&ssl)) != 0) {
+            if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
+                errorMsg = "SSL handshake failed: " + std::to_string(ret);
+                success = false;
+                mbedtls_ssl_free(&ssl);
+                mbedtls_ssl_config_free(&conf);
+                mbedtls_ctr_drbg_free(&ctr_drbg);
+                mbedtls_entropy_free(&entropy);
+                mbedtls_net_free(&fd);
+                return "";
+            }
+        }
 
         mbedtls_ssl_write(&ssl, (const unsigned char *)requestStr.c_str(), requestStr.length());
 
         std::string response;
         unsigned char buf[4096];
-        int ret;
         while ((ret = mbedtls_ssl_read(&ssl, buf, sizeof(buf))) > 0)
             response.append((char *)buf, ret);
 
@@ -146,7 +169,7 @@ static VMValue httpPost(int argCount, VMValue *args) {
 
     std::string payload = std::get<std::string>(args[1]);
     std::string req = "POST " + path + " HTTP/1.1\r\nHost: " + host +
-                      "\r\nContent-Length: " + std::to_string(payload.length()) + "\r\nConnection: close\r\n\r\n" +
+                      "\r\nContent-Type: application/json\r\nContent-Length: " + std::to_string(payload.length()) + "\r\nConnection: close\r\n\r\n" +
                       payload;
     bool success;
     std::string err;
