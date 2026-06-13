@@ -118,6 +118,7 @@ Trypillia has a native package manager called **[TrypPM](https://github.com/Cher
 - **`tryppm init`**: Generate a standard `tryp.json` manifest file for your project.
 - **`tryppm install`**: Installs dependencies directly from GitHub into a local `tryp_modules` directory.
 - **`tryppm install github:User/Repo[@version]`**: Installs a specific package (supports SemVer like `@^1.0.0` or `@latest`).
+- **`tryppm uninstall <pkg>`**: Remove a package from `tryp.json`, delete its files, and update the autoloader.
 - **`tryppm upgrade`**: Seamlessly upgrade the Trypillia language compiler from source.
 
 ## Contributing
