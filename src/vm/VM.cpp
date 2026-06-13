@@ -1,6 +1,7 @@
 #include "VM.h"
 #include "../native/StdLib.h"
 #include <iostream>
+#include <cmath>
 
 static bool isMethodAbstract(const VMValue &method) {
     if (std::holds_alternative<std::shared_ptr<ObjClosure>>(method))
