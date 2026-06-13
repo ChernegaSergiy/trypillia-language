@@ -14,8 +14,12 @@ static std::string stringifyValue(const VMValue &val, int indent = -1, int curre
     if (std::holds_alternative<bool>(val))
         return std::get<bool>(val) ? "true" : "false";
     if (std::holds_alternative<double>(val)) {
+        double d = std::get<double>(val);
+        if (d == static_cast<double>(static_cast<long long>(d))) {
+            return std::to_string(static_cast<long long>(d));
+        }
         std::stringstream ss;
-        ss << std::get<double>(val);
+        ss << d;
         return ss.str();
     }
     if (std::holds_alternative<std::string>(val)) {
@@ -83,9 +87,14 @@ static std::string stringifyValue(const VMValue &val, int indent = -1, int curre
                 res += stringifyValue(k, -1, 0) + ":" + sp + stringifyValue(v, indent, nextIndent);
             } else {
                 std::stringstream ss;
-                if (std::holds_alternative<double>(k))
-                    ss << std::get<double>(k);
-                else if (std::holds_alternative<bool>(k))
+                if (std::holds_alternative<double>(k)) {
+                    double dk = std::get<double>(k);
+                    if (dk == static_cast<double>(static_cast<long long>(dk))) {
+                        ss << static_cast<long long>(dk);
+                    } else {
+                        ss << dk;
+                    }
+                } else if (std::holds_alternative<bool>(k))
                     ss << (std::get<bool>(k) ? "true" : "false");
                 else if (std::holds_alternative<std::nullptr_t>(k))
                     ss << "null";
