@@ -130,7 +130,30 @@ class JsonParser {
                     res += '\r';
                 else if (src[pos] == 't')
                     res += '\t';
-                else
+                else if (src[pos] == 'u' && pos + 4 < src.length()) {
+                    std::string hexStr = src.substr(pos + 1, 4);
+                    try {
+                        int codePoint = std::stoi(hexStr, nullptr, 16);
+                        if (codePoint <= 0x7F) {
+                            res += static_cast<char>(codePoint);
+                        } else if (codePoint <= 0x7FF) {
+                            res += static_cast<char>(0xC0 | ((codePoint >> 6) & 0x1F));
+                            res += static_cast<char>(0x80 | (codePoint & 0x3F));
+                        } else if (codePoint <= 0xFFFF) {
+                            res += static_cast<char>(0xE0 | ((codePoint >> 12) & 0x0F));
+                            res += static_cast<char>(0x80 | ((codePoint >> 6) & 0x3F));
+                            res += static_cast<char>(0x80 | (codePoint & 0x3F));
+                        } else if (codePoint <= 0x10FFFF) {
+                            res += static_cast<char>(0xF0 | ((codePoint >> 18) & 0x07));
+                            res += static_cast<char>(0x80 | ((codePoint >> 12) & 0x3F));
+                            res += static_cast<char>(0x80 | ((codePoint >> 6) & 0x3F));
+                            res += static_cast<char>(0x80 | (codePoint & 0x3F));
+                        }
+                    } catch (...) {
+                        res += src[pos];
+                    }
+                    pos += 4;
+                } else
                     res += src[pos];
             } else {
                 res += src[pos];
