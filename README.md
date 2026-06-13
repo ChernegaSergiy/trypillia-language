@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="public/logo.png" alt="Trypillia Programming Language" width="160" height="160" />
+<img src="public/logo-squircle.svg" alt="Trypillia Programming Language" width="160" height="160" />
 
 # Trypillia Programming Language
 
