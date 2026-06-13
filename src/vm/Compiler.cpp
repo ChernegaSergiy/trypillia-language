@@ -1027,59 +1027,6 @@ class CompilerVisitor : public ASTVisitor {
     }
 };
 
-static void optimizeChunk(std::shared_ptr<Chunk> chunk) {
-        bool changed = true;
-        while (changed) {
-            changed = false;
-            for (size_t i = 0; i < chunk->code.size(); ) {
-                if (i + 4 < chunk->code.size() &&
-                    chunk->code[i] == static_cast<uint8_t>(OpCode::OP_CONSTANT) &&
-                    chunk->code[i+2] == static_cast<uint8_t>(OpCode::OP_CONSTANT)) {
-                    
-                    uint8_t idx1 = chunk->code[i+1];
-                    uint8_t idx2 = chunk->code[i+3];
-                    uint8_t binOp = chunk->code[i+4];
-                    
-                    if (binOp == static_cast<uint8_t>(OpCode::OP_ADD) ||
-                        binOp == static_cast<uint8_t>(OpCode::OP_SUBTRACT) ||
-                        binOp == static_cast<uint8_t>(OpCode::OP_MULTIPLY) ||
-                        binOp == static_cast<uint8_t>(OpCode::OP_DIVIDE)) {
-                        
-                        VMValue v1 = chunk->constants[idx1];
-                        VMValue v2 = chunk->constants[idx2];
-                        
-                        if (std::holds_alternative<double>(v1) && std::holds_alternative<double>(v2)) {
-                            double d1 = std::get<double>(v1);
-                            double d2 = std::get<double>(v2);
-                            double res = 0;
-                            if (binOp == static_cast<uint8_t>(OpCode::OP_ADD)) res = d1 + d2;
-                            else if (binOp == static_cast<uint8_t>(OpCode::OP_SUBTRACT)) res = d1 - d2;
-                            else if (binOp == static_cast<uint8_t>(OpCode::OP_MULTIPLY)) res = d1 * d2;
-                            else if (binOp == static_cast<uint8_t>(OpCode::OP_DIVIDE)) res = d1 / d2;
-                            
-                            chunk->constants[idx1] = res;
-                            
-                            chunk->code[i+2] = static_cast<uint8_t>(OpCode::OP_NOP);
-                            chunk->code[i+3] = static_cast<uint8_t>(OpCode::OP_NOP);
-                            chunk->code[i+4] = static_cast<uint8_t>(OpCode::OP_NOP);
-                            changed = true;
-                            i += 5;
-                            continue;
-                        }
-                    }
-                }
-                
-                uint8_t op = chunk->code[i];
-                if (op == static_cast<uint8_t>(OpCode::OP_CONSTANT) || op == static_cast<uint8_t>(OpCode::OP_GET_LOCAL) || op == static_cast<uint8_t>(OpCode::OP_SET_LOCAL)) {
-                    i += 2;
-                } else if (op == static_cast<uint8_t>(OpCode::OP_JUMP) || op == static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE) || op == static_cast<uint8_t>(OpCode::OP_LOOP)) {
-                    i += 3;
-                } else {
-                    i += 1;
-                }
-            }
-        }
-    }
 std::shared_ptr<ObjFunction> Compiler::compile(ASTNode *ast, SymbolTable *globals) {
     if (!ast) {
         return nullptr;
@@ -1094,22 +1041,6 @@ std::shared_ptr<ObjFunction> Compiler::compile(ASTNode *ast, SymbolTable *global
     ast->accept(&visitor);
 
     visitor.emitBytes(static_cast<uint8_t>(OpCode::OP_NIL), static_cast<uint8_t>(OpCode::OP_RETURN));
-    
-    // We should optimize ALL functions, not just the main script.
-    // However, function chunks are also added to script's constants as ObjFunction!
-    // We can do a deep optimization by iterating over script's constants recursively.
-    std::function<void(std::shared_ptr<Chunk>)> optimizeRecursive = [&](std::shared_ptr<Chunk> chunk) {
-        optimizeChunk(chunk);
-        for (const auto& constant : chunk->constants) {
-            if (std::holds_alternative<std::shared_ptr<ObjFunction>>(constant)) {
-                auto func = std::get<std::shared_ptr<ObjFunction>>(constant);
-                if (func && func->chunk) {
-                    optimizeRecursive(func->chunk);
-                }
-            }
-        }
-    };
-    optimizeRecursive(script->chunk);
 
     return script;
 }
