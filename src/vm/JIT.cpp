@@ -7,6 +7,16 @@
 #include "OpCode.h"
 #include "UniversalEmitter.h"
 
+enum class InferredType {
+    UNKNOWN,
+    NUMBER,
+    BOOL,
+    STRING,
+    NIL,
+    OBJECT,
+    CLOSURE
+};
+
 JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
     if (!function || !function->chunk) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
 
@@ -68,14 +78,21 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
     emitter.setCapturedLocals(capturedVec);
     emitter.emitPrologue(maxLocal + 1);
 
+    // Type inference state
+    std::vector<InferredType> typeStack(256, InferredType::UNKNOWN);
+    std::vector<InferredType> localTypes(256, InferredType::UNKNOWN);
+    for (int i = 0; i <= function->arity; i++) localTypes[i] = InferredType::NUMBER;
+
     // Initial SP includes the function itself (slot 0) and any arguments
     int sp = function->arity >= 0 ? function->arity + 1 : 1;
     
     std::map<size_t, int> expectedSp;
+    std::map<size_t, std::vector<InferredType>> expectedStackTypes;
 
     for (size_t i = 0; i < function->chunk->code.size(); ++i) {
         if (expectedSp.count(i)) {
             sp = expectedSp[i];
+            typeStack = expectedStackTypes[i];
         }
         emitter.bindLabel(i);
         
@@ -87,6 +104,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 uint8_t slot = function->chunk->code[++i];
                 if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitGetLocal(sp, slot);
+                typeStack[sp] = localTypes[slot];
                 sp++;
                 break;
             }
@@ -94,6 +112,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 uint8_t slot = function->chunk->code[++i];
                 if (sp == 0) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitSetLocal(slot, sp - 1);
+                localTypes[slot] = typeStack[sp - 1];
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_GET_GLOBAL): {
@@ -103,6 +122,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 const std::string& name = constant.asString()->flatten();
                 emitter.emitGetGlobal(name, sp);
+                typeStack[sp] = InferredType::UNKNOWN;
                 sp++;
                 break;
             }
@@ -112,9 +132,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 assert(constant.isString() && "Operand must be a string");
                 if (sp < 1) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 const std::string& name = constant.asString()->flatten();
-                // Value is at sp - 1
                 emitter.emitSetGlobal(name, sp - 1);
-                // Value remains on stack
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL): {
@@ -123,21 +141,17 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 assert(constant.isString() && "Operand must be a string");
                 if (sp < 1) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 const std::string& name = constant.asString()->flatten();
-                // Value is at sp - 1
                 emitter.emitSetGlobal(name, sp - 1);
-                sp--; // Pop value
+                sp--;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_CALL): {
                 uint8_t argCount = function->chunk->code[++i];
                 int calleeSp = sp - argCount - 1;
-                if (calleeSp < 0) {
-                    return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                }
-                
+                if (calleeSp < 0) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitCallDynamic(calleeSp, calleeSp, argCount);
-                
-                sp = calleeSp + 1; // Result is at calleeSp
+                sp = calleeSp + 1;
+                typeStack[calleeSp] = InferredType::UNKNOWN;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_CONSTANT): {
@@ -147,36 +161,50 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 memcpy(&raw, &val, sizeof(double));
                 if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitLoadConst(sp, raw);
+                if (val.isNumber()) typeStack[sp] = InferredType::NUMBER;
+                else if (val.isBool()) typeStack[sp] = InferredType::BOOL;
+                else typeStack[sp] = InferredType::UNKNOWN;
                 sp++;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_ADD): {
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                emitter.emitAdd(sp - 2, sp - 1);
+                if (typeStack[sp-2] == InferredType::NUMBER && typeStack[sp-1] == InferredType::NUMBER)
+                    emitter.emitAddNumeric(sp - 2, sp - 1);
+                else
+                    emitter.emitAdd(sp - 2, sp - 1);
+                typeStack[sp-2] = InferredType::NUMBER;
                 sp--;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_SUBTRACT): {
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                emitter.emitSub(sp - 2, sp - 1);
+                if (typeStack[sp-2] == InferredType::NUMBER && typeStack[sp-1] == InferredType::NUMBER)
+                    emitter.emitSubNumeric(sp - 2, sp - 1);
+                else
+                    emitter.emitSub(sp - 2, sp - 1);
+                typeStack[sp-2] = InferredType::NUMBER;
                 sp--;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_MULTIPLY): {
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitMul(sp - 2, sp - 1);
+                typeStack[sp-2] = InferredType::NUMBER;
                 sp--;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_DIVIDE): {
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitDiv(sp - 2, sp - 1);
+                typeStack[sp-2] = InferredType::NUMBER;
                 sp--;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_MOD): {
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitMod(sp - 2, sp - 1);
+                typeStack[sp-2] = InferredType::NUMBER;
                 sp--;
                 break;
             }
@@ -218,47 +246,55 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
             case static_cast<uint8_t>(OpCode::OP_GREATER): {
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitCmpGt(sp - 2, sp - 1);
+                typeStack[sp-2] = InferredType::BOOL;
                 sp--;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_GREATER_EQUAL): {
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitCmpGe(sp - 2, sp - 1);
+                typeStack[sp-2] = InferredType::BOOL;
                 sp--;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_LESS): {
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitCmpLt(sp - 2, sp - 1);
+                typeStack[sp-2] = InferredType::BOOL;
                 sp--;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_LESS_EQUAL): {
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitCmpLe(sp - 2, sp - 1);
+                typeStack[sp-2] = InferredType::BOOL;
                 sp--;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_EQUAL): {
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitCmpEq(sp - 2, sp - 1);
+                typeStack[sp-2] = InferredType::BOOL;
                 sp--;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_NOT_EQUAL): {
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitCmpNe(sp - 2, sp - 1);
+                typeStack[sp-2] = InferredType::BOOL;
                 sp--;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_NOT): {
                 if (sp < 1) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitNot(sp - 1);
+                typeStack[sp-1] = InferredType::BOOL;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_NEGATE): {
                 if (sp < 1) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitNegate(sp - 1);
+                typeStack[sp-1] = InferredType::NUMBER;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_POP): {
@@ -268,17 +304,15 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
             }
             case static_cast<uint8_t>(OpCode::OP_INDEX_GET): {
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                // object is at sp - 2, index is at sp - 1
                 emitter.emitIndexGet(sp - 2, sp - 2, sp - 1);
                 sp--;
+                typeStack[sp-1] = InferredType::UNKNOWN;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_INDEX_SET): {
                 if (sp < 3) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                // object is at sp - 3, index is at sp - 2, value is at sp - 1
-                // value is left on stack
                 emitter.emitIndexSet(sp - 3, sp - 2, sp - 1);
-                emitter.emitMove(sp - 3, sp - 1); // move value to result slot
+                emitter.emitMove(sp - 3, sp - 1);
                 sp -= 2;
                 break;
             }
@@ -286,6 +320,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 uint16_t offset = (function->chunk->code[i+1] << 8) | function->chunk->code[i+2];
                 size_t target = i + 3 + offset;
                 expectedSp[target] = sp;
+                expectedStackTypes[target] = typeStack;
                 i += 2;
                 emitter.emitJump(target);
                 break;
@@ -294,6 +329,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 uint16_t offset = (function->chunk->code[i+1] << 8) | function->chunk->code[i+2];
                 size_t target = i + 3 + offset;
                 expectedSp[target] = sp;
+                expectedStackTypes[target] = typeStack;
                 i += 2;
                 if (sp < 1) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitJumpIfFalse(sp - 1, target);
@@ -307,7 +343,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_RETURN): {
-                emitter.emitCloseUpvalue(0);
+                if (function->upvalueCount > 0) emitter.emitCloseUpvalue(0);
                 if (sp > 0) {
                     emitter.emitReturnValue(sp - 1);
                 } else {
@@ -320,41 +356,45 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
             case static_cast<uint8_t>(OpCode::OP_NIL): {
                 if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitLoadConst(sp, 0.0);
+                typeStack[sp] = InferredType::NIL;
                 sp++;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_TRUE): {
                 if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitLoadConst(sp, 1.0);
+                typeStack[sp] = InferredType::BOOL;
                 sp++;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_FALSE): {
                 if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitLoadConst(sp, 0.0);
+                typeStack[sp] = InferredType::BOOL;
                 sp++;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_DUP): {
                 if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitMove(sp, sp - 1);
+                typeStack[sp] = typeStack[sp-1];
                 sp++;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_BUILD_LIST): {
                 uint8_t count = function->chunk->code[++i];
                 if (sp < count) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                if (sp - count + 1 >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitBuildList(sp - count, count);
                 sp = sp - count + 1;
+                typeStack[sp-1] = InferredType::OBJECT;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_BUILD_MAP): {
                 uint8_t count = function->chunk->code[++i];
                 if (sp < count * 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                if (sp - (count * 2) + 1 >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitBuildMap(sp - (count * 2), count);
                 sp = sp - (count * 2) + 1;
+                typeStack[sp-1] = InferredType::OBJECT;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_PROPERTY_GET): {
@@ -364,6 +404,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 if (sp < 1) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 const std::string& name = nameVal.asString()->flatten();
                 emitter.emitPropertyGet(sp - 1, name);
+                typeStack[sp-1] = InferredType::UNKNOWN;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_PROPERTY_SET): {
@@ -380,12 +421,14 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitIterHasNext(sp - 2);
                 sp--;
+                typeStack[sp-1] = InferredType::BOOL;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_GET_UPVALUE): {
                 uint8_t slot = function->chunk->code[++i];
                 if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitGetUpvalue(sp, slot);
+                typeStack[sp] = InferredType::UNKNOWN;
                 sp++;
                 break;
             }
@@ -411,6 +454,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 double raw;
                 memcpy(&raw, &funcVal, sizeof(double));
                 emitter.emitCreateClosure(sp, raw, upvalueBytes, upvalueCount);
+                typeStack[sp] = InferredType::CLOSURE;
                 sp++;
                 break;
             }
@@ -421,6 +465,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 const std::string& name = nameVal.asString()->flatten();
                 if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitCreateClass(sp, name);
+                typeStack[sp] = InferredType::OBJECT;
                 sp++;
                 break;
             }
@@ -431,6 +476,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 const std::string& name = nameVal.asString()->flatten();
                 if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitCreateAbstractClass(sp, name);
+                typeStack[sp] = InferredType::OBJECT;
                 sp++;
                 break;
             }

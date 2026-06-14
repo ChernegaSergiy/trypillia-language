@@ -73,27 +73,36 @@ public:
     }
 
     void emitLoadConst(int stackOffset, double value) override {
-        sljit_emit_fset64(compiler, SLJIT_FR1, value);
-        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), stackOffset * sizeof(double), SLJIT_FR1, 0);
+        sljit_emit_fset64(compiler, SLJIT_FR0, value);
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), stackOffset * sizeof(double), SLJIT_FR0, 0);
     }
 
     void emitGetLocal(int stackOffset, int localSlot) override {
-        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), localSlot * sizeof(double));
-        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), stackOffset * sizeof(double), SLJIT_FR1, 0);
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), stackOffset * sizeof(double), SLJIT_MEM1(SLJIT_S1), localSlot * sizeof(double));
     }
 
     void emitSetLocal(int localSlot, int stackOffset) override {
-        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), stackOffset * sizeof(double));
-        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), localSlot * sizeof(double), SLJIT_FR1, 0);
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), localSlot * sizeof(double), SLJIT_MEM1(SLJIT_S1), stackOffset * sizeof(double));
     }
 
     void emitMove(int targetOffset, int srcOffset) override {
-        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), srcOffset * sizeof(double));
-        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_FR1, 0);
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_MEM1(SLJIT_S1), srcOffset * sizeof(double));
     }
 
     void emitReturnValue(int stackOffset) override {
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR0, 0, SLJIT_MEM1(SLJIT_S1), stackOffset * sizeof(double));
+    }
+
+    void emitAddNumeric(int targetOffset, int srcOffset) {
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double));
+        sljit_emit_fop2(compiler, SLJIT_ADD_F64, SLJIT_FR1, 0, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), srcOffset * sizeof(double));
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_FR1, 0);
+    }
+
+    void emitSubNumeric(int targetOffset, int srcOffset) {
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double));
+        sljit_emit_fop2(compiler, SLJIT_SUB_F64, SLJIT_FR1, 0, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), srcOffset * sizeof(double));
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_FR1, 0);
     }
 
     void emitAdd(int targetOffset, int srcOffset) override {
