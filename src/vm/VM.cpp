@@ -91,6 +91,32 @@ bool checkAccess(VMAccessModifier modifier, std::shared_ptr<ObjClass> klass, con
 }
 } // namespace
 
+extern "C" double jit_invoke_helper(void* vm_ptr, const char* name, double* args, int argCount) {
+    VM* vm = static_cast<VM*>(vm_ptr);
+    auto it = vm->globals.find(name);
+    if (it == vm->globals.end()) return 0.0;
+    
+    VMValue callee = it->second;
+    VMValue result = nullptr;
+    
+    std::vector<VMValue> vmArgs(argCount);
+    for (int i = 0; i < argCount; i++) {
+        vmArgs[i] = args[i];
+    }
+    
+    if (std::holds_alternative<std::shared_ptr<ObjNative>>(callee)) {
+        auto native = std::get<std::shared_ptr<ObjNative>>(callee);
+        result = native->function(argCount, vmArgs.data());
+    } else if (std::holds_alternative<std::shared_ptr<ObjClosure>>(callee)) {
+        result = vm->callClosure(callee, argCount, vmArgs.data());
+    }
+    
+    if (std::holds_alternative<double>(result)) {
+        return std::get<double>(result);
+    }
+    return 0.0;
+}
+
 VM::VM() {
     StdLib::registerAll(this);
 }

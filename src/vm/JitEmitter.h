@@ -37,6 +37,9 @@ public:
     virtual void emitNot(int targetOffset) = 0;
     virtual void emitNegate(int targetOffset) = 0;
 
+    // Calls
+    virtual void emitCallGlobal(const std::string& name, int targetOffset, int argCount) = 0;
+
     // Control Flow
     virtual void bindLabel(size_t byteCodeIndex) = 0;
     virtual void emitJump(size_t targetByteCodeIndex) = 0;

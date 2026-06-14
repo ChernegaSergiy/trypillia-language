@@ -4,6 +4,10 @@
 #include <map>
 #include <vector>
 #include <cstring>
+#include <iostream>
+#include <string>
+
+extern "C" double jit_invoke_helper(void* vm, const char* name, double* args, int argCount);
 
 class UniversalEmitter : public JitEmitter {
 private:
@@ -33,7 +37,7 @@ public:
 
     void emitPrologue(int maxLocals) override {
         // f = return type (float), P = arg1 (void* vm), P = arg2 (double* args), W = arg3 (int argCount)
-        sljit_emit_enter(compiler, 0, SLJIT_ARGS3(F64, W, P, W), 3 | SLJIT_ENTER_FLOAT(SLJIT_NUMBER_OF_FLOAT_REGISTERS), 3, 0);
+        sljit_emit_enter(compiler, 0, SLJIT_ARGS3(F64, W, P, W), 4 | SLJIT_ENTER_FLOAT(SLJIT_NUMBER_OF_FLOAT_REGISTERS), 3, 0);
 
         for (int j = 0; j < maxLocals; ++j) {
             sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
@@ -49,11 +53,11 @@ public:
                 getFloatReg(j), 0);
         }
         
-        sljit_emit_return(compiler, SLJIT_MOV_F64, getFloatReg(8), 0);
+        sljit_emit_return(compiler, SLJIT_MOV_F64, getFloatReg(0), 0);
     }
 
     void emitLoadConst(int stackOffset, double value) override {
-        sljit_emit_fset64(compiler, getFloatReg(8 + stackOffset), value);
+        sljit_emit_fset64(compiler, getFloatReg(stackOffset), value);
     }
 
     void emitGetLocal(int stackOffset, int localSlot) override {
@@ -65,53 +69,53 @@ public:
     void emitSetLocal(int localSlot, int stackOffset) override {
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
             getFloatReg(localSlot - 1), 0, 
-            getFloatReg(8 + stackOffset), 0);
+            getFloatReg(stackOffset), 0);
     }
 
     void emitMove(int targetOffset, int srcOffset) override {
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
-            getFloatReg(8 + targetOffset), 0, 
-            getFloatReg(8 + srcOffset), 0);
+            getFloatReg(targetOffset), 0, 
+            getFloatReg(srcOffset), 0);
     }
 
     void emitAdd(int targetOffset, int srcOffset) override {
         sljit_emit_fop2(compiler, SLJIT_ADD_F64, 
-            getFloatReg(8 + targetOffset), 0, 
-            getFloatReg(8 + targetOffset), 0, 
-            getFloatReg(8 + srcOffset), 0);
+            getFloatReg(targetOffset), 0, 
+            getFloatReg(targetOffset), 0, 
+            getFloatReg(srcOffset), 0);
     }
 
     void emitSub(int targetOffset, int srcOffset) override {
         sljit_emit_fop2(compiler, SLJIT_SUB_F64, 
-            getFloatReg(8 + targetOffset), 0, 
-            getFloatReg(8 + targetOffset), 0, 
-            getFloatReg(8 + srcOffset), 0);
+            getFloatReg(targetOffset), 0, 
+            getFloatReg(targetOffset), 0, 
+            getFloatReg(srcOffset), 0);
     }
 
     void emitMul(int targetOffset, int srcOffset) override {
         sljit_emit_fop2(compiler, SLJIT_MUL_F64, 
-            getFloatReg(8 + targetOffset), 0, 
-            getFloatReg(8 + targetOffset), 0, 
-            getFloatReg(8 + srcOffset), 0);
+            getFloatReg(targetOffset), 0, 
+            getFloatReg(targetOffset), 0, 
+            getFloatReg(srcOffset), 0);
     }
 
     void emitDiv(int targetOffset, int srcOffset) override {
         sljit_emit_fop2(compiler, SLJIT_DIV_F64, 
-            getFloatReg(8 + targetOffset), 0, 
-            getFloatReg(8 + targetOffset), 0, 
-            getFloatReg(8 + srcOffset), 0);
+            getFloatReg(targetOffset), 0, 
+            getFloatReg(targetOffset), 0, 
+            getFloatReg(srcOffset), 0);
     }
 
     void emitCmpLt(int targetOffset, int srcOffset) override {
         struct sljit_jump* jumpLess = sljit_emit_fcmp(compiler, SLJIT_F_LESS, 
-            getFloatReg(8 + targetOffset), 0, 
-            getFloatReg(8 + srcOffset), 0);
+            getFloatReg(targetOffset), 0, 
+            getFloatReg(srcOffset), 0);
         
-        sljit_emit_fset64(compiler, getFloatReg(8 + targetOffset), 0.0);
+        sljit_emit_fset64(compiler, getFloatReg(targetOffset), 0.0);
         struct sljit_jump* jumpDone = sljit_emit_jump(compiler, SLJIT_JUMP);
         
         sljit_set_label(jumpLess, sljit_emit_label(compiler));
-        sljit_emit_fset64(compiler, getFloatReg(8 + targetOffset), 1.0);
+        sljit_emit_fset64(compiler, getFloatReg(targetOffset), 1.0);
         
         sljit_set_label(jumpDone, sljit_emit_label(compiler));
     }
@@ -128,13 +132,51 @@ public:
     void emitJumpIfFalse(int stackOffset, size_t targetByteCodeIndex) override {
         sljit_emit_fset64(compiler, SLJIT_FR0, 0.0);
         struct sljit_jump* jump = sljit_emit_fcmp(compiler, SLJIT_F_EQUAL, 
-            getFloatReg(8 + stackOffset), 0, 
+            getFloatReg(stackOffset), 0, 
             SLJIT_FR0, 0);
             
         if (labels.count(targetByteCodeIndex)) {
             sljit_set_label(jump, labels[targetByteCodeIndex]);
         } else {
             unresolvedJumps[targetByteCodeIndex].push_back(jump);
+        }
+    }
+
+    void emitCallGlobal(const std::string& name, int targetOffset, int argCount) override {
+        // Save all active stack slots to memory (SLJIT_S1 array)
+        for (int j = 0; j <= targetOffset; ++j) {
+            sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
+                SLJIT_MEM1(SLJIT_S1), j * sizeof(double), 
+                getFloatReg(j), 0);
+        }
+
+        // Save arguments to memory
+        for (int j = 0; j < argCount; ++j) {
+            sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
+                SLJIT_MEM1(SLJIT_S1), (targetOffset + 1 + j) * sizeof(double), 
+                getFloatReg(targetOffset + 1 + j), 0);
+        }
+
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_S0, 0);
+
+        char* cname = strdup(name.c_str());
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R1, 0, SLJIT_IMM, (sljit_sw)cname);
+
+        sljit_emit_op2(compiler, SLJIT_ADD, SLJIT_R2, 0, SLJIT_S1, 0, SLJIT_IMM, (targetOffset + 1) * sizeof(double));
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R3, 0, SLJIT_IMM, argCount);
+
+        sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS4(F64, W, W, P, W), SLJIT_IMM, (sljit_sw)jit_invoke_helper);
+
+        // Save the return value (FR0) into the memory slot for targetOffset
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
+            SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), 
+            SLJIT_FR0, 0);
+
+        // Restore active stack slots from memory (C function call clobbers FR registers)
+        for (int j = 0; j <= targetOffset; ++j) {
+            sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
+                getFloatReg(j), 0, 
+                SLJIT_MEM1(SLJIT_S1), j * sizeof(double));
         }
     }
 
@@ -154,46 +196,52 @@ public:
     }
     void emitCmpEq(int targetOffset, int srcOffset) override {
         struct sljit_jump* jumpEq = sljit_emit_fcmp(compiler, SLJIT_F_EQUAL, 
-            getFloatReg(8 + targetOffset), 0, 
-            getFloatReg(8 + srcOffset), 0);
-        sljit_emit_fset64(compiler, getFloatReg(8 + targetOffset), 0.0);
+            getFloatReg(targetOffset), 0, 
+            getFloatReg(srcOffset), 0);
+        sljit_emit_fset64(compiler, getFloatReg(targetOffset), 0.0);
         struct sljit_jump* jumpDone = sljit_emit_jump(compiler, SLJIT_JUMP);
         sljit_set_label(jumpEq, sljit_emit_label(compiler));
-        sljit_emit_fset64(compiler, getFloatReg(8 + targetOffset), 1.0);
+        sljit_emit_fset64(compiler, getFloatReg(targetOffset), 1.0);
         sljit_set_label(jumpDone, sljit_emit_label(compiler));
     }
 
     void emitCmpGt(int targetOffset, int srcOffset) override {
         struct sljit_jump* jumpGt = sljit_emit_fcmp(compiler, SLJIT_F_GREATER, 
-            getFloatReg(8 + targetOffset), 0, 
-            getFloatReg(8 + srcOffset), 0);
-        sljit_emit_fset64(compiler, getFloatReg(8 + targetOffset), 0.0);
+            getFloatReg(targetOffset), 0, 
+            getFloatReg(srcOffset), 0);
+        sljit_emit_fset64(compiler, getFloatReg(targetOffset), 0.0);
         struct sljit_jump* jumpDone = sljit_emit_jump(compiler, SLJIT_JUMP);
         sljit_set_label(jumpGt, sljit_emit_label(compiler));
-        sljit_emit_fset64(compiler, getFloatReg(8 + targetOffset), 1.0);
+        sljit_emit_fset64(compiler, getFloatReg(targetOffset), 1.0);
         sljit_set_label(jumpDone, sljit_emit_label(compiler));
     }
 
-    void emitNot(int targetOffset) {
+    void emitNot(int targetOffset) override {
         sljit_emit_fset64(compiler, SLJIT_FR0, 0.0);
         struct sljit_jump* jumpEq = sljit_emit_fcmp(compiler, SLJIT_F_EQUAL, 
-            getFloatReg(8 + targetOffset), 0, 
+            getFloatReg(targetOffset), 0, 
             SLJIT_FR0, 0);
-        sljit_emit_fset64(compiler, getFloatReg(8 + targetOffset), 0.0);
+        sljit_emit_fset64(compiler, getFloatReg(targetOffset), 0.0);
         struct sljit_jump* jumpDone = sljit_emit_jump(compiler, SLJIT_JUMP);
         sljit_set_label(jumpEq, sljit_emit_label(compiler));
-        sljit_emit_fset64(compiler, getFloatReg(8 + targetOffset), 1.0);
+        sljit_emit_fset64(compiler, getFloatReg(targetOffset), 1.0);
         sljit_set_label(jumpDone, sljit_emit_label(compiler));
     }
 
-    void emitNegate(int targetOffset) {
+    void emitNegate(int targetOffset) override {
         sljit_emit_fset64(compiler, SLJIT_FR0, 0.0);
         sljit_emit_fop2(compiler, SLJIT_SUB_F64, 
-            getFloatReg(8 + targetOffset), 0, 
+            getFloatReg(targetOffset), 0, 
             SLJIT_FR0, 0, 
-            getFloatReg(8 + targetOffset), 0);
+            getFloatReg(targetOffset), 0);
     }
     
+    void emitReturn(int stackOffset) {
+        printf("JIT: emitReturn generated for stackOffset %d\n", stackOffset);
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR0, 0, getFloatReg(stackOffset), 0);
+        sljit_emit_return(compiler, SLJIT_MOV_F64, SLJIT_FR0, 0);
+    }
+
     void emitCmpNe(int, int) override {}
     void emitCmpLe(int, int) override {}
     void emitCmpGe(int, int) override {}
