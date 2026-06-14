@@ -103,6 +103,10 @@ bool checkAccess(VMAccessModifier modifier, ObjClass* klass, const std::string &
 }
 } // namespace
 
+extern "C" double jit_mod_helper(double a, double b) {
+    return std::fmod(a, b);
+}
+
 extern "C" double jit_call_helper(void* vm_ptr, double callee_val, double* args, int argCount) {
     VM* vm = static_cast<VM*>(vm_ptr);
     VMValue callee;
@@ -987,12 +991,13 @@ InterpretResult VM::run(int targetFrameDepth) {
                 auto funcPtr = function;
                 if (compiledFuncs.count(funcPtr)) {
                     nativeJitFunc = compiledFuncs[funcPtr];
+                } else if (funcPtr->callCount >= 50) {
+                    nativeJitFunc = jit.compileMathFunction(function);
+                    if (nativeJitFunc) {
+                        compiledFuncs[funcPtr] = nativeJitFunc;
+                    }
                 } else {
                     funcPtr->callCount++;
-                    if (funcPtr->callCount >= 50) {
-                        nativeJitFunc = jit.compileMathFunction(function);
-                        compiledFuncs[funcPtr] = nativeJitFunc; // caches nullptr if incompatible
-                    }
                 }
 
                 if (nativeJitFunc) {

@@ -12,6 +12,7 @@ public:
     // Memory and invocation management
     virtual void emitPrologue(int maxLocals) = 0;
     virtual void emitEpilogue(int maxLocals) = 0;
+    virtual void emitReturnValue(int stackOffset) = 0;
 
     // Stack operations (stackOffset is a relative index in our virtual stack)
     virtual void emitLoadConst(int stackOffset, double value) = 0;
@@ -24,6 +25,7 @@ public:
     virtual void emitSub(int targetOffset, int srcOffset) = 0;
     virtual void emitMul(int targetOffset, int srcOffset) = 0;
     virtual void emitDiv(int targetOffset, int srcOffset) = 0;
+    virtual void emitMod(int targetOffset, int srcOffset) = 0;
 
     // Bitwise operations
     virtual void emitBitAnd(int targetOffset, int srcOffset) = 0;
