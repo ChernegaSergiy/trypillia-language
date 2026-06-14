@@ -93,6 +93,108 @@ public:
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR0, 0, SLJIT_MEM1(SLJIT_S1), stackOffset * sizeof(double));
     }
 
+    void emitCmpLtJumpIfFalse(int targetOffset, int srcOffset, size_t targetByteCodeIndex) {
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double));
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR2, 0, SLJIT_MEM1(SLJIT_S1), srcOffset * sizeof(double));
+        struct sljit_jump* jump = sljit_emit_fcmp(compiler, SLJIT_F_GREATER_EQUAL, SLJIT_FR1, 0, SLJIT_FR2, 0);
+        if (labels.count(targetByteCodeIndex)) {
+            sljit_set_label(jump, labels[targetByteCodeIndex]);
+        } else {
+            unresolvedJumps[targetByteCodeIndex].push_back(jump);
+        }
+    }
+
+    void emitCmpLeJumpIfFalse(int targetOffset, int srcOffset, size_t targetByteCodeIndex) {
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double));
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR2, 0, SLJIT_MEM1(SLJIT_S1), srcOffset * sizeof(double));
+        struct sljit_jump* jump = sljit_emit_fcmp(compiler, SLJIT_F_GREATER, SLJIT_FR1, 0, SLJIT_FR2, 0);
+        if (labels.count(targetByteCodeIndex)) {
+            sljit_set_label(jump, labels[targetByteCodeIndex]);
+        } else {
+            unresolvedJumps[targetByteCodeIndex].push_back(jump);
+        }
+    }
+
+    void emitCmpGtJumpIfFalse(int targetOffset, int srcOffset, size_t targetByteCodeIndex) {
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double));
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR2, 0, SLJIT_MEM1(SLJIT_S1), srcOffset * sizeof(double));
+        struct sljit_jump* jump = sljit_emit_fcmp(compiler, SLJIT_F_LESS_EQUAL, SLJIT_FR1, 0, SLJIT_FR2, 0);
+        if (labels.count(targetByteCodeIndex)) {
+            sljit_set_label(jump, labels[targetByteCodeIndex]);
+        } else {
+            unresolvedJumps[targetByteCodeIndex].push_back(jump);
+        }
+    }
+
+    void emitCmpGeJumpIfFalse(int targetOffset, int srcOffset, size_t targetByteCodeIndex) {
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double));
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR2, 0, SLJIT_MEM1(SLJIT_S1), srcOffset * sizeof(double));
+        struct sljit_jump* jump = sljit_emit_fcmp(compiler, SLJIT_F_LESS, SLJIT_FR1, 0, SLJIT_FR2, 0);
+        if (labels.count(targetByteCodeIndex)) {
+            sljit_set_label(jump, labels[targetByteCodeIndex]);
+        } else {
+            unresolvedJumps[targetByteCodeIndex].push_back(jump);
+        }
+    }
+
+    void emitCmpEqJumpIfFalse(int targetOffset, int srcOffset, size_t targetByteCodeIndex) {
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double));
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR2, 0, SLJIT_MEM1(SLJIT_S1), srcOffset * sizeof(double));
+        struct sljit_jump* jump = sljit_emit_fcmp(compiler, SLJIT_F_NOT_EQUAL, SLJIT_FR1, 0, SLJIT_FR2, 0);
+        if (labels.count(targetByteCodeIndex)) {
+            sljit_set_label(jump, labels[targetByteCodeIndex]);
+        } else {
+            unresolvedJumps[targetByteCodeIndex].push_back(jump);
+        }
+    }
+
+    void emitCmpNeJumpIfFalse(int targetOffset, int srcOffset, size_t targetByteCodeIndex) {
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double));
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR2, 0, SLJIT_MEM1(SLJIT_S1), srcOffset * sizeof(double));
+        struct sljit_jump* jump = sljit_emit_fcmp(compiler, SLJIT_F_EQUAL, SLJIT_FR1, 0, SLJIT_FR2, 0);
+        if (labels.count(targetByteCodeIndex)) {
+            sljit_set_label(jump, labels[targetByteCodeIndex]);
+        } else {
+            unresolvedJumps[targetByteCodeIndex].push_back(jump);
+        }
+    }
+
+    void emitAddConst(int targetOffset, double value) {
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double));
+        sljit_emit_fset64(compiler, SLJIT_FR2, value);
+        sljit_emit_fop2(compiler, SLJIT_ADD_F64, SLJIT_FR1, 0, SLJIT_FR1, 0, SLJIT_FR2, 0);
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_FR1, 0);
+    }
+
+    void emitSubConst(int targetOffset, double value) {
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double));
+        sljit_emit_fset64(compiler, SLJIT_FR2, value);
+        sljit_emit_fop2(compiler, SLJIT_SUB_F64, SLJIT_FR1, 0, SLJIT_FR1, 0, SLJIT_FR2, 0);
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_FR1, 0);
+    }
+
+    void emitCmpLtConstJumpIfFalse(int targetOffset, double value, size_t targetByteCodeIndex) {
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double));
+        sljit_emit_fset64(compiler, SLJIT_FR2, value);
+        struct sljit_jump* jump = sljit_emit_fcmp(compiler, SLJIT_F_GREATER_EQUAL, SLJIT_FR1, 0, SLJIT_FR2, 0);
+        if (labels.count(targetByteCodeIndex)) {
+            sljit_set_label(jump, labels[targetByteCodeIndex]);
+        } else {
+            unresolvedJumps[targetByteCodeIndex].push_back(jump);
+        }
+    }
+
+    void emitCmpLeConstJumpIfFalse(int targetOffset, double value, size_t targetByteCodeIndex) {
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double));
+        sljit_emit_fset64(compiler, SLJIT_FR2, value);
+        struct sljit_jump* jump = sljit_emit_fcmp(compiler, SLJIT_F_GREATER, SLJIT_FR1, 0, SLJIT_FR2, 0);
+        if (labels.count(targetByteCodeIndex)) {
+            sljit_set_label(jump, labels[targetByteCodeIndex]);
+        } else {
+            unresolvedJumps[targetByteCodeIndex].push_back(jump);
+        }
+    }
+
     void emitAddNumeric(int targetOffset, int srcOffset) {
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double));
         sljit_emit_fop2(compiler, SLJIT_ADD_F64, SLJIT_FR1, 0, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), srcOffset * sizeof(double));

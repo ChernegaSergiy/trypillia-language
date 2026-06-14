@@ -157,6 +157,42 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
             case static_cast<uint8_t>(OpCode::OP_CONSTANT): {
                 uint8_t idx = function->chunk->code[++i];
                 VMValue val = function->chunk->constants[idx];
+                
+                // Peek ahead for arithmetic or comparison optimization
+                uint8_t nextOp = (i + 1 < function->chunk->code.size()) ? function->chunk->code[i + 1] : 0;
+                uint8_t nextNextOp = (i + 2 < function->chunk->code.size()) ? function->chunk->code[i + 2] : 0;
+
+                if (val.isNumber()) {
+                    double numVal = val.asNumber();
+                    // Pattern 1: CONSTANT -> ADD/SUB
+                    if (nextOp == static_cast<uint8_t>(OpCode::OP_ADD) || nextOp == static_cast<uint8_t>(OpCode::OP_SUBTRACT)) {
+                        if (sp >= 1) {
+                            if (nextOp == static_cast<uint8_t>(OpCode::OP_ADD)) emitter.emitAddConst(sp - 1, numVal);
+                            else emitter.emitSubConst(sp - 1, numVal);
+                            typeStack[sp-1] = InferredType::NUMBER;
+                            i++; break;
+                        }
+                    }
+                    // Pattern 2: CONSTANT -> CMP -> JUMP_IF_FALSE (Common in if statements)
+                    if (nextNextOp == static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE)) {
+                        if (sp >= 1) {
+                            uint16_t offset = (function->chunk->code[i+3] << 8) | function->chunk->code[i+4];
+                            size_t target = i + 5 + offset;
+                            if (nextOp == static_cast<uint8_t>(OpCode::OP_LESS)) {
+                                emitter.emitCmpLtConstJumpIfFalse(sp - 1, numVal, target);
+                                expectedSp[target] = sp - 1;
+                                expectedStackTypes[target] = typeStack;
+                                sp--; i += 4; break;
+                            } else if (nextOp == static_cast<uint8_t>(OpCode::OP_LESS_EQUAL)) {
+                                emitter.emitCmpLeConstJumpIfFalse(sp - 1, numVal, target);
+                                expectedSp[target] = sp - 1;
+                                expectedStackTypes[target] = typeStack;
+                                sp--; i += 4; break;
+                            }
+                        }
+                    }
+                }
+
                 double raw;
                 memcpy(&raw, &val, sizeof(double));
                 if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
@@ -245,44 +281,110 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
             }
             case static_cast<uint8_t>(OpCode::OP_GREATER): {
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                emitter.emitCmpGt(sp - 2, sp - 1);
-                typeStack[sp-2] = InferredType::BOOL;
-                sp--;
+                uint8_t nextOp = (i + 1 < function->chunk->code.size()) ? function->chunk->code[i + 1] : 0;
+                if (nextOp == static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE)) {
+                    uint16_t offset = (function->chunk->code[i+2] << 8) | function->chunk->code[i+3];
+                    size_t target = i + 4 + offset;
+                    emitter.emitCmpGtJumpIfFalse(sp - 2, sp - 1, target);
+                    expectedSp[target] = sp - 2;
+                    expectedStackTypes[target] = typeStack;
+                    sp -= 2;
+                    i += 3; // Skip jump opcode and offset
+                } else {
+                    emitter.emitCmpGt(sp - 2, sp - 1);
+                    typeStack[sp-2] = InferredType::BOOL;
+                    sp--;
+                }
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_GREATER_EQUAL): {
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                emitter.emitCmpGe(sp - 2, sp - 1);
-                typeStack[sp-2] = InferredType::BOOL;
-                sp--;
+                uint8_t nextOp = (i + 1 < function->chunk->code.size()) ? function->chunk->code[i + 1] : 0;
+                if (nextOp == static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE)) {
+                    uint16_t offset = (function->chunk->code[i+2] << 8) | function->chunk->code[i+3];
+                    size_t target = i + 4 + offset;
+                    emitter.emitCmpGeJumpIfFalse(sp - 2, sp - 1, target);
+                    expectedSp[target] = sp - 2;
+                    expectedStackTypes[target] = typeStack;
+                    sp -= 2;
+                    i += 3;
+                } else {
+                    emitter.emitCmpGe(sp - 2, sp - 1);
+                    typeStack[sp-2] = InferredType::BOOL;
+                    sp--;
+                }
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_LESS): {
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                emitter.emitCmpLt(sp - 2, sp - 1);
-                typeStack[sp-2] = InferredType::BOOL;
-                sp--;
+                uint8_t nextOp = (i + 1 < function->chunk->code.size()) ? function->chunk->code[i + 1] : 0;
+                if (nextOp == static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE)) {
+                    uint16_t offset = (function->chunk->code[i+2] << 8) | function->chunk->code[i+3];
+                    size_t target = i + 4 + offset;
+                    emitter.emitCmpLtJumpIfFalse(sp - 2, sp - 1, target);
+                    expectedSp[target] = sp - 2;
+                    expectedStackTypes[target] = typeStack;
+                    sp -= 2;
+                    i += 3;
+                } else {
+                    emitter.emitCmpLt(sp - 2, sp - 1);
+                    typeStack[sp-2] = InferredType::BOOL;
+                    sp--;
+                }
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_LESS_EQUAL): {
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                emitter.emitCmpLe(sp - 2, sp - 1);
-                typeStack[sp-2] = InferredType::BOOL;
-                sp--;
+                uint8_t nextOp = (i + 1 < function->chunk->code.size()) ? function->chunk->code[i + 1] : 0;
+                if (nextOp == static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE)) {
+                    uint16_t offset = (function->chunk->code[i+2] << 8) | function->chunk->code[i+3];
+                    size_t target = i + 4 + offset;
+                    emitter.emitCmpLeJumpIfFalse(sp - 2, sp - 1, target);
+                    expectedSp[target] = sp - 2;
+                    expectedStackTypes[target] = typeStack;
+                    sp -= 2;
+                    i += 3;
+                } else {
+                    emitter.emitCmpLe(sp - 2, sp - 1);
+                    typeStack[sp-2] = InferredType::BOOL;
+                    sp--;
+                }
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_EQUAL): {
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                emitter.emitCmpEq(sp - 2, sp - 1);
-                typeStack[sp-2] = InferredType::BOOL;
-                sp--;
+                uint8_t nextOp = (i + 1 < function->chunk->code.size()) ? function->chunk->code[i + 1] : 0;
+                if (nextOp == static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE)) {
+                    uint16_t offset = (function->chunk->code[i+2] << 8) | function->chunk->code[i+3];
+                    size_t target = i + 4 + offset;
+                    emitter.emitCmpEqJumpIfFalse(sp - 2, sp - 1, target);
+                    expectedSp[target] = sp - 2;
+                    expectedStackTypes[target] = typeStack;
+                    sp -= 2;
+                    i += 3;
+                } else {
+                    emitter.emitCmpEq(sp - 2, sp - 1);
+                    typeStack[sp-2] = InferredType::BOOL;
+                    sp--;
+                }
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_NOT_EQUAL): {
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                emitter.emitCmpNe(sp - 2, sp - 1);
-                typeStack[sp-2] = InferredType::BOOL;
-                sp--;
+                uint8_t nextOp = (i + 1 < function->chunk->code.size()) ? function->chunk->code[i + 1] : 0;
+                if (nextOp == static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE)) {
+                    uint16_t offset = (function->chunk->code[i+2] << 8) | function->chunk->code[i+3];
+                    size_t target = i + 4 + offset;
+                    emitter.emitCmpNeJumpIfFalse(sp - 2, sp - 1, target);
+                    expectedSp[target] = sp - 2;
+                    expectedStackTypes[target] = typeStack;
+                    sp -= 2;
+                    i += 3;
+                } else {
+                    emitter.emitCmpNe(sp - 2, sp - 1);
+                    typeStack[sp-2] = InferredType::BOOL;
+                    sp--;
+                }
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_NOT): {
