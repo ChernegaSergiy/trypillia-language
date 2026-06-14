@@ -8,6 +8,8 @@
 #include <string>
 
 extern "C" double jit_invoke_helper(void* vm, const char* name, double* args, int argCount);
+extern "C" double jit_index_get_helper(void* vm_ptr, double object_val, double index_val);
+extern "C" double jit_index_set_helper(void* vm_ptr, double object_val, double index_val, double value_val);
 
 class UniversalEmitter : public JitEmitter {
 private:
@@ -215,6 +217,66 @@ public:
 
         // Restore active stack slots from memory (C function call clobbers FR registers)
         for (int j = 0; j <= targetOffset; ++j) {
+            sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
+                getFloatReg(j), 0, 
+                SLJIT_MEM1(SLJIT_S1), j * sizeof(double));
+        }
+    }
+
+    void emitIndexGet(int targetOffset, int objectOffset, int indexOffset) override {
+        // Save all active stack slots to memory (SLJIT_S1 array)
+        for (int j = 0; j <= targetOffset; ++j) {
+            sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
+                SLJIT_MEM1(SLJIT_S1), j * sizeof(double), 
+                getFloatReg(j), 0);
+        }
+
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_S0, 0); // vm pointer
+        
+        // Pass object_val (R1) and index_val (R2) as float parameters.
+        // wait, helper is: double jit_index_get_helper(void*, double, double)
+        // Calling convention for F64 args: FR0 = arg2, FR1 = arg3
+        // wait, the helper takes F64.
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR0, 0, getFloatReg(objectOffset), 0);
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, getFloatReg(indexOffset), 0);
+
+        // Define prototype for icall: double (void*, double, double) -> F64, W, F64, F64
+        sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS3(F64, W, F64, F64), SLJIT_IMM, (sljit_sw)jit_index_get_helper);
+
+        // Save the return value (FR0) into memory
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
+            SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), 
+            SLJIT_FR0, 0);
+
+        // Restore active stack slots from memory
+        for (int j = 0; j <= targetOffset; ++j) {
+            sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
+                getFloatReg(j), 0, 
+                SLJIT_MEM1(SLJIT_S1), j * sizeof(double));
+        }
+    }
+
+    void emitIndexSet(int objectOffset, int indexOffset, int valueOffset) override {
+        // Save all active stack slots
+        int maxOffset = std::max(std::max(objectOffset, indexOffset), valueOffset);
+        for (int j = 0; j <= maxOffset; ++j) {
+            sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
+                SLJIT_MEM1(SLJIT_S1), j * sizeof(double), 
+                getFloatReg(j), 0);
+        }
+
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_S0, 0);
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR0, 0, getFloatReg(objectOffset), 0);
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, getFloatReg(indexOffset), 0);
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR2, 0, getFloatReg(valueOffset), 0);
+
+        // double jit_index_set_helper(void*, double, double, double) -> F64, W, F64, F64, F64
+        sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS4(F64, W, F64, F64, F64), SLJIT_IMM, (sljit_sw)jit_index_set_helper);
+
+        // FR0 holds the return value (value_val), we don't strictly need to write it anywhere but we can replace valueOffset or just ignore.
+        
+        // Restore active stack slots
+        for (int j = 0; j <= maxOffset; ++j) {
             sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
                 getFloatReg(j), 0, 
                 SLJIT_MEM1(SLJIT_S1), j * sizeof(double));

@@ -48,6 +48,10 @@ public:
     // Calls
     virtual void emitCallGlobal(const std::string& name, int targetOffset, int argCount) = 0;
 
+    // Arrays and maps
+    virtual void emitIndexGet(int targetOffset, int objectOffset, int indexOffset) = 0;
+    virtual void emitIndexSet(int objectOffset, int indexOffset, int valueOffset) = 0;
+
     // Control Flow
     virtual void bindLabel(size_t byteCodeIndex) = 0;
     virtual void emitJump(size_t targetByteCodeIndex) = 0;

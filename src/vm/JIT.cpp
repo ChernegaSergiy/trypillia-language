@@ -210,6 +210,24 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 sp--;
                 break;
             }
+            case static_cast<uint8_t>(OpCode::OP_INDEX_GET): {
+                if (sp < 2) return nullptr;
+                // object is at sp - 2, index is at sp - 1
+                emitter.emitIndexGet(sp - 2, sp - 2, sp - 1);
+                sp--;
+                stackGlobalNames[sp - 1] = "";
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_INDEX_SET): {
+                if (sp < 3) return nullptr;
+                // object is at sp - 3, index is at sp - 2, value is at sp - 1
+                // value is left on stack
+                emitter.emitIndexSet(sp - 3, sp - 2, sp - 1);
+                emitter.emitMove(sp - 3, sp - 1); // move value to result slot
+                sp -= 2;
+                stackGlobalNames[sp - 1] = "";
+                break;
+            }
             case static_cast<uint8_t>(OpCode::OP_JUMP): {
                 uint16_t offset = (function->chunk->code[i+1] << 8) | function->chunk->code[i+2];
                 size_t target = i + 3 + offset;

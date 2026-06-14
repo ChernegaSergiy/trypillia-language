@@ -129,6 +129,71 @@ extern "C" double jit_invoke_helper(void* vm_ptr, const char* name, double* args
     return 0.0;
 }
 
+extern "C" double jit_index_get_helper(void* vm_ptr, double object_val, double index_val) {
+    VMValue obj, idx;
+    memcpy(&obj, &object_val, sizeof(double));
+    memcpy(&idx, &index_val, sizeof(double));
+
+    if (obj.isList()) {
+        if (idx.isNumber()) {
+            int index = static_cast<int>(idx.asNumber());
+            auto list = obj.asList();
+            if (index >= 0 && index < list->elements.size()) {
+                VMValue res = list->elements[index];
+                double ret;
+                memcpy(&ret, &res, sizeof(double));
+                return ret;
+            }
+        }
+    } else if (obj.isString()) {
+        if (idx.isNumber()) {
+            int index = static_cast<int>(idx.asNumber());
+            auto str = obj.asString()->flatten();
+            if (index >= 0 && index < str.length()) {
+                VMValue res = VMValue(std::string(1, str[index]));
+                double ret;
+                memcpy(&ret, &res, sizeof(double));
+                return ret;
+            }
+        }
+    } else if (obj.isMap()) {
+        auto map = obj.asMap();
+        if (map->values.count(idx)) {
+            VMValue res = map->values[idx];
+            double ret;
+            memcpy(&ret, &res, sizeof(double));
+            return ret;
+        }
+    }
+    
+    // Return nil
+    VMValue nilVal = nullptr;
+    double ret;
+    memcpy(&ret, &nilVal, sizeof(double));
+    return ret;
+}
+
+extern "C" double jit_index_set_helper(void* vm_ptr, double object_val, double index_val, double value_val) {
+    VMValue obj, idx, val;
+    memcpy(&obj, &object_val, sizeof(double));
+    memcpy(&idx, &index_val, sizeof(double));
+    memcpy(&val, &value_val, sizeof(double));
+
+    if (obj.isList()) {
+        if (idx.isNumber()) {
+            int index = static_cast<int>(idx.asNumber());
+            auto list = obj.asList();
+            if (index >= 0 && index < list->elements.size()) {
+                list->elements[index] = val;
+            }
+        }
+    } else if (obj.isMap()) {
+        auto map = obj.asMap();
+        map->values[idx] = val;
+    }
+    return value_val;
+}
+
 VM::VM() {
     StdLib::registerAll(this);
 }
