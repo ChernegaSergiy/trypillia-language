@@ -62,6 +62,21 @@ public:
     virtual void emitPropertySet(int objectOffset, const std::string& name) = 0;
     virtual void emitIterHasNext(int targetOffset) = 0;
 
+    // Class operations
+    virtual void emitCreateClass(int targetOffset, const std::string& name) = 0;
+    virtual void emitBindMethod(int targetOffset, const std::string& name, bool isAbstract) = 0;
+    virtual void emitBindStaticMethod(int targetOffset, const std::string& name) = 0;
+    virtual void emitInherit(int targetOffset) = 0;
+    virtual void emitMixin(int targetOffset) = 0;
+    virtual void emitGetSuper(int targetOffset, const std::string& name) = 0;
+    virtual void emitFieldModifier(int targetOffset, const std::string& name, uint8_t modifier) = 0;
+
+    // Closure and upvalue operations
+    virtual void emitCreateClosure(int targetOffset, double funcRaw, const uint8_t* upvalueBytes, int upvalueCount) = 0;
+    virtual void emitGetUpvalue(int targetOffset, int slot) = 0;
+    virtual void emitSetUpvalue(int slot, int sourceOffset) = 0;
+    virtual void emitCloseUpvalue(int stackOffset) = 0;
+
     // Control Flow
     virtual void bindLabel(size_t byteCodeIndex) = 0;
     virtual void emitJump(size_t targetByteCodeIndex) = 0;

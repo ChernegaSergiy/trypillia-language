@@ -29,11 +29,13 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                    op == static_cast<uint8_t>(OpCode::OP_SET_GLOBAL) ||
                    op == static_cast<uint8_t>(OpCode::OP_CALL) ||
                    op == static_cast<uint8_t>(OpCode::OP_BUILD_LIST) ||
+                   op == static_cast<uint8_t>(OpCode::OP_BUILD_MAP) ||
                    op == static_cast<uint8_t>(OpCode::OP_PROPERTY_GET) ||
                    op == static_cast<uint8_t>(OpCode::OP_PROPERTY_SET) ||
                    op == static_cast<uint8_t>(OpCode::OP_GET_UPVALUE) ||
                    op == static_cast<uint8_t>(OpCode::OP_SET_UPVALUE) ||
                    op == static_cast<uint8_t>(OpCode::OP_CLASS) ||
+                   op == static_cast<uint8_t>(OpCode::OP_ABSTRACT_CLASS) ||
                    op == static_cast<uint8_t>(OpCode::OP_GET_SUPER) ||
                    op == static_cast<uint8_t>(OpCode::OP_METHOD) ||
                    op == static_cast<uint8_t>(OpCode::OP_ABSTRACT_METHOD) ||
@@ -340,18 +342,19 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
             case static_cast<uint8_t>(OpCode::OP_GET_UPVALUE): {
                 uint8_t slot = function->chunk->code[++i];
                 if (sp >= 8) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                // Upvalues are complex; for now, just push nil (0) as placeholder
-                emitter.emitLoadConst(sp, 0.0);
+                emitter.emitGetUpvalue(sp, slot);
                 sp++;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_SET_UPVALUE): {
                 uint8_t slot = function->chunk->code[++i];
-                // Upvalues are complex; for now, just leave the stack value as-is
+                if (sp < 1) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                emitter.emitSetUpvalue(slot, sp - 1);
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_CLOSE_UPVALUE): {
                 if (sp < 1) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                emitter.emitCloseUpvalue(sp - 1);
                 sp--;
                 break;
             }
@@ -359,48 +362,85 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 uint8_t constIdx = function->chunk->code[++i];
                 VMValue funcVal = function->chunk->constants[constIdx];
                 int upvalueCount = funcVal.asFunction()->upvalueCount;
-                i += 2 * upvalueCount; // skip upvalue data
+                const uint8_t* upvalueBytes = &function->chunk->code[i + 1];
+                i += 2 * upvalueCount;
                 if (sp >= 8) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                // For now, push the raw function value as a placeholder
                 double raw;
                 memcpy(&raw, &funcVal, sizeof(double));
-                emitter.emitLoadConst(sp, raw);
+                emitter.emitCreateClosure(sp, raw, upvalueBytes, upvalueCount);
                 sp++;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_CLASS): {
                 uint8_t constIdx = function->chunk->code[++i];
-                if (sp >= 8) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 VMValue nameVal = function->chunk->constants[constIdx];
-                double raw;
-                memcpy(&raw, &nameVal, sizeof(double));
-                emitter.emitLoadConst(sp, raw);
+                if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                std::string name = nameVal.asString()->flatten();
+                if (sp >= 8) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                emitter.emitCreateClass(sp, name);
                 sp++;
                 break;
             }
-            case static_cast<uint8_t>(OpCode::OP_INHERIT):
+            case static_cast<uint8_t>(OpCode::OP_INHERIT): {
+                if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                emitter.emitInherit(sp - 2);
+                sp--;
+                break;
+            }
             case static_cast<uint8_t>(OpCode::OP_MIXIN): {
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                sp -= 2;
+                emitter.emitMixin(sp - 2);
+                sp--;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_GET_SUPER): {
                 uint8_t constIdx = function->chunk->code[++i];
+                VMValue nameVal = function->chunk->constants[constIdx];
+                if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                std::string name = nameVal.asString()->flatten();
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                emitter.emitGetSuper(sp - 2, name);
                 sp--;
                 break;
             }
-            case static_cast<uint8_t>(OpCode::OP_METHOD):
-            case static_cast<uint8_t>(OpCode::OP_ABSTRACT_METHOD):
+            case static_cast<uint8_t>(OpCode::OP_METHOD): {
+                uint8_t constIdx = function->chunk->code[++i];
+                VMValue nameVal = function->chunk->constants[constIdx];
+                if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                std::string name = nameVal.asString()->flatten();
+                if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                emitter.emitBindMethod(sp - 2, name, false);
+                sp--;
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_ABSTRACT_METHOD): {
+                uint8_t constIdx = function->chunk->code[++i];
+                VMValue nameVal = function->chunk->constants[constIdx];
+                if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                std::string name = nameVal.asString()->flatten();
+                if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                emitter.emitBindMethod(sp - 2, name, true);
+                sp--;
+                break;
+            }
             case static_cast<uint8_t>(OpCode::OP_STATIC_METHOD): {
                 uint8_t constIdx = function->chunk->code[++i];
-                if (sp < 1) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                VMValue nameVal = function->chunk->constants[constIdx];
+                if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                std::string name = nameVal.asString()->flatten();
+                if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                emitter.emitBindStaticMethod(sp - 2, name);
                 sp--;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_FIELD_MODIFIER): {
                 uint8_t constIdx = function->chunk->code[++i];
+                VMValue nameVal = function->chunk->constants[constIdx];
+                if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                std::string name = nameVal.asString()->flatten();
                 uint8_t modifier = function->chunk->code[++i];
+                if (sp < 1) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                emitter.emitFieldModifier(sp - 1, name, modifier);
                 break;
             }
             default:

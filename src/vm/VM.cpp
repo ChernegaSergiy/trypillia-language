@@ -198,7 +198,9 @@ extern "C" double jit_property_get_helper(void* vm_ptr, double object_val, const
                 result = instance->fields[propName];
             } else if (instance->klass->methods.count(propName)) {
                 auto method = instance->klass->methods[propName];
-                result = new ObjBoundMethod(VMValue(instance), method);
+                auto bound = new ObjBoundMethod(VMValue(instance), method);
+                bound->retain();
+                result = bound;
             }
         } else if (obj->type == ObjType::OBJ_CLASS) {
             ObjClass* klass = (ObjClass*)obj;
@@ -266,6 +268,7 @@ extern "C" double jit_iter_has_next_helper(double index_val, double iterable_val
 extern "C" double jit_call_helper(void* vm_ptr, double callee_val, double* args, int argCount) {
     VM* vm = static_cast<VM*>(vm_ptr);
     VMValue result = nullptr;
+    ObjClosure* savedJitClosure = vm->jitClosure;
 
     uint64_t calleeRaw;
     memcpy(&calleeRaw, &callee_val, sizeof(uint64_t));
@@ -279,7 +282,6 @@ extern "C" double jit_call_helper(void* vm_ptr, double callee_val, double* args,
             }
             ObjNative* native = (ObjNative*)obj;
             result = native->function(argCount, vmArgs.data());
-            // Clear vmArgs to prevent releasing borrowed references
             uint64_t nilBits = QNAN | TAG_NIL;
             for (int i = 0; i < argCount; i++)
                 memcpy(&vmArgs[i], &nilBits, sizeof(uint64_t));
@@ -290,10 +292,52 @@ extern "C" double jit_call_helper(void* vm_ptr, double callee_val, double* args,
             }
             VMValue callee;
             memcpy(&callee, &callee_val, sizeof(double));
+            vm->jitClosure = nullptr;
             result = vm->callClosure(callee, argCount, vmArgs.data());
-            // Clear callee and vmArgs to prevent releasing borrowed references
+            vm->jitClosure = savedJitClosure;
             uint64_t nilBits = QNAN | TAG_NIL;
             memcpy(&callee, &nilBits, sizeof(uint64_t));
+            for (int i = 0; i < argCount; i++)
+                memcpy(&vmArgs[i], &nilBits, sizeof(uint64_t));
+        } else if (obj->type == ObjType::OBJ_BOUND_METHOD) {
+            ObjBoundMethod* bound = (ObjBoundMethod*)obj;
+            VMValue method = bound->method;
+            VMValue receiver = bound->receiver;
+            if (method.isClosure()) {
+                std::vector<VMValue> vmArgs(argCount + 1);
+                vmArgs[0] = receiver;
+                for (int i = 0; i < argCount; i++) {
+                    memcpy(&vmArgs[i + 1], &args[i], sizeof(double));
+                }
+                vm->jitClosure = nullptr;
+                result = vm->callClosure(method, argCount + 1, vmArgs.data());
+                vm->jitClosure = savedJitClosure;
+                uint64_t nilBits = QNAN | TAG_NIL;
+                for (int i = 0; i < argCount + 1; i++)
+                    memcpy(&vmArgs[i], &nilBits, sizeof(uint64_t));
+            } else if (method.isNative()) {
+                ObjNative* native = method.asNative();
+                std::vector<VMValue> vmArgs(argCount + 1);
+                vmArgs[0] = receiver;
+                for (int i = 0; i < argCount; i++) {
+                    memcpy(&vmArgs[i + 1], &args[i], sizeof(double));
+                }
+                result = native->function(argCount + 1, vmArgs.data());
+                uint64_t nilBits = QNAN | TAG_NIL;
+                for (int i = 0; i < argCount + 1; i++)
+                    memcpy(&vmArgs[i], &nilBits, sizeof(uint64_t));
+            }
+        } else if (obj->type == ObjType::OBJ_CLASS) {
+            VMValue classVal;
+            memcpy(&classVal, &callee_val, sizeof(double));
+            std::vector<VMValue> vmArgs(argCount);
+            for (int i = 0; i < argCount; i++) {
+                memcpy(&vmArgs[i], &args[i], sizeof(double));
+            }
+            vm->jitClosure = nullptr;
+            result = vm->instantiateClass(classVal, argCount, vmArgs.data());
+            vm->jitClosure = savedJitClosure;
+            uint64_t nilBits = QNAN | TAG_NIL;
             for (int i = 0; i < argCount; i++)
                 memcpy(&vmArgs[i], &nilBits, sizeof(uint64_t));
         }
@@ -321,6 +365,185 @@ extern "C" void jit_set_global_helper(void* vm_ptr, const char* name, double val
     VMValue val;
     memcpy(&val, &val_d, sizeof(double));
     vm->globals[name] = val;
+}
+
+extern "C" double jit_create_class_helper(void* vm, const char* name) {
+    auto klass = new ObjClass(name);
+    klass->retain();
+    VMValue result(klass);
+    double ret;
+    memcpy(&ret, &result, sizeof(double));
+    return ret;
+}
+
+extern "C" double jit_bind_method_helper(double class_val, double method_val, const char* name, int isAbstract) {
+    uint64_t klassRaw, methodRaw;
+    memcpy(&klassRaw, &class_val, sizeof(uint64_t));
+    memcpy(&methodRaw, &method_val, sizeof(uint64_t));
+    ObjClass* klass = (ObjClass*)(klassRaw & ~(QNAN | SIGN_BIT));
+    VMValue method;
+    memcpy(&method, &methodRaw, sizeof(VMValue));
+    if (isAbstract) {
+        if (method.isClosure())
+            method.asClosure()->function->isAbstract = true;
+        else if (method.isNative())
+            method.asNative()->isAbstract = true;
+    }
+    klass->methods[name] = method;
+    free((void*)name);
+    return class_val;
+}
+
+extern "C" double jit_bind_static_method_helper(double class_val, double method_val, const char* name) {
+    uint64_t klassRaw, methodRaw;
+    memcpy(&klassRaw, &class_val, sizeof(uint64_t));
+    memcpy(&methodRaw, &method_val, sizeof(uint64_t));
+    ObjClass* klass = (ObjClass*)(klassRaw & ~(QNAN | SIGN_BIT));
+    VMValue method;
+    memcpy(&method, &methodRaw, sizeof(VMValue));
+    klass->statics[name] = method;
+    free((void*)name);
+    return class_val;
+}
+
+extern "C" void jit_inherit_helper(double subclass_val, double superclass_val) {
+    uint64_t subRaw, supRaw;
+    memcpy(&subRaw, &subclass_val, sizeof(uint64_t));
+    memcpy(&supRaw, &superclass_val, sizeof(uint64_t));
+    if ((subRaw & (QNAN | SIGN_BIT)) != (QNAN | SIGN_BIT)) return;
+    if ((supRaw & (QNAN | SIGN_BIT)) != (QNAN | SIGN_BIT)) return;
+    ObjClass* subclass = (ObjClass*)(subRaw & ~(QNAN | SIGN_BIT));
+    ObjClass* superclass = (ObjClass*)(supRaw & ~(QNAN | SIGN_BIT));
+    if (subclass->type != ObjType::OBJ_CLASS) return;
+    if (superclass->type != ObjType::OBJ_CLASS) return;
+    subclass->superclass = superclass;
+    for (auto const& [name, mod] : superclass->fieldModifiers) {
+        subclass->fieldModifiers[name] = mod;
+    }
+    for (auto const& [name, method] : superclass->methods) {
+        subclass->methods[name] = method;
+    }
+}
+
+extern "C" void jit_mixin_helper(double target_val, double mixin_val) {
+    uint64_t targetRaw, mixinRaw;
+    memcpy(&targetRaw, &target_val, sizeof(uint64_t));
+    memcpy(&mixinRaw, &mixin_val, sizeof(uint64_t));
+    if ((targetRaw & (QNAN | SIGN_BIT)) != (QNAN | SIGN_BIT)) return;
+    if ((mixinRaw & (QNAN | SIGN_BIT)) != (QNAN | SIGN_BIT)) return;
+    ObjClass* targetClass = (ObjClass*)(targetRaw & ~(QNAN | SIGN_BIT));
+    ObjClass* mixinClass = (ObjClass*)(mixinRaw & ~(QNAN | SIGN_BIT));
+    if (targetClass->type != ObjType::OBJ_CLASS) return;
+    if (mixinClass->type != ObjType::OBJ_CLASS) return;
+    for (auto const& [name, method] : mixinClass->methods) {
+        targetClass->methods[name] = method;
+    }
+}
+
+extern "C" double jit_get_super_helper(double receiver_val, double superclass_val, const char* name) {
+    uint64_t recvRaw, supRaw;
+    memcpy(&recvRaw, &receiver_val, sizeof(uint64_t));
+    memcpy(&supRaw, &superclass_val, sizeof(uint64_t));
+    ObjClass* superclass = nullptr;
+    if ((supRaw & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT)) {
+        superclass = (ObjClass*)(supRaw & ~(QNAN | SIGN_BIT));
+    }
+    ObjInstance* receiver = nullptr;
+    if ((recvRaw & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT)) {
+        receiver = (ObjInstance*)(recvRaw & ~(QNAN | SIGN_BIT));
+    }
+    std::string methodName(name);
+    free((void*)name);
+    if (superclass && receiver && superclass->methods.count(methodName)) {
+        auto method = superclass->methods[methodName];
+        auto bound = new ObjBoundMethod(receiver, method);
+        bound->retain();
+        VMValue result(bound);
+        double ret;
+        memcpy(&ret, &result, sizeof(double));
+        return ret;
+    }
+    double ret = 0;
+    return ret;
+}
+
+extern "C" void jit_field_modifier_helper(double class_val, const char* name, int modifier) {
+    uint64_t klassRaw;
+    memcpy(&klassRaw, &class_val, sizeof(uint64_t));
+    if ((klassRaw & (QNAN | SIGN_BIT)) != (QNAN | SIGN_BIT)) { free((void*)name); return; }
+    ObjClass* klass = (ObjClass*)(klassRaw & ~(QNAN | SIGN_BIT));
+    if (klass->type != ObjType::OBJ_CLASS) { free((void*)name); return; }
+    klass->fieldModifiers[name] = static_cast<VMAccessModifier>(modifier);
+    free((void*)name);
+}
+
+extern "C" double jit_create_closure_helper(void* vm_ptr, double func_val, double* upvalue_data, int upvalue_count) {
+    VM* vm = static_cast<VM*>(vm_ptr);
+    uint64_t funcRaw;
+    memcpy(&funcRaw, &func_val, sizeof(uint64_t));
+    ObjFunction* function;
+    if ((funcRaw & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT))
+        function = (ObjFunction*)(funcRaw & ~(QNAN | SIGN_BIT));
+    else
+        function = nullptr;
+    auto closure = new ObjClosure(function);
+    closure->retain();
+
+    for (int i = 0; i < upvalue_count; i++) {
+        uint64_t metaRaw;
+        memcpy(&metaRaw, &upvalue_data[i * 2], sizeof(uint64_t));
+        int packed = static_cast<int>(metaRaw);
+        bool isLocal = (packed >> 8) & 1;
+        int index = packed & 0xFF;
+
+        if (isLocal) {
+            uint64_t valRaw;
+            memcpy(&valRaw, &upvalue_data[i * 2 + 1], sizeof(uint64_t));
+            VMValue val;
+            memcpy(&val, &valRaw, sizeof(VMValue));
+            auto upvalue = new ObjUpvalue(nullptr);
+            upvalue->closed = val;
+            upvalue->location = &upvalue->closed;
+            closure->upvalues.push_back(upvalue);
+        } else {
+            if (vm->jitClosure && index < (int)vm->jitClosure->upvalues.size()) {
+                closure->upvalues.push_back(vm->jitClosure->upvalues[index]);
+            } else {
+                closure->upvalues.push_back(nullptr);
+            }
+        }
+    }
+
+    VMValue result(closure);
+    double ret;
+    memcpy(&ret, &result, sizeof(double));
+    return ret;
+}
+
+extern "C" double jit_get_upvalue_helper(void* vm_ptr, int slot) {
+    VM* vm = static_cast<VM*>(vm_ptr);
+    if (vm->jitClosure && slot < (int)vm->jitClosure->upvalues.size() && vm->jitClosure->upvalues[slot]) {
+        VMValue result = *vm->jitClosure->upvalues[slot]->location;
+        double ret;
+        memcpy(&ret, &result, sizeof(double));
+        return ret;
+    }
+    double ret = 0;
+    return ret;
+}
+
+extern "C" void jit_set_upvalue_helper(void* vm_ptr, int slot, double val) {
+    VM* vm = static_cast<VM*>(vm_ptr);
+    if (vm->jitClosure && slot < (int)vm->jitClosure->upvalues.size() && vm->jitClosure->upvalues[slot]) {
+        VMValue value;
+        memcpy(&value, &val, sizeof(VMValue));
+        *vm->jitClosure->upvalues[slot]->location = value;
+    }
+}
+
+extern "C" void jit_close_upvalue_helper(void* vm_ptr, double* addr) {
+    // JIT-compiled functions don't have local upvalues on the VM stack,
+    // so closeUpvalues is a no-op. JIT-created upvalues are already heap-allocated.
 }
 
 VM::VM() {
@@ -376,6 +599,49 @@ VMValue VM::callClosure(VMValue closureVal, int argCount, VMValue *args) {
     }
 
     return pop();
+}
+
+VMValue VM::instantiateClass(VMValue classVal, int argCount, VMValue* args) {
+    if (!classVal.isClass()) return nullptr;
+    auto klass = classVal.asClass();
+    if (klass->isAbstract) return nullptr;
+    for (auto const& [name, method] : klass->methods) {
+        if (isMethodAbstract(method)) return nullptr;
+    }
+    auto instance = new ObjInstance(klass);
+
+    if (klass->methods.count("init")) {
+        auto initMethod = klass->methods["init"];
+        int minArity = getMethodMinArity(initMethod);
+        int maxArity = getMethodMaxArity(initMethod);
+        if (minArity != -1 && (argCount < minArity || argCount > maxArity))
+            return nullptr;
+        while (maxArity != -1 && argCount < maxArity) {
+            // Pad with nil
+            VMValue nilVal = nullptr;
+            // We can't easily pad here, rely on caller
+            return nullptr;
+        }
+
+        if (initMethod.isClosure()) {
+            push(instance);
+            for (int i = 0; i < argCount; i++)
+                push(args[i]);
+            auto closure = initMethod.asClosure();
+            CallFrame newFrame;
+            newFrame.closure = closure;
+            newFrame.ip = closure->function->chunk->code.data();
+            newFrame.stackStart = static_cast<int>(stack.size() - argCount - 1);
+            frames.push_back(newFrame);
+            int initialDepth = static_cast<int>(frames.size() - 1);
+            InterpretResult res = run(initialDepth);
+            frames.pop_back();
+            if (res == InterpretResult::INTERPRET_RUNTIME_ERROR)
+                return nullptr;
+            return instance;
+        }
+    }
+    return instance;
 }
 
 ObjUpvalue* VM::captureUpvalue(VMValue *local) {
@@ -1116,7 +1382,9 @@ InterpretResult VM::run(int targetFrameDepth) {
                         jitArgs[i] = raw;
                     }
 
+                    jitClosure = closure;
                     double result = nativeJitFunc(this, jitArgs.data(), argCount);
+                    jitClosure = nullptr;
                     stack.resize(stack.size() - argCount - 1);
                     push(result);
                     break; // Skip standard frame push!

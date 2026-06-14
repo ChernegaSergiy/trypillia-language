@@ -41,8 +41,11 @@ class VM {
     VM();
     ~VM();
 
+    ObjClosure* jitClosure = nullptr;
     JITCompiler jit;
     std::unordered_map<void*, JitFunc> compiledFuncs;
+
+    VMValue instantiateClass(VMValue classVal, int argCount, VMValue* args);
 
     InterpretResult interpret(ObjFunction* function);
 };
