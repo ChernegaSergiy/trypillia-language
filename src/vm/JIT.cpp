@@ -61,7 +61,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
         }
     }
 
-    if (maxLocal + 1 > 8) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+    if (maxLocal + 1 > 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
 
     std::vector<int> capturedVec(capturedLocals.begin(), capturedLocals.end());
     emitter.setCapturedLocals(capturedVec);
@@ -79,15 +79,13 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 break;
             case static_cast<uint8_t>(OpCode::OP_GET_LOCAL): {
                 uint8_t slot = function->chunk->code[++i];
-                if (slot == 0) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                if (sp >= 8) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitGetLocal(sp, slot);
                 sp++;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_SET_LOCAL): {
                 uint8_t slot = function->chunk->code[++i];
-                if (slot == 0) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 if (sp == 0) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitSetLocal(slot, sp - 1);
                 break;
@@ -96,7 +94,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 uint8_t constantIdx = function->chunk->code[++i];
                 VMValue constant = function->chunk->constants[constantIdx];
                 if (!constant.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                if (sp >= 8) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 std::string name = constant.asString()->flatten();
                 emitter.emitGetGlobal(name, sp);
                 sp++;
@@ -141,7 +139,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 VMValue val = function->chunk->constants[idx];
                 double raw;
                 memcpy(&raw, &val, sizeof(double));
-                if (sp >= 8) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitLoadConst(sp, raw);
                 sp++;
                 break;
@@ -294,25 +292,25 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_NIL): {
-                if (sp >= 8) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitLoadConst(sp, 0.0);
                 sp++;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_TRUE): {
-                if (sp >= 8) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitLoadConst(sp, 1.0);
                 sp++;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_FALSE): {
-                if (sp >= 8) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitLoadConst(sp, 0.0);
                 sp++;
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_DUP): {
-                if (sp >= 8) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitMove(sp, sp - 1);
                 sp++;
                 break;
@@ -320,7 +318,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
             case static_cast<uint8_t>(OpCode::OP_BUILD_LIST): {
                 uint8_t count = function->chunk->code[++i];
                 if (sp < count) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                if (sp - count + 1 >= 8) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                if (sp - count + 1 >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitBuildList(sp - count, count);
                 sp = sp - count + 1;
                 break;
@@ -328,7 +326,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
             case static_cast<uint8_t>(OpCode::OP_BUILD_MAP): {
                 uint8_t count = function->chunk->code[++i];
                 if (sp < count * 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                if (sp - (count * 2) + 1 >= 8) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                if (sp - (count * 2) + 1 >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitBuildMap(sp - (count * 2), count);
                 sp = sp - (count * 2) + 1;
                 break;
@@ -360,7 +358,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
             }
             case static_cast<uint8_t>(OpCode::OP_GET_UPVALUE): {
                 uint8_t slot = function->chunk->code[++i];
-                if (sp >= 8) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitGetUpvalue(sp, slot);
                 sp++;
                 break;
@@ -383,7 +381,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 int upvalueCount = funcVal.asFunction()->upvalueCount;
                 const uint8_t* upvalueBytes = &function->chunk->code[i + 1];
                 i += 2 * upvalueCount;
-                if (sp >= 8) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 double raw;
                 memcpy(&raw, &funcVal, sizeof(double));
                 emitter.emitCreateClosure(sp, raw, upvalueBytes, upvalueCount);
@@ -395,7 +393,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 VMValue nameVal = function->chunk->constants[constIdx];
                 if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 std::string name = nameVal.asString()->flatten();
-                if (sp >= 8) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitCreateClass(sp, name);
                 sp++;
                 break;
@@ -405,7 +403,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 VMValue nameVal = function->chunk->constants[constIdx];
                 if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 std::string name = nameVal.asString()->flatten();
-                if (sp >= 8) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitCreateAbstractClass(sp, name);
                 sp++;
                 break;
