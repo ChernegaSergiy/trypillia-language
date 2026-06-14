@@ -4,28 +4,28 @@
 
 typedef double (*JitFunc)(double*, int);
 
-// Абстрактний базовий клас для генерації машинного коду
+// Abstract base class for machine code generation
 class JitEmitter {
 public:
     virtual ~JitEmitter() = default;
 
-    // Керування пам'яттю та викликами
+    // Memory and invocation management
     virtual void emitPrologue(int maxLocals) = 0;
     virtual void emitEpilogue(int maxLocals) = 0;
 
-    // Робота зі стеком (stackOffset - це відносний індекс у нашому віртуальному стеку)
+    // Stack operations (stackOffset is a relative index in our virtual stack)
     virtual void emitLoadConst(int stackOffset, double value) = 0;
     virtual void emitGetLocal(int stackOffset, int localSlot) = 0;
     virtual void emitSetLocal(int localSlot, int stackOffset) = 0;
     virtual void emitMove(int targetOffset, int srcOffset) = 0;
 
-    // Арифметика
+    // Arithmetic operations
     virtual void emitAdd(int targetOffset, int srcOffset) = 0;
     virtual void emitSub(int targetOffset, int srcOffset) = 0;
     virtual void emitMul(int targetOffset, int srcOffset) = 0;
     virtual void emitDiv(int targetOffset, int srcOffset) = 0;
 
-    // Порівняння (записують результат в 1 (true) або 0 (false))
+    // Comparisons (write result as 1.0 (true) or 0.0 (false))
     virtual void emitCmpEq(int targetOffset, int srcOffset) = 0;
     virtual void emitCmpNe(int targetOffset, int srcOffset) = 0;
     virtual void emitCmpLt(int targetOffset, int srcOffset) = 0;
@@ -33,15 +33,15 @@ public:
     virtual void emitCmpGt(int targetOffset, int srcOffset) = 0;
     virtual void emitCmpGe(int targetOffset, int srcOffset) = 0;
 
-    // Унарні операції
+    // Unary operations
     virtual void emitNot(int targetOffset) = 0;
     virtual void emitNegate(int targetOffset) = 0;
 
-    // Керування потоком виконання (Control Flow)
+    // Control Flow
     virtual void bindLabel(size_t byteCodeIndex) = 0;
     virtual void emitJump(size_t targetByteCodeIndex) = 0;
     virtual void emitJumpIfFalse(int stackOffset, size_t targetByteCodeIndex) = 0;
 
-    // Фіналізація та повернення вказівника на функцію
+    // Finalize and return function pointer
     virtual JitFunc finalize() = 0;
 };
