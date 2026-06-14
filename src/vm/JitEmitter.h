@@ -56,6 +56,12 @@ public:
     virtual void emitIndexGet(int targetOffset, int objectOffset, int indexOffset) = 0;
     virtual void emitIndexSet(int objectOffset, int indexOffset, int valueOffset) = 0;
 
+    // Object operations
+    virtual void emitBuildList(int targetOffset, int count) = 0;
+    virtual void emitPropertyGet(int objectOffset, const std::string& name) = 0;
+    virtual void emitPropertySet(int objectOffset, const std::string& name) = 0;
+    virtual void emitIterHasNext(int targetOffset) = 0;
+
     // Control Flow
     virtual void bindLabel(size_t byteCodeIndex) = 0;
     virtual void emitJump(size_t targetByteCodeIndex) = 0;

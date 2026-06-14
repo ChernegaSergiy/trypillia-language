@@ -107,26 +107,198 @@ extern "C" double jit_mod_helper(double a, double b) {
     return std::fmod(a, b);
 }
 
+extern "C" double jit_build_list_helper(double* args, int count) {
+    std::vector<VMValue> elements(count);
+    for (int i = 0; i < count; i++) {
+        VMValue val;
+        memcpy(&val, &args[i], sizeof(double));
+        elements[i] = val;
+    }
+    ObjList* list = new ObjList(elements);
+    list->retain();
+    // Manually construct the NaN-boxed value to avoid temporary VMValue
+    // The result variable below gives the Ref 1; the manual retain above gives Ref 2.
+    // After result destructor releases (Ref 1), the list survives until the calling
+    // JIT code properly retains it (via VMValue copy in push/stack operations).
+    VMValue result(list);
+    double dresult;
+    memcpy(&dresult, &result, sizeof(double));
+    return dresult;
+}
+
+extern "C" double jit_index_get_helper(void* vm_ptr, double object_val, double index_val) {
+    uint64_t objRaw;
+    memcpy(&objRaw, &object_val, sizeof(uint64_t));
+    uint64_t idxRaw;
+    memcpy(&idxRaw, &index_val, sizeof(uint64_t));
+
+    bool isObj = (objRaw & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT);
+    bool isNum = (idxRaw & QNAN) != QNAN;
+
+    if (isObj && isNum) {
+        Obj* obj = (Obj*)(uintptr_t)(objRaw & ~(SIGN_BIT | QNAN));
+        if (obj->type == ObjType::OBJ_LIST) {
+            ObjList* list = (ObjList*)obj;
+            double indexDouble;
+            memcpy(&indexDouble, &index_val, sizeof(double));
+            int i = static_cast<int>(indexDouble);
+            if (i >= 0 && i < static_cast<int>(list->elements.size())) {
+                VMValue result = list->elements[i];
+                double ret;
+                memcpy(&ret, &result, sizeof(double));
+                return ret;
+            }
+        }
+    }
+    double ret = 0;
+    return ret;
+}
+
+extern "C" double jit_index_set_helper(void* vm_ptr, double object_val, double index_val, double value_val) {
+    uint64_t objRaw;
+    memcpy(&objRaw, &object_val, sizeof(uint64_t));
+    uint64_t idxRaw;
+    memcpy(&idxRaw, &index_val, sizeof(uint64_t));
+
+    bool isObj = (objRaw & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT);
+    bool isNum = (idxRaw & QNAN) != QNAN;
+
+    if (isObj && isNum) {
+        Obj* obj = (Obj*)(uintptr_t)(objRaw & ~(SIGN_BIT | QNAN));
+        if (obj->type == ObjType::OBJ_LIST) {
+            ObjList* list = (ObjList*)obj;
+            double indexDouble;
+            memcpy(&indexDouble, &index_val, sizeof(double));
+            int i = static_cast<int>(indexDouble);
+            VMValue val;
+            memcpy(&val, &value_val, sizeof(double));
+            if (i >= 0 && i < static_cast<int>(list->elements.size())) {
+                list->elements[i] = val;
+            }
+        }
+    }
+    double ret;
+    memcpy(&ret, &value_val, sizeof(double));
+    return ret;
+}
+
+extern "C" double jit_property_get_helper(void* vm_ptr, double object_val, const char* name) {
+    VM* vm = static_cast<VM*>(vm_ptr);
+    uint64_t objRaw;
+    memcpy(&objRaw, &object_val, sizeof(uint64_t));
+    std::string propName(name);
+    VMValue result(nullptr);
+
+    bool isObj = (objRaw & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT);
+    if (isObj) {
+        Obj* obj = (Obj*)(uintptr_t)(objRaw & ~(SIGN_BIT | QNAN));
+        if (obj->type == ObjType::OBJ_INSTANCE) {
+            ObjInstance* instance = (ObjInstance*)obj;
+            if (instance->fields.count(propName)) {
+                result = instance->fields[propName];
+            } else if (instance->klass->methods.count(propName)) {
+                auto method = instance->klass->methods[propName];
+                result = new ObjBoundMethod(VMValue(instance), method);
+            }
+        } else if (obj->type == ObjType::OBJ_CLASS) {
+            ObjClass* klass = (ObjClass*)obj;
+            if (klass->statics.count(propName))
+                result = klass->statics[propName];
+        }
+    }
+    double ret;
+    memcpy(&ret, &result, sizeof(double));
+    return ret;
+}
+
+extern "C" double jit_property_set_helper(void* vm_ptr, double object_val, const char* name, double value_val) {
+    VM* vm = static_cast<VM*>(vm_ptr);
+    uint64_t objRaw;
+    memcpy(&objRaw, &object_val, sizeof(uint64_t));
+    std::string propName(name);
+
+    bool isObj = (objRaw & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT);
+    if (isObj) {
+        Obj* obj = (Obj*)(uintptr_t)(objRaw & ~(SIGN_BIT | QNAN));
+        VMValue val;
+        memcpy(&val, &value_val, sizeof(double));
+        if (obj->type == ObjType::OBJ_INSTANCE) {
+            ObjInstance* instance = (ObjInstance*)obj;
+            instance->fields[propName] = val;
+        } else if (obj->type == ObjType::OBJ_CLASS) {
+            ObjClass* klass = (ObjClass*)obj;
+            klass->statics[propName] = val;
+        }
+    }
+    double ret;
+    memcpy(&ret, &value_val, sizeof(double));
+    return ret;
+}
+
+extern "C" double jit_iter_has_next_helper(double index_val, double iterable_val) {
+    uint64_t idxRaw;
+    memcpy(&idxRaw, &index_val, sizeof(uint64_t));
+    uint64_t iterRaw;
+    memcpy(&iterRaw, &iterable_val, sizeof(uint64_t));
+
+    bool result = false;
+    bool isNum = (idxRaw & QNAN) != QNAN;
+    bool isObj = (iterRaw & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT);
+    if (isNum && isObj) {
+        double indexDouble;
+        memcpy(&indexDouble, &index_val, sizeof(double));
+        int index = static_cast<int>(indexDouble);
+        Obj* obj = (Obj*)(uintptr_t)(iterRaw & ~(SIGN_BIT | QNAN));
+        if (obj->type == ObjType::OBJ_LIST) {
+            ObjList* list = (ObjList*)obj;
+            result = index < static_cast<int>(list->elements.size());
+        } else if (obj->type == ObjType::OBJ_STRING) {
+            ObjString* strObj = (ObjString*)obj;
+            result = index < utf8_length(strObj->flatten());
+        }
+    }
+    VMValue ret(result);
+    double dret;
+    memcpy(&dret, &ret, sizeof(double));
+    return dret;
+}
+
 extern "C" double jit_call_helper(void* vm_ptr, double callee_val, double* args, int argCount) {
     VM* vm = static_cast<VM*>(vm_ptr);
-    VMValue callee;
-    memcpy(&callee, &callee_val, sizeof(double));
     VMValue result = nullptr;
-    
-    std::vector<VMValue> vmArgs(argCount);
-    for (int i = 0; i < argCount; i++) {
-        // The double contains raw VMValue bits
-        double argD = args[i];
-        memcpy(&vmArgs[i], &argD, sizeof(double));
+
+    uint64_t calleeRaw;
+    memcpy(&calleeRaw, &callee_val, sizeof(uint64_t));
+    bool isObj = (calleeRaw & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT);
+    if (isObj) {
+        Obj* obj = (Obj*)(uintptr_t)(calleeRaw & ~(SIGN_BIT | QNAN));
+        if (obj->type == ObjType::OBJ_NATIVE) {
+            std::vector<VMValue> vmArgs(argCount);
+            for (int i = 0; i < argCount; i++) {
+                memcpy(&vmArgs[i], &args[i], sizeof(double));
+            }
+            ObjNative* native = (ObjNative*)obj;
+            result = native->function(argCount, vmArgs.data());
+            // Clear vmArgs to prevent releasing borrowed references
+            uint64_t nilBits = QNAN | TAG_NIL;
+            for (int i = 0; i < argCount; i++)
+                memcpy(&vmArgs[i], &nilBits, sizeof(uint64_t));
+        } else if (obj->type == ObjType::OBJ_CLOSURE) {
+            std::vector<VMValue> vmArgs(argCount);
+            for (int i = 0; i < argCount; i++) {
+                memcpy(&vmArgs[i], &args[i], sizeof(double));
+            }
+            VMValue callee;
+            memcpy(&callee, &callee_val, sizeof(double));
+            result = vm->callClosure(callee, argCount, vmArgs.data());
+            // Clear callee and vmArgs to prevent releasing borrowed references
+            uint64_t nilBits = QNAN | TAG_NIL;
+            memcpy(&callee, &nilBits, sizeof(uint64_t));
+            for (int i = 0; i < argCount; i++)
+                memcpy(&vmArgs[i], &nilBits, sizeof(uint64_t));
+        }
     }
-    
-    if (callee.isNative()) {
-        auto native = callee.asNative();
-        result = native->function(argCount, vmArgs.data());
-    } else if (callee.isClosure()) {
-        result = vm->callClosure(callee, argCount, vmArgs.data());
-    }
-    
+
     double ret;
     memcpy(&ret, &result, sizeof(double));
     return ret;
@@ -149,71 +321,6 @@ extern "C" void jit_set_global_helper(void* vm_ptr, const char* name, double val
     VMValue val;
     memcpy(&val, &val_d, sizeof(double));
     vm->globals[name] = val;
-}
-
-extern "C" double jit_index_get_helper(void* vm_ptr, double object_val, double index_val) {
-    VMValue obj, idx;
-    memcpy(&obj, &object_val, sizeof(double));
-    memcpy(&idx, &index_val, sizeof(double));
-
-    if (obj.isList()) {
-        if (idx.isNumber()) {
-            int index = static_cast<int>(idx.asNumber());
-            auto list = obj.asList();
-            if (index >= 0 && index < list->elements.size()) {
-                VMValue res = list->elements[index];
-                double ret;
-                memcpy(&ret, &res, sizeof(double));
-                return ret;
-            }
-        }
-    } else if (obj.isString()) {
-        if (idx.isNumber()) {
-            int index = static_cast<int>(idx.asNumber());
-            auto str = obj.asString()->flatten();
-            if (index >= 0 && index < str.length()) {
-                VMValue res = VMValue(std::string(1, str[index]));
-                double ret;
-                memcpy(&ret, &res, sizeof(double));
-                return ret;
-            }
-        }
-    } else if (obj.isMap()) {
-        auto map = obj.asMap();
-        if (map->values.count(idx)) {
-            VMValue res = map->values[idx];
-            double ret;
-            memcpy(&ret, &res, sizeof(double));
-            return ret;
-        }
-    }
-    
-    // Return nil
-    VMValue nilVal = nullptr;
-    double ret;
-    memcpy(&ret, &nilVal, sizeof(double));
-    return ret;
-}
-
-extern "C" double jit_index_set_helper(void* vm_ptr, double object_val, double index_val, double value_val) {
-    VMValue obj, idx, val;
-    memcpy(&obj, &object_val, sizeof(double));
-    memcpy(&idx, &index_val, sizeof(double));
-    memcpy(&val, &value_val, sizeof(double));
-
-    if (obj.isList()) {
-        if (idx.isNumber()) {
-            int index = static_cast<int>(idx.asNumber());
-            auto list = obj.asList();
-            if (index >= 0 && index < list->elements.size()) {
-                list->elements[index] = val;
-            }
-        }
-    } else if (obj.isMap()) {
-        auto map = obj.asMap();
-        map->values[idx] = val;
-    }
-    return value_val;
 }
 
 VM::VM() {
@@ -1001,24 +1108,18 @@ InterpretResult VM::run(int targetFrameDepth) {
                 }
 
                 if (nativeJitFunc) {
-                    bool canRunJit = true;
                     std::vector<double> jitArgs(256, 0.0);
                     for (int i = 0; i < argCount; ++i) {
-                        VMValue arg = peek(argCount - i - 1); // Top of stack is last argument
-                        if (arg.isNumber()) {
-                            jitArgs[i] = arg.asNumber();
-                        } else {
-                            canRunJit = false;
-                            break;
-                        }
+                        VMValue arg = peek(argCount - i - 1);
+                        double raw;
+                        memcpy(&raw, &arg, sizeof(double));
+                        jitArgs[i] = raw;
                     }
 
-                    if (canRunJit) {
-                        double result = nativeJitFunc(this, jitArgs.data(), argCount);
-                        stack.resize(stack.size() - argCount - 1);
-                        push(result);
-                        break; // Skip standard frame push!
-                    }
+                    double result = nativeJitFunc(this, jitArgs.data(), argCount);
+                    stack.resize(stack.size() - argCount - 1);
+                    push(result);
+                    break; // Skip standard frame push!
                 }
                 CallFrame newFrame;
                 newFrame.closure = closure;
