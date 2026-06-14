@@ -26,7 +26,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction *function) {
         }
     }
 
-    UniversalEmitter emitter(function->arity);
+    UniversalEmitter emitter(function->maxArity);
 
     int maxLocal = 0;
     std::set<int> capturedLocals;
@@ -88,13 +88,13 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction *function) {
     // Type tracking and ToS caching
     std::vector<InferredType> typeStack(256, InferredType::UNKNOWN);
     std::vector<InferredType> localTypes(256, InferredType::UNKNOWN);
-    for (int i = 0; i <= function->arity; i++)
+    for (int i = 0; i <= function->maxArity; i++)
         localTypes[i] = InferredType::NUMBER;
 
     bool tosInFR0 = false; // Is the top stack value in the FR0 register?
 
     // Initial SP includes the function itself (slot 0) and any arguments
-    int sp = function->arity >= 0 ? function->arity + 1 : 1;
+    int sp = function->maxArity >= 0 ? function->maxArity + 1 : 1;
 
     std::map<size_t, int> expectedSp;
     std::map<size_t, std::vector<InferredType>> expectedStackTypes;
