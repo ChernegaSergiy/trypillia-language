@@ -23,7 +23,9 @@ JitFunc JITCompiler::compileMathFunction(std::shared_ptr<ObjFunction> function) 
             int slot = function->chunk->code[i+1];
             if (slot > maxLocal) maxLocal = slot;
             i += 2;
-        } else if (op == static_cast<uint8_t>(OpCode::OP_CONSTANT)) {
+        } else if (op == static_cast<uint8_t>(OpCode::OP_CONSTANT) ||
+                   op == static_cast<uint8_t>(OpCode::OP_GET_GLOBAL) ||
+                   op == static_cast<uint8_t>(OpCode::OP_CALL)) {
             i += 2;
         } else {
             i += 1;
@@ -199,6 +201,18 @@ JitFunc JITCompiler::compileMathFunction(std::shared_ptr<ObjFunction> function) 
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_NIL): {
+                if (sp >= 8) return nullptr;
+                emitter.emitLoadConst(sp, 0.0);
+                sp++;
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_TRUE): {
+                if (sp >= 8) return nullptr;
+                emitter.emitLoadConst(sp, 1.0);
+                sp++;
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_FALSE): {
                 if (sp >= 8) return nullptr;
                 emitter.emitLoadConst(sp, 0.0);
                 sp++;
