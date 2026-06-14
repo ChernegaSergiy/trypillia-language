@@ -30,6 +30,10 @@ class VM {
     InterpretResult runtimeError(const std::string &message);
     InterpretResult run(int targetFrameDepth = 0);
 
+    bool executeCall(uint8_t argCount);
+    bool executePropertyGet(const std::string& name);
+    bool executeIndexGet();
+
   public:
     ObjUpvalue* captureUpvalue(VMValue *local);
     void closeUpvalues(VMValue *last);

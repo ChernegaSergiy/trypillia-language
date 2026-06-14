@@ -1,574 +1,11 @@
+#include "runtime/ObjectRuntime.h"
 #include "VM.h"
 #include <iostream>
 #include <cmath>
 #include <map>
 
-VMValue::VMValue(const std::string& s) {
-    Obj* obj = new ObjString(s);
-    val = SIGN_BIT | QNAN | (uint64_t)(uintptr_t)obj;
-    obj->retain();
-}
-
-VMValue::VMValue(const char* s) {
-    Obj* obj = new ObjString(std::string(s));
-    val = SIGN_BIT | QNAN | (uint64_t)(uintptr_t)obj;
-    obj->retain();
-}
 #include "../native/StdLib.h"
 
-static bool isMethodAbstract(const VMValue &method) {
-    if (method.isClosure())
-        return method.asClosure()->function->isAbstract;
-    if (method.isNative())
-        return method.asNative()->isAbstract;
-    return false;
-}
-
-static VMAccessModifier getMethodAccessModifier(const VMValue &method) {
-    if (method.isClosure())
-        return method.asClosure()->function->accessModifier;
-    if (method.isNative())
-        return method.asNative()->accessModifier;
-    return VMAccessModifier::PUBLIC;
-}
-
-static std::string getMethodName(const VMValue &method) {
-    if (method.isClosure())
-        return method.asClosure()->function->name;
-    if (method.isNative())
-        return method.asNative()->name;
-    return "";
-}
-
-static int getMethodMinArity(const VMValue &method) {
-    if (method.isClosure())
-        return method.asClosure()->function->arity;
-    if (method.isNative())
-        return method.asNative()->arity;
-    return -1;
-}
-
-static int getMethodMaxArity(const VMValue &method) {
-    if (method.isClosure())
-        return method.asClosure()->function->maxArity;
-    if (method.isNative())
-        return method.asNative()->arity;
-    return -1;
-}
-
-namespace {
-int utf8_length(const std::string &str) {
-    int length = 0;
-    for (size_t i = 0; i < str.length(); i++) {
-        if ((str[i] & 0xC0) != 0x80) {
-            length++;
-        }
-    }
-    return length;
-}
-
-std::string utf8_char_at(const std::string &str, int index) {
-    int current_index = 0;
-    for (size_t i = 0; i < str.length(); i++) {
-        if ((str[i] & 0xC0) != 0x80) {
-            if (current_index == index) {
-                size_t j = i + 1;
-                while (j < str.length() && (str[j] & 0xC0) == 0x80) {
-                    j++;
-                }
-                return str.substr(i, j - i);
-            }
-            current_index++;
-        }
-    }
-    return "";
-}
-
-bool checkAccess(VMAccessModifier modifier, ObjClass* klass, const std::string &callerClass) {
-    if (modifier == VMAccessModifier::PUBLIC)
-        return true;
-    if (modifier == VMAccessModifier::PRIVATE)
-        return klass->name == callerClass;
-    if (modifier == VMAccessModifier::PROTECTED) {
-        if (klass->name == callerClass)
-            return true;
-        auto current = klass;
-        while (current) {
-            if (current->name == callerClass)
-                return true;
-            current = current->superclass;
-        }
-        return false;
-    }
-    return true;
-}
-} // namespace
-
-extern "C" double jit_mod_helper(double a, double b) {
-    return std::fmod(a, b);
-}
-
-extern "C" double jit_build_list_helper(double* args, int count) {
-    std::vector<VMValue> elements(count);
-    for (int i = 0; i < count; i++) {
-        VMValue val;
-        memcpy(&val, &args[i], sizeof(double));
-        elements[i] = val;
-    }
-    ObjList* list = new ObjList(elements);
-    list->retain();
-    VMValue result(list);
-    double dresult;
-    memcpy(&dresult, &result, sizeof(double));
-    return dresult;
-}
-
-extern "C" double jit_build_map_helper(double* args, int count) {
-    ObjMap* map = new ObjMap();
-    for (int i = 0; i < count; i++) {
-        VMValue key, val;
-        memcpy(&key, &args[i * 2], sizeof(double));
-        memcpy(&val, &args[i * 2 + 1], sizeof(double));
-        map->values[key] = val;
-    }
-    map->retain();
-    VMValue result(map);
-    double dresult;
-    memcpy(&dresult, &result, sizeof(double));
-    return dresult;
-}
-
-extern "C" double jit_index_get_helper(void* vm_ptr, double object_val, double index_val) {
-    uint64_t objRaw;
-    memcpy(&objRaw, &object_val, sizeof(uint64_t));
-    uint64_t idxRaw;
-    memcpy(&idxRaw, &index_val, sizeof(uint64_t));
-
-    bool isObj = (objRaw & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT);
-    bool isNum = (idxRaw & QNAN) != QNAN;
-
-    if (isObj && isNum) {
-        Obj* obj = (Obj*)(uintptr_t)(objRaw & ~(SIGN_BIT | QNAN));
-        if (obj->type == ObjType::OBJ_LIST) {
-            ObjList* list = (ObjList*)obj;
-            double indexDouble;
-            memcpy(&indexDouble, &index_val, sizeof(double));
-            int i = static_cast<int>(indexDouble);
-            if (i >= 0 && i < static_cast<int>(list->elements.size())) {
-                VMValue result = list->elements[i];
-                double ret;
-                memcpy(&ret, &result, sizeof(double));
-                return ret;
-            }
-        }
-    }
-    double ret = 0;
-    return ret;
-}
-
-extern "C" double jit_index_set_helper(void* vm_ptr, double object_val, double index_val, double value_val) {
-    uint64_t objRaw;
-    memcpy(&objRaw, &object_val, sizeof(uint64_t));
-    uint64_t idxRaw;
-    memcpy(&idxRaw, &index_val, sizeof(uint64_t));
-
-    bool isObj = (objRaw & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT);
-    bool isNum = (idxRaw & QNAN) != QNAN;
-
-    if (isObj && isNum) {
-        Obj* obj = (Obj*)(uintptr_t)(objRaw & ~(SIGN_BIT | QNAN));
-        if (obj->type == ObjType::OBJ_LIST) {
-            ObjList* list = (ObjList*)obj;
-            double indexDouble;
-            memcpy(&indexDouble, &index_val, sizeof(double));
-            int i = static_cast<int>(indexDouble);
-            VMValue val;
-            memcpy(&val, &value_val, sizeof(double));
-            if (i >= 0 && i < static_cast<int>(list->elements.size())) {
-                list->elements[i] = val;
-            }
-        }
-    }
-    double ret;
-    memcpy(&ret, &value_val, sizeof(double));
-    return ret;
-}
-
-extern "C" double jit_property_get_helper(void* vm_ptr, double object_val, const char* name) {
-    VM* vm = static_cast<VM*>(vm_ptr);
-    uint64_t objRaw;
-    memcpy(&objRaw, &object_val, sizeof(uint64_t));
-    std::string propName(name);
-    VMValue result(nullptr);
-
-    bool isObj = (objRaw & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT);
-    if (isObj) {
-        Obj* obj = (Obj*)(uintptr_t)(objRaw & ~(SIGN_BIT | QNAN));
-        if (obj->type == ObjType::OBJ_INSTANCE) {
-            ObjInstance* instance = (ObjInstance*)obj;
-            if (instance->fields.count(propName)) {
-                result = instance->fields[propName];
-            } else if (instance->klass->methods.count(propName)) {
-                auto method = instance->klass->methods[propName];
-                auto bound = new ObjBoundMethod(VMValue(instance), method);
-                bound->retain();
-                result = bound;
-            }
-        } else if (obj->type == ObjType::OBJ_CLASS) {
-            ObjClass* klass = (ObjClass*)obj;
-            if (klass->statics.count(propName))
-                result = klass->statics[propName];
-        }
-    }
-    double ret;
-    memcpy(&ret, &result, sizeof(double));
-    return ret;
-}
-
-extern "C" double jit_property_set_helper(void* vm_ptr, double object_val, const char* name, double value_val) {
-    VM* vm = static_cast<VM*>(vm_ptr);
-    uint64_t objRaw;
-    memcpy(&objRaw, &object_val, sizeof(uint64_t));
-    std::string propName(name);
-
-    bool isObj = (objRaw & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT);
-    if (isObj) {
-        Obj* obj = (Obj*)(uintptr_t)(objRaw & ~(SIGN_BIT | QNAN));
-        VMValue val;
-        memcpy(&val, &value_val, sizeof(double));
-        if (obj->type == ObjType::OBJ_INSTANCE) {
-            ObjInstance* instance = (ObjInstance*)obj;
-            instance->fields[propName] = val;
-        } else if (obj->type == ObjType::OBJ_CLASS) {
-            ObjClass* klass = (ObjClass*)obj;
-            klass->statics[propName] = val;
-        }
-    }
-    double ret;
-    memcpy(&ret, &value_val, sizeof(double));
-    return ret;
-}
-
-extern "C" double jit_iter_has_next_helper(double index_val, double iterable_val) {
-    uint64_t idxRaw;
-    memcpy(&idxRaw, &index_val, sizeof(uint64_t));
-    uint64_t iterRaw;
-    memcpy(&iterRaw, &iterable_val, sizeof(uint64_t));
-
-    bool result = false;
-    bool isNum = (idxRaw & QNAN) != QNAN;
-    bool isObj = (iterRaw & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT);
-    if (isNum && isObj) {
-        double indexDouble;
-        memcpy(&indexDouble, &index_val, sizeof(double));
-        int index = static_cast<int>(indexDouble);
-        Obj* obj = (Obj*)(uintptr_t)(iterRaw & ~(SIGN_BIT | QNAN));
-        if (obj->type == ObjType::OBJ_LIST) {
-            ObjList* list = (ObjList*)obj;
-            result = index < static_cast<int>(list->elements.size());
-        } else if (obj->type == ObjType::OBJ_STRING) {
-            ObjString* strObj = (ObjString*)obj;
-            result = index < utf8_length(strObj->flatten());
-        }
-    }
-    VMValue ret(result);
-    double dret;
-    memcpy(&dret, &ret, sizeof(double));
-    return dret;
-}
-
-extern "C" double jit_call_helper(void* vm_ptr, double callee_val, double* args, int argCount) {
-    VM* vm = static_cast<VM*>(vm_ptr);
-    VMValue result = nullptr;
-    ObjClosure* savedJitClosure = vm->jitClosure;
-
-    uint64_t calleeRaw;
-    memcpy(&calleeRaw, &callee_val, sizeof(uint64_t));
-    bool isObj = (calleeRaw & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT);
-    if (isObj) {
-        Obj* obj = (Obj*)(uintptr_t)(calleeRaw & ~(SIGN_BIT | QNAN));
-        if (obj->type == ObjType::OBJ_NATIVE) {
-            std::vector<VMValue> vmArgs(argCount);
-            for (int i = 0; i < argCount; i++) {
-                memcpy(&vmArgs[i], &args[i + 1], sizeof(double));
-            }
-            ObjNative* native = (ObjNative*)obj;
-            result = native->function(argCount, vmArgs.data());
-        } else if (obj->type == ObjType::OBJ_CLOSURE) {
-            ObjClosure* closure = (ObjClosure*)obj;
-            ObjFunction* function = closure->function;
-            
-            if (vm->compiledFuncs.count(function)) {
-                JitFunc nativeJitFunc = vm->compiledFuncs[function];
-                vm->jitClosure = closure;
-                result = nativeJitFunc(vm, args, argCount);
-                vm->jitClosure = savedJitClosure;
-            } else {
-                std::vector<VMValue> vmArgs(argCount);
-                for (int i = 0; i < argCount; i++) {
-                    memcpy(&vmArgs[i], &args[i + 1], sizeof(double));
-                }
-                VMValue callee;
-                memcpy(&callee, &callee_val, sizeof(double));
-                vm->jitClosure = nullptr;
-                result = vm->callClosure(callee, argCount, vmArgs.data());
-                vm->jitClosure = savedJitClosure;
-            }
-        } else if (obj->type == ObjType::OBJ_BOUND_METHOD) {
-            ObjBoundMethod* bound = (ObjBoundMethod*)obj;
-            VMValue method = bound->method;
-            VMValue receiver = bound->receiver;
-            if (method.isClosure()) {
-                std::vector<VMValue> vmArgs(argCount + 1);
-                vmArgs[0] = receiver;
-                for (int i = 0; i < argCount; i++) {
-                    memcpy(&vmArgs[i + 1], &args[i + 1], sizeof(double));
-                }
-                vm->jitClosure = nullptr;
-                result = vm->callClosure(method, argCount + 1, vmArgs.data());
-                vm->jitClosure = savedJitClosure;
-            } else if (method.isNative()) {
-                ObjNative* native = method.asNative();
-                std::vector<VMValue> vmArgs(argCount + 1);
-                vmArgs[0] = receiver;
-                for (int i = 0; i < argCount; i++) {
-                    memcpy(&vmArgs[i + 1], &args[i + 1], sizeof(double));
-                }
-                result = native->function(argCount + 1, vmArgs.data());
-            }
-        } else if (obj->type == ObjType::OBJ_CLASS) {
-            VMValue classVal;
-            memcpy(&classVal, &callee_val, sizeof(double));
-            std::vector<VMValue> vmArgs(argCount);
-            for (int i = 0; i < argCount; i++) {
-                memcpy(&vmArgs[i], &args[i + 1], sizeof(double));
-            }
-            vm->jitClosure = nullptr;
-            result = vm->instantiateClass(classVal, argCount, vmArgs.data());
-            vm->jitClosure = savedJitClosure;
-        }
-    }
-
-    double ret;
-    memcpy(&ret, &result, sizeof(double));
-    return ret;
-}
-
-extern "C" void* jit_resolve_global_address(void* vm_ptr, const char* name, VMValue** cell) {
-    VM* vm = static_cast<VM*>(vm_ptr);
-    // std::map::operator[] or find is stable for pointers to values.
-    // We use find to avoid inserting nulls if not found.
-    auto it = vm->globals.find(name);
-    if (it != vm->globals.end()) {
-        *cell = &(it->second);
-        return (void*)&(it->second);
-    }
-    // Return address of a dummy null if not found
-    static VMValue dummyNull = nullptr;
-    return (void*)&dummyNull;
-}
-
-extern "C" double jit_get_global_helper(void* vm_ptr, const char* name) {
-    VM* vm = static_cast<VM*>(vm_ptr);
-    auto it = vm->globals.find(name);
-    VMValue result = nullptr;
-    if (it != vm->globals.end()) {
-        result = it->second;
-    }
-    double ret;
-    memcpy(&ret, &result, sizeof(double));
-    return ret;
-}
-
-extern "C" void jit_set_global_helper(void* vm_ptr, const char* name, double val_d) {
-    VM* vm = static_cast<VM*>(vm_ptr);
-    VMValue val;
-    memcpy(&val, &val_d, sizeof(double));
-    vm->globals[name] = val;
-}
-
-extern "C" double jit_create_class_helper(void* vm, const char* name) {
-    auto klass = new ObjClass(name);
-    klass->retain();
-    VMValue result(klass);
-    double ret;
-    memcpy(&ret, &result, sizeof(double));
-    return ret;
-}
-
-extern "C" double jit_create_abstract_class_helper(void* vm, const char* name) {
-    auto klass = new ObjClass(name);
-    klass->isAbstract = true;
-    klass->retain();
-    VMValue result(klass);
-    double ret;
-    memcpy(&ret, &result, sizeof(double));
-    return ret;
-}
-
-extern "C" double jit_bind_method_helper(double class_val, double method_val, const char* name, int isAbstract) {
-    uint64_t klassRaw, methodRaw;
-    memcpy(&klassRaw, &class_val, sizeof(uint64_t));
-    memcpy(&methodRaw, &method_val, sizeof(uint64_t));
-    ObjClass* klass = (ObjClass*)(klassRaw & ~(QNAN | SIGN_BIT));
-    VMValue method;
-    memcpy(&method, &methodRaw, sizeof(VMValue));
-    if (isAbstract) {
-        if (method.isClosure())
-            method.asClosure()->function->isAbstract = true;
-        else if (method.isNative())
-            method.asNative()->isAbstract = true;
-    }
-    klass->methods[name] = method;
-    // String owned by JIT compiler
-    return class_val;
-}
-
-extern "C" double jit_bind_static_method_helper(double class_val, double method_val, const char* name) {
-    uint64_t klassRaw, methodRaw;
-    memcpy(&klassRaw, &class_val, sizeof(uint64_t));
-    memcpy(&methodRaw, &method_val, sizeof(uint64_t));
-    ObjClass* klass = (ObjClass*)(klassRaw & ~(QNAN | SIGN_BIT));
-    VMValue method;
-    memcpy(&method, &methodRaw, sizeof(VMValue));
-    klass->statics[name] = method;
-    // String owned by JIT compiler
-    return class_val;
-}
-
-extern "C" void jit_inherit_helper(double subclass_val, double superclass_val) {
-    uint64_t subRaw, supRaw;
-    memcpy(&subRaw, &subclass_val, sizeof(uint64_t));
-    memcpy(&supRaw, &superclass_val, sizeof(uint64_t));
-    if ((subRaw & (QNAN | SIGN_BIT)) != (QNAN | SIGN_BIT)) return;
-    if ((supRaw & (QNAN | SIGN_BIT)) != (QNAN | SIGN_BIT)) return;
-    ObjClass* subclass = (ObjClass*)(subRaw & ~(QNAN | SIGN_BIT));
-    ObjClass* superclass = (ObjClass*)(supRaw & ~(QNAN | SIGN_BIT));
-    if (subclass->type != ObjType::OBJ_CLASS) return;
-    if (superclass->type != ObjType::OBJ_CLASS) return;
-    subclass->superclass = superclass;
-    for (auto const& [name, mod] : superclass->fieldModifiers) {
-        subclass->fieldModifiers[name] = mod;
-    }
-    for (auto const& [name, method] : superclass->methods) {
-        subclass->methods[name] = method;
-    }
-}
-
-extern "C" void jit_mixin_helper(double target_val, double mixin_val) {
-    uint64_t targetRaw, mixinRaw;
-    memcpy(&targetRaw, &target_val, sizeof(uint64_t));
-    memcpy(&mixinRaw, &mixin_val, sizeof(uint64_t));
-    if ((targetRaw & (QNAN | SIGN_BIT)) != (QNAN | SIGN_BIT)) return;
-    if ((mixinRaw & (QNAN | SIGN_BIT)) != (QNAN | SIGN_BIT)) return;
-    ObjClass* targetClass = (ObjClass*)(targetRaw & ~(QNAN | SIGN_BIT));
-    ObjClass* mixinClass = (ObjClass*)(mixinRaw & ~(QNAN | SIGN_BIT));
-    if (targetClass->type != ObjType::OBJ_CLASS) return;
-    if (mixinClass->type != ObjType::OBJ_CLASS) return;
-    for (auto const& [name, method] : mixinClass->methods) {
-        targetClass->methods[name] = method;
-    }
-}
-
-extern "C" double jit_get_super_helper(double receiver_val, double superclass_val, const char* name) {
-    uint64_t recvRaw, supRaw;
-    memcpy(&recvRaw, &receiver_val, sizeof(uint64_t));
-    memcpy(&supRaw, &superclass_val, sizeof(uint64_t));
-    ObjClass* superclass = nullptr;
-    if ((supRaw & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT)) {
-        superclass = (ObjClass*)(supRaw & ~(QNAN | SIGN_BIT));
-    }
-    ObjInstance* receiver = nullptr;
-    if ((recvRaw & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT)) {
-        receiver = (ObjInstance*)(recvRaw & ~(QNAN | SIGN_BIT));
-    }
-    std::string methodName(name);
-    // String owned by JIT compiler
-    if (superclass && receiver && superclass->methods.count(methodName)) {
-        auto method = superclass->methods[methodName];
-        auto bound = new ObjBoundMethod(receiver, method);
-        bound->retain();
-        VMValue result(bound);
-        double ret;
-        memcpy(&ret, &result, sizeof(double));
-        return ret;
-    }
-    double ret = 0;
-    return ret;
-}
-
-extern "C" void jit_field_modifier_helper(double class_val, const char* name, int modifier) {
-    uint64_t klassRaw;
-    memcpy(&klassRaw, &class_val, sizeof(uint64_t));
-    if ((klassRaw & (QNAN | SIGN_BIT)) != (QNAN | SIGN_BIT)) return;
-    ObjClass* klass = (ObjClass*)(klassRaw & ~(QNAN | SIGN_BIT));
-    if (klass->type != ObjType::OBJ_CLASS) return;
-    klass->fieldModifiers[name] = static_cast<VMAccessModifier>(modifier);
-}
-
-extern "C" double jit_create_closure_helper(void* vm_ptr, double func_val, double* upvalue_data, int upvalue_count) {
-    VM* vm = static_cast<VM*>(vm_ptr);
-    uint64_t funcRaw;
-    memcpy(&funcRaw, &func_val, sizeof(uint64_t));
-    ObjFunction* function;
-    if ((funcRaw & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT))
-        function = (ObjFunction*)(funcRaw & ~(QNAN | SIGN_BIT));
-    else
-        function = nullptr;
-    auto closure = new ObjClosure(function);
-    closure->retain();
-
-    for (int i = 0; i < upvalue_count; i++) {
-        uint64_t metaRaw;
-        memcpy(&metaRaw, &upvalue_data[i * 2], sizeof(uint64_t));
-        int packed = static_cast<int>(metaRaw);
-        bool isLocal = (packed >> 8) & 1;
-        int index = packed & 0xFF;
-
-        if (isLocal) {
-            uint64_t addrRaw;
-            memcpy(&addrRaw, &upvalue_data[i * 2 + 1], sizeof(uint64_t));
-            closure->upvalues.push_back(vm->captureUpvalue((VMValue*)addrRaw));
-        } else {
-            if (vm->jitClosure && index < (int)vm->jitClosure->upvalues.size()) {
-                closure->upvalues.push_back(vm->jitClosure->upvalues[index]);
-            } else {
-                closure->upvalues.push_back(nullptr);
-            }
-        }
-    }
-
-    VMValue result(closure);
-    double ret;
-    memcpy(&ret, &result, sizeof(double));
-    return ret;
-}
-
-extern "C" double jit_get_upvalue_helper(void* vm_ptr, int slot) {
-    VM* vm = static_cast<VM*>(vm_ptr);
-    if (vm->jitClosure && slot < (int)vm->jitClosure->upvalues.size() && vm->jitClosure->upvalues[slot]) {
-        VMValue result = *vm->jitClosure->upvalues[slot]->location;
-        double ret;
-        memcpy(&ret, &result, sizeof(double));
-        return ret;
-    }
-    double ret = 0;
-    return ret;
-}
-
-extern "C" void jit_set_upvalue_helper(void* vm_ptr, int slot, double val) {
-    VM* vm = static_cast<VM*>(vm_ptr);
-    if (vm->jitClosure && slot < (int)vm->jitClosure->upvalues.size() && vm->jitClosure->upvalues[slot]) {
-        VMValue value;
-        memcpy(&value, &val, sizeof(VMValue));
-        *vm->jitClosure->upvalues[slot]->location = value;
-    }
-}
-
-extern "C" void jit_close_upvalue_helper(void* vm_ptr, double* addr) {
-    VM* vm = static_cast<VM*>(vm_ptr);
-    vm->closeUpvalues((VMValue*)addr);
-}
 
 VM::VM() {
     StdLib::registerAll(this);
@@ -577,9 +14,7 @@ VM::VM() {
 VM::~VM() {
 }
 
-void VM::defineNative(const std::string &name, int arity, NativeFn function) {
-    globals[name] = new ObjNative(name, arity, function);
-}
+
 
 void VM::resetStack() {
     stack.clear();
@@ -599,107 +34,13 @@ VMValue VM::peek(int distance) {
     return stack[stack.size() - 1 - distance];
 }
 
-VMValue VM::callClosure(VMValue closureVal, int argCount, VMValue *args) {
-    if (!closureVal.isClosure())
-        return nullptr;
-    auto closure = closureVal.asClosure();
 
-    int initialFrameCount = static_cast<int>(frames.size());
 
-    push(closureVal);
-    for (int i = 0; i < argCount; i++) {
-        push(args[i]);
-    }
 
-    CallFrame newFrame;
-    newFrame.closure = closure;
-    newFrame.ip = closure->function->chunk->code.data();
-    newFrame.stackStart = static_cast<int>(stack.size() - argCount - 1);
-    frames.push_back(newFrame);
 
-    InterpretResult result = run(initialFrameCount);
-    if (result == InterpretResult::INTERPRET_RUNTIME_ERROR) {
-        return nullptr;
-    }
 
-    return pop();
-}
 
-VMValue VM::instantiateClass(VMValue classVal, int argCount, VMValue* args) {
-    if (!classVal.isClass()) return nullptr;
-    auto klass = classVal.asClass();
-    if (klass->isAbstract) return nullptr;
-    for (auto const& [name, method] : klass->methods) {
-        if (isMethodAbstract(method)) return nullptr;
-    }
-    auto instance = new ObjInstance(klass);
 
-    if (klass->methods.count("init")) {
-        auto initMethod = klass->methods["init"];
-        int minArity = getMethodMinArity(initMethod);
-        int maxArity = getMethodMaxArity(initMethod);
-        if (minArity != -1 && (argCount < minArity || argCount > maxArity))
-            return nullptr;
-        while (maxArity != -1 && argCount < maxArity) {
-            // Pad with nil
-            VMValue nilVal = nullptr;
-            // We can't easily pad here, rely on caller
-            return nullptr;
-        }
-
-        if (initMethod.isClosure()) {
-            push(instance);
-            for (int i = 0; i < argCount; i++)
-                push(args[i]);
-            auto closure = initMethod.asClosure();
-            CallFrame newFrame;
-            newFrame.closure = closure;
-            newFrame.ip = closure->function->chunk->code.data();
-            newFrame.stackStart = static_cast<int>(stack.size() - argCount - 1);
-            frames.push_back(newFrame);
-            int initialDepth = static_cast<int>(frames.size() - 1);
-            InterpretResult res = run(initialDepth);
-            frames.pop_back();
-            if (res == InterpretResult::INTERPRET_RUNTIME_ERROR)
-                return nullptr;
-            return instance;
-        }
-    }
-    return instance;
-}
-
-ObjUpvalue* VM::captureUpvalue(VMValue *local) {
-    ObjUpvalue* prevUpvalue = nullptr;
-    ObjUpvalue* upvalue = openUpvalues;
-    while (upvalue != nullptr && upvalue->location > local) {
-        prevUpvalue = upvalue;
-        upvalue = upvalue->next;
-    }
-
-    if (upvalue != nullptr && upvalue->location == local) {
-        return upvalue;
-    }
-
-    auto createdUpvalue = new ObjUpvalue(local);
-    createdUpvalue->next = upvalue;
-
-    if (prevUpvalue == nullptr) {
-        openUpvalues = createdUpvalue;
-    } else {
-        prevUpvalue->next = createdUpvalue;
-    }
-
-    return createdUpvalue;
-}
-
-void VM::closeUpvalues(VMValue *last) {
-    while (openUpvalues != nullptr && openUpvalues->location >= last) {
-        auto upvalue = openUpvalues;
-        upvalue->closed = *upvalue->location;
-        upvalue->location = &upvalue->closed;
-        openUpvalues = upvalue->next;
-    }
-}
 
 InterpretResult VM::interpret(ObjFunction* function) {
     stack.clear();
@@ -1133,43 +474,7 @@ InterpretResult VM::run(int targetFrameDepth) {
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_INDEX_GET): {
-            VMValue index = pop();
-            VMValue listVal = pop();
-            if (listVal.isList()) {
-                auto list = listVal.asList();
-                if (index.isNumber()) {
-                    int i = static_cast<int>(index.asNumber());
-                    if (i >= 0 && i < static_cast<int>(list->elements.size())) {
-                        push(list->elements[i]);
-                    } else {
-                        return runtimeError(std::string("Index out of bounds."));
-                    }
-                } else {
-                    return runtimeError(std::string("List index must be a number."));
-                }
-            } else if (listVal.isString()) {
-                auto str = listVal.asString()->flatten();
-                if (index.isNumber()) {
-                    int i = static_cast<int>(index.asNumber());
-                    int len = utf8_length(str);
-                    if (i >= 0 && i < len) {
-                        push(utf8_char_at(str, i));
-                    } else {
-                        return runtimeError(std::string("String index out of bounds."));
-                    }
-                } else {
-                    return runtimeError(std::string("String index must be a number."));
-                }
-            } else if (listVal.isMap()) {
-                auto map = listVal.asMap();
-                if (map->values.count(index)) {
-                    push(map->values[index]);
-                } else {
-                    push(nullptr); // Return nil for missing keys
-                }
-            } else {
-                return runtimeError(std::string("Can only index into lists, maps, or strings."));
-            }
+            if (!executeIndexGet()) return InterpretResult::INTERPRET_RUNTIME_ERROR;
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_INDEX_SET): {
@@ -1294,84 +599,7 @@ InterpretResult VM::run(int targetFrameDepth) {
         }
         case static_cast<uint8_t>(OpCode::OP_PROPERTY_GET): {
             std::string name = READ_CONSTANT().asString()->flatten();
-            VMValue instanceVal = peek(0);
-            std::string callerClass = frame->closure ? frame->closure->function->enclosingClassName : "";
-
-            if (instanceVal.isInstance()) {
-                auto instance = instanceVal.asInstance();
-                if (instance->fields.count(name)) {
-                    VMAccessModifier mod = VMAccessModifier::PUBLIC;
-                    if (instance->klass->fieldModifiers.count(name))
-                        mod = instance->klass->fieldModifiers[name];
-                    if (!checkAccess(mod, instance->klass, callerClass)) {
-                        return runtimeError(std::string("Access error: Cannot access '") + name + "'.");
-                    }
-                    pop();
-                    push(instance->fields[name]);
-                } else if (instance->klass->methods.count(name)) {
-                    auto method = instance->klass->methods[name];
-                    VMAccessModifier mod = VMAccessModifier::PUBLIC;
-                    if (method.isClosure()) {
-                        mod = method.asClosure()->function->accessModifier;
-                    }
-                    if (!checkAccess(mod, instance->klass, callerClass)) {
-                        return runtimeError(std::string("Access error: Cannot access method '") + name + "'.");
-                    }
-                    pop(); // instance
-                    push(new ObjBoundMethod(instance, method));
-                } else {
-                    return runtimeError(std::string("Undefined property '") + name + "'.");
-                }
-            } else if (instanceVal.isClass()) {
-                auto klass = instanceVal.asClass();
-                if (klass->statics.count(name)) {
-                    auto methodVal = klass->statics[name];
-                    if (methodVal.isClosure()) {
-                        auto func = methodVal.asClosure()->function;
-                        if (!checkAccess(func->accessModifier, klass, callerClass)) {
-                            return runtimeError(std::string("Access error: Cannot access static method '") + name +
-                                                "'.");
-                        }
-                    }
-                    // statics (fields) access modifier check can be added here if static fields have modifiers.
-                    pop();
-                    push(klass->statics[name]);
-                } else {
-                    return runtimeError(std::string("Undefined static property '") + name + "'.");
-                }
-            } else if (instanceVal.isString()) {
-                if (globals.count("String")) {
-                    auto klass = globals["String"].asClass();
-                    if (klass->statics.count(name)) {
-                        pop(); // pop string
-                        push(new ObjBoundMethod(instanceVal, klass->statics[name]));
-                        break;
-                    }
-                }
-                return runtimeError(std::string("Undefined property '") + name + "' on String.");
-            } else if (instanceVal.isList()) {
-                if (globals.count("List")) {
-                    auto klass = globals["List"].asClass();
-                    if (klass->statics.count(name)) {
-                        pop(); // pop list
-                        push(new ObjBoundMethod(instanceVal, klass->statics[name]));
-                        break;
-                    }
-                }
-                return runtimeError(std::string("Undefined property '") + name + "' on List.");
-            } else if (instanceVal.isMap()) {
-                if (globals.count("Map")) {
-                    auto klass = globals["Map"].asClass();
-                    if (klass->statics.count(name)) {
-                        pop(); // pop map
-                        push(new ObjBoundMethod(instanceVal, klass->statics[name]));
-                        break;
-                    }
-                }
-                return runtimeError(std::string("Undefined property '") + name + "' on Map.");
-            } else {
-                return runtimeError(std::string("Only instances and classes have properties."));
-            }
+            if (!executePropertyGet(name)) return InterpretResult::INTERPRET_RUNTIME_ERROR;
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_PROPERTY_SET): {
@@ -1401,177 +629,8 @@ InterpretResult VM::run(int targetFrameDepth) {
         }
         case static_cast<uint8_t>(OpCode::OP_CALL): {
             uint8_t argCount = READ_BYTE();
-            VMValue callee = peek(argCount);
-            if (callee.isClosure()) {
-                auto closure = callee.asClosure();
-                auto function = closure->function;
-                if (function->arity != -1 && (argCount < function->arity || argCount > function->maxArity)) {
-                    std::string expected = function->arity == function->maxArity 
-                        ? std::to_string(function->arity) 
-                        : std::to_string(function->arity) + "-" + std::to_string(function->maxArity);
-                    return runtimeError(std::string("Expected ") + expected +
-                                        " arguments but got " + std::to_string(argCount) + ".");
-                }
-                while (function->maxArity != -1 && argCount < function->maxArity) {
-                    push(nullptr);
-                    argCount++;
-                }
-                if (frames.size() == 256) {
-                    return runtimeError(std::string("Stack overflow."));
-                }
-
-                JitFunc nativeJitFunc = nullptr;
-                auto funcPtr = function;
-                if (compiledFuncs.count(funcPtr)) {
-                    nativeJitFunc = compiledFuncs[funcPtr];
-                } else if (funcPtr->callCount >= 50) {
-                    nativeJitFunc = jit.compileMathFunction(function);
-                    if (nativeJitFunc) {
-                        compiledFuncs[funcPtr] = nativeJitFunc;
-                        funcPtr->jitAddr = (void*)nativeJitFunc;
-                    }
-                } else {
-                    funcPtr->callCount++;
-                }
-
-                if (nativeJitFunc) {
-                    std::vector<double> jitArgs(2048, 0.0);
-                    for (int i = 0; i <= argCount; ++i) {
-                        VMValue arg = peek(argCount - i);
-                        double raw;
-                        memcpy(&raw, &arg, sizeof(double));
-                        jitArgs[i] = raw;
-                    }
-
-                    jitClosure = closure;
-                    double result = nativeJitFunc(this, jitArgs.data(), argCount);
-                    jitClosure = nullptr;
-                    stack.resize(stack.size() - argCount - 1);
-                    push(result);
-                    break; // Skip standard frame push!
-                }
-                CallFrame newFrame;
-                newFrame.closure = closure;
-                newFrame.ip = function->chunk->code.data();
-                newFrame.stackStart = static_cast<int>(stack.size() - argCount - 1);
-                frames.push_back(newFrame);
-                frame = &frames.back();
-            } else if (callee.isNative()) {
-                auto native = callee.asNative();
-                if (native->arity != -1 && argCount != native->arity) {
-                    return runtimeError(std::string("Expected ") + std::to_string(native->arity) +
-                                        " arguments but got " + std::to_string(argCount) + ".");
-                }
-                VMValue result = native->function(argCount, stack.data() + stack.size() - argCount);
-                stack.resize(stack.size() - argCount - 1);
-                push(result);
-                frame = &frames.back();
-            } else if (callee.isClass()) {
-                auto klass = callee.asClass();
-                if (klass->isAbstract) {
-                    return runtimeError(std::string("Cannot instantiate abstract class '") + klass->name + "'.");
-                }
-                for (auto const &[name, method] : klass->methods) {
-                    if (isMethodAbstract(method)) {
-                        return runtimeError(std::string("Cannot instantiate class '") + klass->name +
-                                            "' because abstract method '" + name + "' is not implemented.");
-                    }
-                }
-                auto instance = new ObjInstance(klass);
-
-                stack[stack.size() - argCount - 1] = instance;
-
-                if (klass->methods.count("init")) {
-                    auto initMethod = klass->methods["init"];
-                    int minArity = getMethodMinArity(initMethod);
-                    int maxArity = getMethodMaxArity(initMethod);
-                    if (minArity != -1 && (argCount < minArity || argCount > maxArity)) {
-                        std::string expected = minArity == maxArity 
-                            ? std::to_string(minArity) 
-                            : std::to_string(minArity) + "-" + std::to_string(maxArity);
-                        return runtimeError(std::string("Expected ") + expected +
-                                            " arguments but got " + std::to_string(argCount) + ".");
-                    }
-                    while (maxArity != -1 && argCount < maxArity) {
-                        push(nullptr);
-                        argCount++;
-                    }
-
-                    if (initMethod.isClosure()) {
-                        auto closure = initMethod.asClosure();
-                        auto func = closure->function;
-                        CallFrame newFrame;
-                        newFrame.closure = closure;
-                        newFrame.ip = func->chunk->code.data();
-                        newFrame.stackStart = static_cast<int>(stack.size() - argCount - 1);
-                        frames.push_back(newFrame);
-                        frame = &frames.back();
-                    } else {
-                        auto native = initMethod.asNative();
-                        native->function(argCount, stack.data() + stack.size() - argCount);
-                        stack.resize(stack.size() - argCount); // leave the instance on stack
-                        frame = &frames.back();
-                    }
-                } else if (argCount != 0) {
-                    return runtimeError(std::string("Expected 0 arguments but got ") + std::to_string(argCount) + ".");
-                }
-            } else if (callee.isBoundMethod()) {
-                auto bound = callee.asBoundMethod();
-                auto function = bound->method;
-                if (isMethodAbstract(function)) {
-                    return runtimeError(std::string("Cannot call abstract method '") + getMethodName(function) + "'.");
-                }
-                int minArity = getMethodMinArity(function);
-                int maxArity = getMethodMaxArity(function);
-                if (function.isNative()) {
-                    if (!bound->receiver.isInstance()) {
-                        if (minArity != -1) minArity -= 1;
-                        if (maxArity != -1) maxArity -= 1;
-                    }
-                }
-                if (minArity != -1 && (argCount < minArity || argCount > maxArity)) {
-                    std::string expected = minArity == maxArity 
-                        ? std::to_string(minArity) 
-                        : std::to_string(minArity) + "-" + std::to_string(maxArity);
-                    return runtimeError(std::string("Expected ") + expected +
-                                        " arguments but got " + std::to_string(argCount) + ".");
-                }
-                while (maxArity != -1 && argCount < maxArity) {
-                    push(nullptr);
-                    argCount++;
-                }
-                if (frames.size() == 256) {
-                    return runtimeError(std::string("Stack overflow."));
-                }
-                stack[stack.size() - argCount - 1] = bound->receiver;
-
-                if (function.isClosure()) {
-                    auto closure = function.asClosure();
-                    auto func = closure->function;
-                    CallFrame newFrame;
-                    newFrame.closure = closure;
-                    newFrame.ip = func->chunk->code.data();
-                    newFrame.stackStart = static_cast<int>(stack.size() - argCount - 1);
-                    frames.push_back(newFrame);
-                    frame = &frames.back();
-                } else {
-                    auto native = function.asNative();
-                    int passedArgCount = argCount;
-                    VMValue *argsPtr;
-                    if (!bound->receiver.isInstance()) {
-                        passedArgCount += 1;
-                        argsPtr = stack.data() + stack.size() - argCount - 1; // Primitive methods expect receiver at args[0]
-                    } else {
-                        argsPtr = stack.data() + stack.size() - argCount; // Instance methods expect receiver at args[-1]
-                    }
-                    VMValue result = native->function(passedArgCount, argsPtr);
-                    stack.resize(stack.size() - argCount - 1);
-                    push(result);
-                    frame = &frames.back();
-                }
-            } else {
-                return runtimeError(std::string("Can only call functions and classes."));
-            }
+            if (!executeCall(argCount)) return InterpretResult::INTERPRET_RUNTIME_ERROR;
+            frame = &frames.back();
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_RETURN): {
@@ -1600,3 +659,301 @@ InterpretResult VM::run(int targetFrameDepth) {
 #undef READ_BYTE
 #undef READ_CONSTANT
 #undef READ_SHORT
+
+bool VM::executeIndexGet() {
+            VMValue index = pop();
+            VMValue listVal = pop();
+            if (listVal.isList()) {
+                auto list = listVal.asList();
+                if (index.isNumber()) {
+                    int i = static_cast<int>(index.asNumber());
+                    if (i >= 0 && i < static_cast<int>(list->elements.size())) {
+                        push(list->elements[i]);
+                    } else {
+                        runtimeError(std::string("Index out of bounds.")); return false;
+                    }
+                } else {
+                    runtimeError(std::string("List index must be a number.")); return false;
+                }
+            } else if (listVal.isString()) {
+                auto str = listVal.asString()->flatten();
+                if (index.isNumber()) {
+                    int i = static_cast<int>(index.asNumber());
+                    int len = utf8_length(str);
+                    if (i >= 0 && i < len) {
+                        push(utf8_char_at(str, i));
+                    } else {
+                        runtimeError(std::string("String index out of bounds.")); return false;
+                    }
+                } else {
+                    runtimeError(std::string("String index must be a number.")); return false;
+                }
+            } else if (listVal.isMap()) {
+                auto map = listVal.asMap();
+                if (map->values.count(index)) {
+                    push(map->values[index]);
+                } else {
+                    push(nullptr); // Return nil for missing keys
+                }
+            } else {
+                runtimeError(std::string("Can only index into lists, maps, or strings.")); return false;
+            }
+            return true;
+}
+
+bool VM::executePropertyGet(const std::string& name) {
+            VMValue instanceVal = peek(0);
+            std::string callerClass = frames.back().closure ? frames.back().closure->function->enclosingClassName : "";
+
+            if (instanceVal.isInstance()) {
+                auto instance = instanceVal.asInstance();
+                if (instance->fields.count(name)) {
+                    VMAccessModifier mod = VMAccessModifier::PUBLIC;
+                    if (instance->klass->fieldModifiers.count(name))
+                        mod = instance->klass->fieldModifiers[name];
+                    if (!checkAccess(mod, instance->klass, callerClass)) {
+                        runtimeError(std::string("Access error: Cannot access '") + name + "'."); return false;
+                    }
+                    pop();
+                    push(instance->fields[name]);
+                } else if (instance->klass->methods.count(name)) {
+                    auto method = instance->klass->methods[name];
+                    VMAccessModifier mod = VMAccessModifier::PUBLIC;
+                    if (method.isClosure()) {
+                        mod = method.asClosure()->function->accessModifier;
+                    }
+                    if (!checkAccess(mod, instance->klass, callerClass)) {
+                        runtimeError(std::string("Access error: Cannot access method '") + name + "'."); return false;
+                    }
+                    pop(); // instance
+                    push(new ObjBoundMethod(instance, method));
+                } else {
+                    runtimeError(std::string("Undefined property '") + name + "'."); return false;
+                }
+            } else if (instanceVal.isClass()) {
+                auto klass = instanceVal.asClass();
+                if (klass->statics.count(name)) {
+                    auto methodVal = klass->statics[name];
+                    if (methodVal.isClosure()) {
+                        auto func = methodVal.asClosure()->function;
+                        if (!checkAccess(func->accessModifier, klass, callerClass)) {
+                            runtimeError(std::string("Access error: Cannot access static method '") + name +
+                                                "'."); return false;
+                        }
+                    }
+                    // statics (fields) access modifier check can be added here if static fields have modifiers.
+                    pop();
+                    push(klass->statics[name]);
+                } else {
+                    runtimeError(std::string("Undefined static property '") + name + "'."); return false;
+                }
+            } else if (instanceVal.isString()) {
+                if (globals.count("String")) {
+                    auto klass = globals["String"].asClass();
+                    if (klass->statics.count(name)) {
+                        pop(); // pop string
+                        push(new ObjBoundMethod(instanceVal, klass->statics[name]));
+                        return true;
+                    }
+                }
+                runtimeError(std::string("Undefined property '") + name + "' on String."); return false;
+            } else if (instanceVal.isList()) {
+                if (globals.count("List")) {
+                    auto klass = globals["List"].asClass();
+                    if (klass->statics.count(name)) {
+                        pop(); // pop list
+                        push(new ObjBoundMethod(instanceVal, klass->statics[name]));
+                        return true;
+                    }
+                }
+                runtimeError(std::string("Undefined property '") + name + "' on List."); return false;
+            } else if (instanceVal.isMap()) {
+                if (globals.count("Map")) {
+                    auto klass = globals["Map"].asClass();
+                    if (klass->statics.count(name)) {
+                        pop(); // pop map
+                        push(new ObjBoundMethod(instanceVal, klass->statics[name]));
+                        return true;
+                    }
+                }
+                runtimeError(std::string("Undefined property '") + name + "' on Map."); return false;
+            } else {
+                runtimeError(std::string("Only instances and classes have properties.")); return false;
+            }
+            return true;
+}
+
+bool VM::executeCall(uint8_t argCount) {
+            VMValue callee = peek(argCount);
+            if (callee.isClosure()) {
+                auto closure = callee.asClosure();
+                auto function = closure->function;
+                if (function->arity != -1 && (argCount < function->arity || argCount > function->maxArity)) {
+                    std::string expected = function->arity == function->maxArity 
+                        ? std::to_string(function->arity) 
+                        : std::to_string(function->arity) + "-" + std::to_string(function->maxArity);
+                    runtimeError(std::string("Expected ") + expected +
+                                        " arguments but got " + std::to_string(argCount) + "."); return false;
+                }
+                while (function->maxArity != -1 && argCount < function->maxArity) {
+                    push(nullptr);
+                    argCount++;
+                }
+                if (frames.size() == 256) {
+                    runtimeError(std::string("Stack overflow.")); return false;
+                }
+
+                JitFunc nativeJitFunc = nullptr;
+                auto funcPtr = function;
+                if (compiledFuncs.count(funcPtr)) {
+                    nativeJitFunc = compiledFuncs[funcPtr];
+                } else if (funcPtr->callCount >= 50) {
+                    nativeJitFunc = jit.compileMathFunction(function);
+                    if (nativeJitFunc) {
+                        compiledFuncs[funcPtr] = nativeJitFunc;
+                        funcPtr->jitAddr = (void*)nativeJitFunc;
+                    }
+                } else {
+                    funcPtr->callCount++;
+                }
+
+                if (nativeJitFunc) {
+                    std::vector<double> jitArgs(2048, 0.0);
+                    for (int i = 0; i <= argCount; ++i) {
+                        VMValue arg = peek(argCount - i);
+                        double raw;
+                        memcpy(&raw, &arg, sizeof(double));
+                        jitArgs[i] = raw;
+                    }
+
+                    jitClosure = closure;
+                    double result = nativeJitFunc(this, jitArgs.data(), argCount, 0.0);
+                    jitClosure = nullptr;
+                    stack.resize(stack.size() - argCount - 1);
+                    push(result);
+                    return true; // Skip standard frame push!
+                }
+                CallFrame newFrame;
+                newFrame.closure = closure;
+                newFrame.ip = function->chunk->code.data();
+                newFrame.stackStart = static_cast<int>(stack.size() - argCount - 1);
+                frames.push_back(newFrame);
+                
+            } else if (callee.isNative()) {
+                auto native = callee.asNative();
+                if (native->arity != -1 && argCount != native->arity) {
+                    runtimeError(std::string("Expected ") + std::to_string(native->arity) +
+                                        " arguments but got " + std::to_string(argCount) + "."); return false;
+                }
+                VMValue result = native->function(argCount, stack.data() + stack.size() - argCount);
+                stack.resize(stack.size() - argCount - 1);
+                push(result);
+                
+            } else if (callee.isClass()) {
+                auto klass = callee.asClass();
+                if (klass->isAbstract) {
+                    runtimeError(std::string("Cannot instantiate abstract class '") + klass->name + "'."); return false;
+                }
+                for (auto const &[name, method] : klass->methods) {
+                    if (isMethodAbstract(method)) {
+                        runtimeError(std::string("Cannot instantiate class '") + klass->name +
+                                            "' because abstract method '" + name + "' is not implemented."); return false;
+                    }
+                }
+                auto instance = new ObjInstance(klass);
+
+                stack[stack.size() - argCount - 1] = instance;
+
+                if (klass->methods.count("init")) {
+                    auto initMethod = klass->methods["init"];
+                    int minArity = getMethodMinArity(initMethod);
+                    int maxArity = getMethodMaxArity(initMethod);
+                    if (minArity != -1 && (argCount < minArity || argCount > maxArity)) {
+                        std::string expected = minArity == maxArity 
+                            ? std::to_string(minArity) 
+                            : std::to_string(minArity) + "-" + std::to_string(maxArity);
+                        runtimeError(std::string("Expected ") + expected +
+                                            " arguments but got " + std::to_string(argCount) + "."); return false;
+                    }
+                    while (maxArity != -1 && argCount < maxArity) {
+                        push(nullptr);
+                        argCount++;
+                    }
+
+                    if (initMethod.isClosure()) {
+                        auto closure = initMethod.asClosure();
+                        auto func = closure->function;
+                        CallFrame newFrame;
+                        newFrame.closure = closure;
+                        newFrame.ip = func->chunk->code.data();
+                        newFrame.stackStart = static_cast<int>(stack.size() - argCount - 1);
+                        frames.push_back(newFrame);
+                        
+                    } else {
+                        auto native = initMethod.asNative();
+                        native->function(argCount, stack.data() + stack.size() - argCount);
+                        stack.resize(stack.size() - argCount); // leave the instance on stack
+                        
+                    }
+                } else if (argCount != 0) {
+                    runtimeError(std::string("Expected 0 arguments but got ") + std::to_string(argCount) + "."); return false;
+                }
+            } else if (callee.isBoundMethod()) {
+                auto bound = callee.asBoundMethod();
+                auto function = bound->method;
+                if (isMethodAbstract(function)) {
+                    runtimeError(std::string("Cannot call abstract method '") + getMethodName(function) + "'."); return false;
+                }
+                int minArity = getMethodMinArity(function);
+                int maxArity = getMethodMaxArity(function);
+                if (function.isNative()) {
+                    if (!bound->receiver.isInstance()) {
+                        if (minArity != -1) minArity -= 1;
+                        if (maxArity != -1) maxArity -= 1;
+                    }
+                }
+                if (minArity != -1 && (argCount < minArity || argCount > maxArity)) {
+                    std::string expected = minArity == maxArity 
+                        ? std::to_string(minArity) 
+                        : std::to_string(minArity) + "-" + std::to_string(maxArity);
+                    runtimeError(std::string("Expected ") + expected +
+                                        " arguments but got " + std::to_string(argCount) + "."); return false;
+                }
+                while (maxArity != -1 && argCount < maxArity) {
+                    push(nullptr);
+                    argCount++;
+                }
+                if (frames.size() == 256) {
+                    runtimeError(std::string("Stack overflow.")); return false;
+                }
+                stack[stack.size() - argCount - 1] = bound->receiver;
+
+                if (function.isClosure()) {
+                    auto closure = function.asClosure();
+                    auto func = closure->function;
+                    CallFrame newFrame;
+                    newFrame.closure = closure;
+                    newFrame.ip = func->chunk->code.data();
+                    newFrame.stackStart = static_cast<int>(stack.size() - argCount - 1);
+                    frames.push_back(newFrame);
+                    
+                } else {
+                    auto native = function.asNative();
+                    int passedArgCount = argCount;
+                    VMValue *argsPtr;
+                    if (!bound->receiver.isInstance()) {
+                        passedArgCount += 1;
+                        argsPtr = stack.data() + stack.size() - argCount - 1; // Primitive methods expect receiver at args[0]
+                    } else {
+                        argsPtr = stack.data() + stack.size() - argCount; // Instance methods expect receiver at args[-1]
+                    }
+                    VMValue result = native->function(passedArgCount, argsPtr);
+                    stack.resize(stack.size() - argCount - 1);
+                    push(result);
+                    
+                }
+            } else {
+                runtimeError(std::string("Can only call functions and classes.")); return false;
+            }
+            return true;
+}
