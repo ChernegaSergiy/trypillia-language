@@ -62,10 +62,14 @@ public:
     }
 
     void emitPrologue(int maxLocals) override {
-        sljit_emit_enter(compiler, 0, SLJIT_ARGS3(F64, W, P, W), 4 | SLJIT_ENTER_FLOAT(4), 3 | SLJIT_ENTER_FLOAT(0), 8);
+        // ABI: void* vm (R0), double* args (R1), int argCount (R2), double n (FR0)
+        sljit_emit_enter(compiler, 0, SLJIT_ARGS4(F64, W, P, W, F64), 4 | SLJIT_ENTER_FLOAT(4), 3 | SLJIT_ENTER_FLOAT(0), 8);
         sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_S0, 0, SLJIT_R0, 0); // vm_ptr
         sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_S1, 0, SLJIT_R1, 0); // args_ptr
         sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_S2, 0, SLJIT_R2, 0); // argCount
+        
+        // Sync register n (FR0) to virtual stack local 0 (args[1]) for consistency
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), 1 * sizeof(double), SLJIT_FR0, 0);
     }
 
     void emitEpilogue(int maxLocals) override {
@@ -86,7 +90,43 @@ public:
     }
 
     void emitMove(int targetOffset, int srcOffset) override {
-        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_MEM1(SLJIT_S1), srcOffset * sizeof(double));
+        if (srcOffset == -1) {
+            sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_FR0, 0);
+        } else {
+            sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_MEM1(SLJIT_S1), srcOffset * sizeof(double));
+        }
+    }
+
+    void emitLoadConstToFR0(double value) {
+        sljit_emit_fset64(compiler, SLJIT_FR0, value);
+    }
+
+    void emitGetLocalToFR0(int localSlot) {
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR0, 0, SLJIT_MEM1(SLJIT_S1), localSlot * sizeof(double));
+    }
+
+    void emitSetLocalFromFR0(int localSlot) {
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), localSlot * sizeof(double), SLJIT_FR0, 0);
+    }
+
+    void emitAddMemToFR0(int memStackOffset) {
+        sljit_emit_fop2(compiler, SLJIT_ADD_F64, SLJIT_FR0, 0, SLJIT_MEM1(SLJIT_S1), memStackOffset * sizeof(double), SLJIT_FR0, 0);
+    }
+
+    void emitSubMemToFR0(int memStackOffset) {
+        // FR0 = mem - FR0
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), memStackOffset * sizeof(double));
+        sljit_emit_fop2(compiler, SLJIT_SUB_F64, SLJIT_FR0, 0, SLJIT_FR1, 0, SLJIT_FR0, 0);
+    }
+
+    void emitMulMemToFR0(int memStackOffset) {
+        sljit_emit_fop2(compiler, SLJIT_MUL_F64, SLJIT_FR0, 0, SLJIT_MEM1(SLJIT_S1), memStackOffset * sizeof(double), SLJIT_FR0, 0);
+    }
+
+    void emitDivMemToFR0(int memStackOffset) {
+        // FR0 = mem / FR0
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), memStackOffset * sizeof(double));
+        sljit_emit_fop2(compiler, SLJIT_DIV_F64, SLJIT_FR0, 0, SLJIT_FR1, 0, SLJIT_FR0, 0);
     }
 
     void emitReturnValue(int stackOffset) override {
@@ -405,8 +445,10 @@ public:
         sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_S0, 0); // vm_ptr
         sljit_emit_op2(compiler, SLJIT_ADD, SLJIT_R1, 0, SLJIT_S1, 0, SLJIT_IMM, calleeOffset * sizeof(double)); // args_ptr
         sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R2, 0, SLJIT_IMM, argCount); // argCount
+        // Load first arg into FR0
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR0, 0, SLJIT_MEM1(SLJIT_R1), 1 * sizeof(double));
         
-        sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS3(F64, W, P, W), SLJIT_R3, 0);
+        sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS4(F64, W, P, W, F64), SLJIT_R3, 0);
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_FR0, 0);
         struct sljit_jump* fast_path_end = sljit_emit_jump(compiler, SLJIT_JUMP);
 
@@ -419,6 +461,8 @@ public:
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR0, 0, SLJIT_MEM1(SLJIT_S1), calleeOffset * sizeof(double));
         sljit_emit_op2(compiler, SLJIT_ADD, SLJIT_R1, 0, SLJIT_S1, 0, SLJIT_IMM, calleeOffset * sizeof(double));
         sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R2, 0, SLJIT_IMM, argCount);
+        // Also load FR0 for jit_call_helper (though it might not use it yet)
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR0, 0, SLJIT_MEM1(SLJIT_R1), 1 * sizeof(double));
         sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS4(F64, W, F64, P, W), SLJIT_IMM, (sljit_sw)jit_call_helper);
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_FR0, 0);
 
