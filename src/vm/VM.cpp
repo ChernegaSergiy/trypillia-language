@@ -888,7 +888,7 @@ InterpretResult VM::run(int targetFrameDepth) {
                     }
 
                     if (canRunJit) {
-                        double result = nativeJitFunc(jitArgs.data(), argCount);
+                        double result = nativeJitFunc(this, jitArgs.data(), argCount);
                         stack.resize(stack.size() - argCount - 1);
                         push(result);
                         break; // Skip standard frame push!

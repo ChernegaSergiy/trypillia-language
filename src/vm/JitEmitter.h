@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <stddef.h>
 
-typedef double (*JitFunc)(double*, int);
+typedef double (*JitFunc)(void*, double*, int);
 
 // Abstract base class for machine code generation
 class JitEmitter {

@@ -32,20 +32,20 @@ public:
     }
 
     void emitPrologue(int maxLocals) override {
-        // f = return type (float), P = arg1 (pointer)
-        sljit_emit_enter(compiler, 0, SLJIT_ARGS1(F64, P), 3 | SLJIT_ENTER_FLOAT(SLJIT_NUMBER_OF_FLOAT_REGISTERS), 3, 0);
+        // f = return type (float), P = arg1 (void* vm), P = arg2 (double* args), W = arg3 (int argCount)
+        sljit_emit_enter(compiler, 0, SLJIT_ARGS3(F64, W, P, W), 3 | SLJIT_ENTER_FLOAT(SLJIT_NUMBER_OF_FLOAT_REGISTERS), 3, 0);
 
         for (int j = 0; j < maxLocals; ++j) {
             sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
                 getFloatReg(j), 0, 
-                SLJIT_MEM1(SLJIT_S0), j * sizeof(double));
+                SLJIT_MEM1(SLJIT_S1), j * sizeof(double));
         }
     }
 
     void emitEpilogue(int maxLocals) override {
         for (int j = 0; j < maxLocals; ++j) {
             sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
-                SLJIT_MEM1(SLJIT_S0), j * sizeof(double), 
+                SLJIT_MEM1(SLJIT_S1), j * sizeof(double), 
                 getFloatReg(j), 0);
         }
         
