@@ -171,8 +171,9 @@ struct ObjFunction : public Obj {
     std::string filename = "";
     int upvalueCount = 0;
     int callCount = 0;
+    void* jitAddr = nullptr;
 
-    ObjFunction() : Obj(ObjType::OBJ_FUNCTION), arity(0), maxArity(0), upvalueCount(0), callCount(0) {
+    ObjFunction() : Obj(ObjType::OBJ_FUNCTION), arity(0), maxArity(0), upvalueCount(0), callCount(0), jitAddr(nullptr) {
     }
 };
 

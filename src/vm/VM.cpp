@@ -1414,6 +1414,7 @@ InterpretResult VM::run(int targetFrameDepth) {
                     nativeJitFunc = jit.compileMathFunction(function);
                     if (nativeJitFunc) {
                         compiledFuncs[funcPtr] = nativeJitFunc;
+                        funcPtr->jitAddr = (void*)nativeJitFunc;
                     }
                 } else {
                     funcPtr->callCount++;
