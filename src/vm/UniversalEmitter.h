@@ -39,11 +39,11 @@ private:
     std::map<size_t, struct sljit_label*> labels;
     std::map<size_t, std::vector<struct sljit_jump*>> unresolvedJumps;
     std::vector<char*> ownedStrings;
+    std::set<std::string> stringPool;
 
     const char* cacheString(const std::string& s) {
-        char* cached = strdup(s.c_str());
-        ownedStrings.push_back(cached);
-        return cached;
+        auto [it, inserted] = stringPool.insert(s);
+        return it->c_str();
     }
 
 public:
@@ -61,7 +61,10 @@ public:
     }
 
     void emitPrologue(int maxLocals) override {
-        sljit_emit_enter(compiler, 0, SLJIT_ARGS3(F64, W, P, W), 4 | SLJIT_ENTER_FLOAT(4), 3, 0);
+        sljit_emit_enter(compiler, 0, SLJIT_ARGS3(F64, W, P, W), 4 | SLJIT_ENTER_FLOAT(4), 3 | SLJIT_ENTER_FLOAT(0), 0);
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_S0, 0, SLJIT_R0, 0); // vm_ptr
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_S1, 0, SLJIT_R1, 0); // args_ptr
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_S2, 0, SLJIT_R2, 0); // argCount
     }
 
     void emitEpilogue(int maxLocals) override {
@@ -264,7 +267,7 @@ public:
     void emitCallDynamic(int targetOffset, int calleeOffset, int argCount) override {
         sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_S0, 0);
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR0, 0, SLJIT_MEM1(SLJIT_S1), calleeOffset * sizeof(double));
-        sljit_emit_op2(compiler, SLJIT_ADD, SLJIT_R1, 0, SLJIT_S1, 0, SLJIT_IMM, (targetOffset + 1) * sizeof(double));
+        sljit_emit_op2(compiler, SLJIT_ADD, SLJIT_R1, 0, SLJIT_S1, 0, SLJIT_IMM, calleeOffset * sizeof(double));
         sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R2, 0, SLJIT_IMM, argCount);
         sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS4(F64, W, F64, P, W), SLJIT_IMM, (sljit_sw)jit_call_helper);
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_FR0, 0);

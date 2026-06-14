@@ -307,13 +307,13 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_RETURN): {
+                emitter.emitCloseUpvalue(0);
                 if (sp > 0) {
                     emitter.emitReturnValue(sp - 1);
                 } else {
                     emitter.emitLoadConst(0, 0.0);
                     emitter.emitReturnValue(0);
                 }
-                emitter.emitCloseUpvalue(0);
                 emitter.emitEpilogue(maxLocal + 1);
                 break;
             }

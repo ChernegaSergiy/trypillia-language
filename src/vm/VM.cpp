@@ -290,27 +290,30 @@ extern "C" double jit_call_helper(void* vm_ptr, double callee_val, double* args,
         if (obj->type == ObjType::OBJ_NATIVE) {
             std::vector<VMValue> vmArgs(argCount);
             for (int i = 0; i < argCount; i++) {
-                memcpy(&vmArgs[i], &args[i], sizeof(double));
+                memcpy(&vmArgs[i], &args[i + 1], sizeof(double));
             }
             ObjNative* native = (ObjNative*)obj;
             result = native->function(argCount, vmArgs.data());
-            uint64_t nilBits = QNAN | TAG_NIL;
-            for (int i = 0; i < argCount; i++)
-                memcpy(&vmArgs[i], &nilBits, sizeof(uint64_t));
         } else if (obj->type == ObjType::OBJ_CLOSURE) {
-            std::vector<VMValue> vmArgs(argCount);
-            for (int i = 0; i < argCount; i++) {
-                memcpy(&vmArgs[i], &args[i], sizeof(double));
+            ObjClosure* closure = (ObjClosure*)obj;
+            ObjFunction* function = closure->function;
+            
+            if (vm->compiledFuncs.count(function)) {
+                JitFunc nativeJitFunc = vm->compiledFuncs[function];
+                vm->jitClosure = closure;
+                result = nativeJitFunc(vm, args, argCount);
+                vm->jitClosure = savedJitClosure;
+            } else {
+                std::vector<VMValue> vmArgs(argCount);
+                for (int i = 0; i < argCount; i++) {
+                    memcpy(&vmArgs[i], &args[i + 1], sizeof(double));
+                }
+                VMValue callee;
+                memcpy(&callee, &callee_val, sizeof(double));
+                vm->jitClosure = nullptr;
+                result = vm->callClosure(callee, argCount, vmArgs.data());
+                vm->jitClosure = savedJitClosure;
             }
-            VMValue callee;
-            memcpy(&callee, &callee_val, sizeof(double));
-            vm->jitClosure = nullptr;
-            result = vm->callClosure(callee, argCount, vmArgs.data());
-            vm->jitClosure = savedJitClosure;
-            uint64_t nilBits = QNAN | TAG_NIL;
-            memcpy(&callee, &nilBits, sizeof(uint64_t));
-            for (int i = 0; i < argCount; i++)
-                memcpy(&vmArgs[i], &nilBits, sizeof(uint64_t));
         } else if (obj->type == ObjType::OBJ_BOUND_METHOD) {
             ObjBoundMethod* bound = (ObjBoundMethod*)obj;
             VMValue method = bound->method;
@@ -319,39 +322,30 @@ extern "C" double jit_call_helper(void* vm_ptr, double callee_val, double* args,
                 std::vector<VMValue> vmArgs(argCount + 1);
                 vmArgs[0] = receiver;
                 for (int i = 0; i < argCount; i++) {
-                    memcpy(&vmArgs[i + 1], &args[i], sizeof(double));
+                    memcpy(&vmArgs[i + 1], &args[i + 1], sizeof(double));
                 }
                 vm->jitClosure = nullptr;
                 result = vm->callClosure(method, argCount + 1, vmArgs.data());
                 vm->jitClosure = savedJitClosure;
-                uint64_t nilBits = QNAN | TAG_NIL;
-                for (int i = 0; i < argCount + 1; i++)
-                    memcpy(&vmArgs[i], &nilBits, sizeof(uint64_t));
             } else if (method.isNative()) {
                 ObjNative* native = method.asNative();
                 std::vector<VMValue> vmArgs(argCount + 1);
                 vmArgs[0] = receiver;
                 for (int i = 0; i < argCount; i++) {
-                    memcpy(&vmArgs[i + 1], &args[i], sizeof(double));
+                    memcpy(&vmArgs[i + 1], &args[i + 1], sizeof(double));
                 }
                 result = native->function(argCount + 1, vmArgs.data());
-                uint64_t nilBits = QNAN | TAG_NIL;
-                for (int i = 0; i < argCount + 1; i++)
-                    memcpy(&vmArgs[i], &nilBits, sizeof(uint64_t));
             }
         } else if (obj->type == ObjType::OBJ_CLASS) {
             VMValue classVal;
             memcpy(&classVal, &callee_val, sizeof(double));
             std::vector<VMValue> vmArgs(argCount);
             for (int i = 0; i < argCount; i++) {
-                memcpy(&vmArgs[i], &args[i], sizeof(double));
+                memcpy(&vmArgs[i], &args[i + 1], sizeof(double));
             }
             vm->jitClosure = nullptr;
             result = vm->instantiateClass(classVal, argCount, vmArgs.data());
             vm->jitClosure = savedJitClosure;
-            uint64_t nilBits = QNAN | TAG_NIL;
-            for (int i = 0; i < argCount; i++)
-                memcpy(&vmArgs[i], &nilBits, sizeof(uint64_t));
         }
     }
 
@@ -1426,7 +1420,7 @@ InterpretResult VM::run(int targetFrameDepth) {
                 }
 
                 if (nativeJitFunc) {
-                    std::vector<double> jitArgs(256, 0.0);
+                    std::vector<double> jitArgs(2048, 0.0);
                     for (int i = 0; i <= argCount; ++i) {
                         VMValue arg = peek(argCount - i);
                         double raw;
