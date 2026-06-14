@@ -45,8 +45,10 @@ public:
     virtual void emitNot(int targetOffset) = 0;
     virtual void emitNegate(int targetOffset) = 0;
 
-    // Calls
-    virtual void emitCallGlobal(const std::string& name, int targetOffset, int argCount) = 0;
+    // Calls and Globals
+    virtual void emitCallDynamic(int targetOffset, int calleeOffset, int argCount) = 0;
+    virtual void emitGetGlobal(const std::string& name, int targetOffset) = 0;
+    virtual void emitSetGlobal(const std::string& name, int sourceOffset) = 0;
 
     // Arrays and maps
     virtual void emitIndexGet(int targetOffset, int objectOffset, int indexOffset) = 0;

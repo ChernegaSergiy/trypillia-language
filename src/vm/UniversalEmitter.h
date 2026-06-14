@@ -7,7 +7,9 @@
 #include <iostream>
 #include <string>
 
-extern "C" double jit_invoke_helper(void* vm, const char* name, double* args, int argCount);
+extern "C" double jit_call_helper(void* vm_ptr, double callee_val, double* args, int argCount);
+extern "C" double jit_get_global_helper(void* vm_ptr, const char* name);
+extern "C" void jit_set_global_helper(void* vm_ptr, const char* name, double val_d);
 extern "C" double jit_index_get_helper(void* vm_ptr, double object_val, double index_val);
 extern "C" double jit_index_set_helper(void* vm_ptr, double object_val, double index_val, double value_val);
 
@@ -185,15 +187,13 @@ public:
         }
     }
 
-    void emitCallGlobal(const std::string& name, int targetOffset, int argCount) override {
-        // Save all active stack slots to memory (SLJIT_S1 array)
+    void emitCallDynamic(int targetOffset, int calleeOffset, int argCount) override {
         for (int j = 0; j <= targetOffset; ++j) {
             sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
                 SLJIT_MEM1(SLJIT_S1), j * sizeof(double), 
                 getFloatReg(j), 0);
         }
 
-        // Save arguments to memory
         for (int j = 0; j < argCount; ++j) {
             sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
                 SLJIT_MEM1(SLJIT_S1), (targetOffset + 1 + j) * sizeof(double), 
@@ -202,24 +202,65 @@ public:
 
         sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_S0, 0);
 
-        char* cname = strdup(name.c_str());
-        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R1, 0, SLJIT_IMM, (sljit_sw)cname);
+        // arg1: callee VMValue float
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR0, 0, getFloatReg(calleeOffset), 0);
 
-        sljit_emit_op2(compiler, SLJIT_ADD, SLJIT_R2, 0, SLJIT_S1, 0, SLJIT_IMM, (targetOffset + 1) * sizeof(double));
-        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R3, 0, SLJIT_IMM, argCount);
+        // arg2: double* args pointer
+        sljit_emit_op2(compiler, SLJIT_ADD, SLJIT_R1, 0, SLJIT_S1, 0, SLJIT_IMM, (targetOffset + 1) * sizeof(double));
+        
+        // arg3: int argCount
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R2, 0, SLJIT_IMM, argCount);
 
-        sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS4(F64, W, W, P, W), SLJIT_IMM, (sljit_sw)jit_invoke_helper);
+        // extern "C" double jit_call_helper(void* vm_ptr, double callee_val, double* args, int argCount);
+        sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS4(F64, W, F64, P, W), SLJIT_IMM, (sljit_sw)jit_call_helper);
 
-        // Save the return value (FR0) into the memory slot for targetOffset
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
             SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), 
             SLJIT_FR0, 0);
 
-        // Restore active stack slots from memory (C function call clobbers FR registers)
         for (int j = 0; j <= targetOffset; ++j) {
             sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
                 getFloatReg(j), 0, 
                 SLJIT_MEM1(SLJIT_S1), j * sizeof(double));
+        }
+    }
+
+    void emitGetGlobal(const std::string& name, int targetOffset) override {
+        for (int j = 0; j <= targetOffset; ++j) {
+            sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), j * sizeof(double), getFloatReg(j), 0);
+        }
+
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_S0, 0);
+
+        char* cname = strdup(name.c_str());
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R1, 0, SLJIT_IMM, (sljit_sw)cname);
+
+        sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS2(F64, W, W), SLJIT_IMM, (sljit_sw)jit_get_global_helper);
+
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_FR0, 0);
+
+        for (int j = 0; j <= targetOffset; ++j) {
+            sljit_emit_fop1(compiler, SLJIT_MOV_F64, getFloatReg(j), 0, SLJIT_MEM1(SLJIT_S1), j * sizeof(double));
+        }
+    }
+
+    void emitSetGlobal(const std::string& name, int sourceOffset) override {
+        for (int j = 0; j <= sourceOffset; ++j) {
+            sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), j * sizeof(double), getFloatReg(j), 0);
+        }
+
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_S0, 0);
+
+        char* cname = strdup(name.c_str());
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R1, 0, SLJIT_IMM, (sljit_sw)cname);
+
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR0, 0, getFloatReg(sourceOffset), 0);
+
+        // void jit_set_global_helper(void*, const char*, double) -> V, W, W, F64
+        sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS3V(W, W, F64), SLJIT_IMM, (sljit_sw)jit_set_global_helper);
+
+        for (int j = 0; j <= sourceOffset; ++j) {
+            sljit_emit_fop1(compiler, SLJIT_MOV_F64, getFloatReg(j), 0, SLJIT_MEM1(SLJIT_S1), j * sizeof(double));
         }
     }
 

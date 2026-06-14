@@ -103,17 +103,17 @@ bool checkAccess(VMAccessModifier modifier, ObjClass* klass, const std::string &
 }
 } // namespace
 
-extern "C" double jit_invoke_helper(void* vm_ptr, const char* name, double* args, int argCount) {
+extern "C" double jit_call_helper(void* vm_ptr, double callee_val, double* args, int argCount) {
     VM* vm = static_cast<VM*>(vm_ptr);
-    auto it = vm->globals.find(name);
-    if (it == vm->globals.end()) return 0.0;
-    
-    VMValue callee = it->second;
+    VMValue callee;
+    memcpy(&callee, &callee_val, sizeof(double));
     VMValue result = nullptr;
     
     std::vector<VMValue> vmArgs(argCount);
     for (int i = 0; i < argCount; i++) {
-        vmArgs[i] = args[i];
+        // The double contains raw VMValue bits
+        double argD = args[i];
+        memcpy(&vmArgs[i], &argD, sizeof(double));
     }
     
     if (callee.isNative()) {
@@ -123,10 +123,28 @@ extern "C" double jit_invoke_helper(void* vm_ptr, const char* name, double* args
         result = vm->callClosure(callee, argCount, vmArgs.data());
     }
     
-    if (result.isNumber()) {
-        return result.asNumber();
+    double ret;
+    memcpy(&ret, &result, sizeof(double));
+    return ret;
+}
+
+extern "C" double jit_get_global_helper(void* vm_ptr, const char* name) {
+    VM* vm = static_cast<VM*>(vm_ptr);
+    auto it = vm->globals.find(name);
+    VMValue result = nullptr;
+    if (it != vm->globals.end()) {
+        result = it->second;
     }
-    return 0.0;
+    double ret;
+    memcpy(&ret, &result, sizeof(double));
+    return ret;
+}
+
+extern "C" void jit_set_global_helper(void* vm_ptr, const char* name, double val_d) {
+    VM* vm = static_cast<VM*>(vm_ptr);
+    VMValue val;
+    memcpy(&val, &val_d, sizeof(double));
+    vm->globals[name] = val;
 }
 
 extern "C" double jit_index_get_helper(void* vm_ptr, double object_val, double index_val) {

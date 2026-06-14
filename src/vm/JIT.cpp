@@ -25,6 +25,8 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
             i += 2;
         } else if (op == static_cast<uint8_t>(OpCode::OP_CONSTANT) ||
                    op == static_cast<uint8_t>(OpCode::OP_GET_GLOBAL) ||
+                   op == static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL) ||
+                   op == static_cast<uint8_t>(OpCode::OP_SET_GLOBAL) ||
                    op == static_cast<uint8_t>(OpCode::OP_CALL)) {
             i += 2;
         } else {
@@ -38,7 +40,6 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
 
     // Initial SP includes the function itself (slot 0) and any arguments
     int sp = function->arity >= 0 ? function->arity + 1 : 1;
-    std::vector<std::string> stackGlobalNames(16, "");
 
     for (size_t i = 0; i < function->chunk->code.size(); ++i) {
         emitter.bindLabel(i);
@@ -51,7 +52,6 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 uint8_t slot = function->chunk->code[++i];
                 if (slot == 0) return nullptr;
                 if (sp >= 8) return nullptr;
-                stackGlobalNames[sp] = "";
                 emitter.emitGetLocal(sp, slot);
                 sp++;
                 break;
@@ -68,30 +68,43 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 VMValue constant = function->chunk->constants[constantIdx];
                 if (!constant.isString()) return nullptr;
                 if (sp >= 8) return nullptr;
-                stackGlobalNames[sp] = constant.asString()->flatten();
-                // We don't emit anything for the function object itself, we just track its name
+                std::string name = constant.asString()->flatten();
+                emitter.emitGetGlobal(name, sp);
                 sp++;
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_SET_GLOBAL): {
+                uint8_t constantIdx = function->chunk->code[++i];
+                VMValue constant = function->chunk->constants[constantIdx];
+                if (!constant.isString()) return nullptr;
+                if (sp < 1) return nullptr;
+                std::string name = constant.asString()->flatten();
+                // Value is at sp - 1
+                emitter.emitSetGlobal(name, sp - 1);
+                // Value remains on stack
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL): {
+                uint8_t constantIdx = function->chunk->code[++i];
+                VMValue constant = function->chunk->constants[constantIdx];
+                if (!constant.isString()) return nullptr;
+                if (sp < 1) return nullptr;
+                std::string name = constant.asString()->flatten();
+                // Value is at sp - 1
+                emitter.emitSetGlobal(name, sp - 1);
+                sp--; // Pop value
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_CALL): {
                 uint8_t argCount = function->chunk->code[++i];
                 int calleeSp = sp - argCount - 1;
                 if (calleeSp < 0) {
-                    printf("JIT Abort: calleeSp < 0\n");
                     return nullptr;
                 }
                 
-                std::string calleeName = stackGlobalNames[calleeSp];
-                if (calleeName == "") {
-                    printf("JIT Abort: calleeName is empty at sp=%d\n", calleeSp);
-                    return nullptr; // Only global function calls supported
-                }
-                
-                printf("JIT: Compiling OP_CALL to %s\n", calleeName.c_str());
-                emitter.emitCallGlobal(calleeName, calleeSp, argCount);
+                emitter.emitCallDynamic(calleeSp, calleeSp, argCount);
                 
                 sp = calleeSp + 1; // Result is at calleeSp
-                stackGlobalNames[calleeSp] = "";
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_CONSTANT): {
@@ -100,7 +113,6 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 if (val.isNumber()) {
                     double d = val.asNumber();
                     if (sp >= 8) return nullptr;
-                    stackGlobalNames[sp] = "";
                     emitter.emitLoadConst(sp, d);
                     sp++;
                 } else {
@@ -112,28 +124,24 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 if (sp < 2) return nullptr;
                 emitter.emitAdd(sp - 2, sp - 1);
                 sp--;
-                stackGlobalNames[sp - 1] = "";
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_SUBTRACT): {
                 if (sp < 2) return nullptr;
                 emitter.emitSub(sp - 2, sp - 1);
                 sp--;
-                stackGlobalNames[sp - 1] = "";
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_MULTIPLY): {
                 if (sp < 2) return nullptr;
                 emitter.emitMul(sp - 2, sp - 1);
                 sp--;
-                stackGlobalNames[sp - 1] = "";
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_DIVIDE): {
                 if (sp < 2) return nullptr;
                 emitter.emitDiv(sp - 2, sp - 1);
                 sp--;
-                stackGlobalNames[sp - 1] = "";
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_LESS): {
@@ -146,41 +154,35 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 if (sp < 2) return nullptr;
                 emitter.emitBitAnd(sp - 2, sp - 1);
                 sp--;
-                stackGlobalNames[sp - 1] = "";
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_BIT_OR): {
                 if (sp < 2) return nullptr;
                 emitter.emitBitOr(sp - 2, sp - 1);
                 sp--;
-                stackGlobalNames[sp - 1] = "";
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_BIT_XOR): {
                 if (sp < 2) return nullptr;
                 emitter.emitBitXor(sp - 2, sp - 1);
                 sp--;
-                stackGlobalNames[sp - 1] = "";
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_BIT_SHIFT_LEFT): {
                 if (sp < 2) return nullptr;
                 emitter.emitBitShl(sp - 2, sp - 1);
                 sp--;
-                stackGlobalNames[sp - 1] = "";
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_BIT_SHIFT_RIGHT): {
                 if (sp < 2) return nullptr;
                 emitter.emitBitShr(sp - 2, sp - 1);
                 sp--;
-                stackGlobalNames[sp - 1] = "";
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_BIT_NOT): {
                 if (sp < 1) return nullptr;
                 emitter.emitBitNot(sp - 1);
-                stackGlobalNames[sp - 1] = "";
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_GREATER): {
@@ -215,7 +217,6 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 // object is at sp - 2, index is at sp - 1
                 emitter.emitIndexGet(sp - 2, sp - 2, sp - 1);
                 sp--;
-                stackGlobalNames[sp - 1] = "";
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_INDEX_SET): {
@@ -225,7 +226,6 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 emitter.emitIndexSet(sp - 3, sp - 2, sp - 1);
                 emitter.emitMove(sp - 3, sp - 1); // move value to result slot
                 sp -= 2;
-                stackGlobalNames[sp - 1] = "";
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_JUMP): {
