@@ -33,6 +33,10 @@ public:
     virtual void emitCmpGt(int targetOffset, int srcOffset) = 0;
     virtual void emitCmpGe(int targetOffset, int srcOffset) = 0;
 
+    // Унарні операції
+    virtual void emitNot(int targetOffset) = 0;
+    virtual void emitNegate(int targetOffset) = 0;
+
     // Керування потоком виконання (Control Flow)
     virtual void bindLabel(size_t byteCodeIndex) = 0;
     virtual void emitJump(size_t targetByteCodeIndex) = 0;

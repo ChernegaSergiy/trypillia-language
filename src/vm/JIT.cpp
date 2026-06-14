@@ -101,6 +101,28 @@ JitFunc JITCompiler::compileMathFunction(std::shared_ptr<ObjFunction> function) 
                 sp--;
                 break;
             }
+            case static_cast<uint8_t>(OpCode::OP_GREATER): {
+                if (sp < 2) return nullptr;
+                emitter.emitCmpGt(sp - 2, sp - 1);
+                sp--;
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_EQUAL): {
+                if (sp < 2) return nullptr;
+                emitter.emitCmpEq(sp - 2, sp - 1);
+                sp--;
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_NOT): {
+                if (sp < 1) return nullptr;
+                emitter.emitNot(sp - 1);
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_NEGATE): {
+                if (sp < 1) return nullptr;
+                emitter.emitNegate(sp - 1);
+                break;
+            }
             case static_cast<uint8_t>(OpCode::OP_POP): {
                 if (sp == 0) return nullptr;
                 sp--;

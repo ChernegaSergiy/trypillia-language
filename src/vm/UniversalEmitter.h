@@ -152,10 +152,49 @@ public:
         void* code = sljit_generate_code(compiler, 0, NULL);
         return reinterpret_cast<JitFunc>(code);
     }
+    void emitCmpEq(int targetOffset, int srcOffset) override {
+        struct sljit_jump* jumpEq = sljit_emit_fcmp(compiler, SLJIT_F_EQUAL, 
+            getFloatReg(8 + targetOffset), 0, 
+            getFloatReg(8 + srcOffset), 0);
+        sljit_emit_fset64(compiler, getFloatReg(8 + targetOffset), 0.0);
+        struct sljit_jump* jumpDone = sljit_emit_jump(compiler, SLJIT_JUMP);
+        sljit_set_label(jumpEq, sljit_emit_label(compiler));
+        sljit_emit_fset64(compiler, getFloatReg(8 + targetOffset), 1.0);
+        sljit_set_label(jumpDone, sljit_emit_label(compiler));
+    }
+
+    void emitCmpGt(int targetOffset, int srcOffset) override {
+        struct sljit_jump* jumpGt = sljit_emit_fcmp(compiler, SLJIT_F_GREATER, 
+            getFloatReg(8 + targetOffset), 0, 
+            getFloatReg(8 + srcOffset), 0);
+        sljit_emit_fset64(compiler, getFloatReg(8 + targetOffset), 0.0);
+        struct sljit_jump* jumpDone = sljit_emit_jump(compiler, SLJIT_JUMP);
+        sljit_set_label(jumpGt, sljit_emit_label(compiler));
+        sljit_emit_fset64(compiler, getFloatReg(8 + targetOffset), 1.0);
+        sljit_set_label(jumpDone, sljit_emit_label(compiler));
+    }
+
+    void emitNot(int targetOffset) {
+        sljit_emit_fset64(compiler, SLJIT_FR0, 0.0);
+        struct sljit_jump* jumpEq = sljit_emit_fcmp(compiler, SLJIT_F_EQUAL, 
+            getFloatReg(8 + targetOffset), 0, 
+            SLJIT_FR0, 0);
+        sljit_emit_fset64(compiler, getFloatReg(8 + targetOffset), 0.0);
+        struct sljit_jump* jumpDone = sljit_emit_jump(compiler, SLJIT_JUMP);
+        sljit_set_label(jumpEq, sljit_emit_label(compiler));
+        sljit_emit_fset64(compiler, getFloatReg(8 + targetOffset), 1.0);
+        sljit_set_label(jumpDone, sljit_emit_label(compiler));
+    }
+
+    void emitNegate(int targetOffset) {
+        sljit_emit_fset64(compiler, SLJIT_FR0, 0.0);
+        sljit_emit_fop2(compiler, SLJIT_SUB_F64, 
+            getFloatReg(8 + targetOffset), 0, 
+            SLJIT_FR0, 0, 
+            getFloatReg(8 + targetOffset), 0);
+    }
     
-    void emitCmpEq(int, int) override {}
     void emitCmpNe(int, int) override {}
     void emitCmpLe(int, int) override {}
-    void emitCmpGt(int, int) override {}
     void emitCmpGe(int, int) override {}
 };
