@@ -118,22 +118,10 @@ InterpretResult VM::run(int targetFrameDepth) {
             VMValue a = pop();
             if (a.isNumber() && b.isNumber()) {
                 push(a.asNumber() + b.asNumber());
-            } else if (a.isString() && b.isString()) {
-                push(new ObjString(a.asString(), b.asString()));
-            } else if (a.isString() && b.isNumber()) {
-                double val = b.asNumber();
-                std::string strVal = std::to_string(val);
-                strVal.erase(strVal.find_last_not_of('0') + 1, std::string::npos);
-                if (strVal.back() == '.')
-                    strVal.pop_back();
-                push(new ObjString(a.asString(), new ObjString(strVal)));
-            } else if (a.isNumber() && b.isString()) {
-                double val = a.asNumber();
-                std::string strVal = std::to_string(val);
-                strVal.erase(strVal.find_last_not_of('0') + 1, std::string::npos);
-                if (strVal.back() == '.')
-                    strVal.pop_back();
-                push(new ObjString(new ObjString(strVal), b.asString()));
+            } else if (a.isString() || b.isString()) {
+                ObjString *strA = a.isString() ? a.asString() : new ObjString(a.toString());
+                ObjString *strB = b.isString() ? b.asString() : new ObjString(b.toString());
+                push(new ObjString(strA, strB));
             } else {
                 return runtimeError(std::string("Operands must be numbers or strings."));
             }

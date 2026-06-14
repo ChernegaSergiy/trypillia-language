@@ -186,6 +186,8 @@ class VMValue {
         return val;
     }
 
+    std::string toString(bool inContainer = false) const;
+
     bool operator==(const VMValue &other) const {
         if (val == other.val)
             return true;
