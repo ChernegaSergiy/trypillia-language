@@ -15,13 +15,20 @@ struct CallFrame {
     int stackStart;
 };
 
+class VM;
+extern thread_local VM *currentVM;
+
 class VM {
-  private:
+  public:
     std::vector<CallFrame> frames;
+    Obj *objects = nullptr;
+    size_t bytesAllocated = 0;
+    size_t nextGC = 1024 * 1024;
     std::vector<VMValue> stack;
-    std::unordered_map<std::string, VMValue> globals_private_removed;
+    std::unordered_map<std::string, VMValue> globals;
     ObjUpvalue *openUpvalues;
 
+  private:
     void resetStack();
     void push(VMValue value);
     VMValue pop();
@@ -38,7 +45,6 @@ class VM {
     ObjUpvalue *captureUpvalue(VMValue *local);
     void closeUpvalues(VMValue *last);
 
-    std::unordered_map<std::string, VMValue> globals;
     void defineNative(const std::string &name, int arity, NativeFn function);
     VMValue callClosure(VMValue closureVal, int argCount, VMValue *args);
 

@@ -63,10 +63,6 @@ struct ObjString : public Obj {
         }
 
         flatData = std::move(result);
-        if (left)
-            left->release();
-        if (right)
-            right->release();
         left = nullptr;
         right = nullptr;
         isFlat = true;
@@ -74,10 +70,6 @@ struct ObjString : public Obj {
     }
 
     ~ObjString() {
-        if (left)
-            left->release();
-        if (right)
-            right->release();
     }
 };
 

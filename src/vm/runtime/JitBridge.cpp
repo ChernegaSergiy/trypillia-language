@@ -15,7 +15,7 @@ extern "C" double jit_build_list_helper(double *args, int count) {
         elements[i] = val;
     }
     ObjList *list = new ObjList(elements);
-    list->retain();
+
     VMValue result(list);
     double dresult;
     memcpy(&dresult, &result, sizeof(double));
@@ -30,7 +30,7 @@ extern "C" double jit_build_map_helper(double *args, int count) {
         memcpy(&val, &args[i * 2 + 1], sizeof(double));
         map->values[key] = val;
     }
-    map->retain();
+
     VMValue result(map);
     double dresult;
     memcpy(&dresult, &result, sizeof(double));
@@ -110,7 +110,7 @@ extern "C" double jit_property_get_helper(void *vm_ptr, double object_val, const
             } else if (instance->klass->methods.count(propName)) {
                 auto method = instance->klass->methods[propName];
                 auto bound = new ObjBoundMethod(VMValue(instance), method);
-                bound->retain();
+
                 result = bound;
             }
         } else if (obj->type == ObjType::OBJ_CLASS) {
@@ -288,7 +288,7 @@ extern "C" void jit_set_global_helper(void *vm_ptr, const char *name, double val
 
 extern "C" double jit_create_class_helper(void *vm, const char *name) {
     auto klass = new ObjClass(name);
-    klass->retain();
+
     VMValue result(klass);
     double ret;
     memcpy(&ret, &result, sizeof(double));
@@ -298,7 +298,7 @@ extern "C" double jit_create_class_helper(void *vm, const char *name) {
 extern "C" double jit_create_abstract_class_helper(void *vm, const char *name) {
     auto klass = new ObjClass(name);
     klass->isAbstract = true;
-    klass->retain();
+
     VMValue result(klass);
     double ret;
     memcpy(&ret, &result, sizeof(double));
@@ -394,7 +394,7 @@ extern "C" double jit_get_super_helper(double receiver_val, double superclass_va
     if (superclass && receiver && superclass->methods.count(methodName)) {
         auto method = superclass->methods[methodName];
         auto bound = new ObjBoundMethod(receiver, method);
-        bound->retain();
+
         VMValue result(bound);
         double ret;
         memcpy(&ret, &result, sizeof(double));
@@ -425,7 +425,6 @@ extern "C" double jit_create_closure_helper(void *vm_ptr, double func_val, doubl
     else
         function = nullptr;
     auto closure = new ObjClosure(function);
-    closure->retain();
 
     for (int i = 0; i < upvalue_count; i++) {
         uint64_t metaRaw;

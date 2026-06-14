@@ -35,21 +35,11 @@ enum class ObjType {
 
 struct Obj {
     ObjType type;
-    uint32_t refCount;
+    Obj *nextObj;
     bool isMarked;
 
-    Obj(ObjType type) : type(type), refCount(0), isMarked(false) {
-    }
+    Obj(ObjType type);
     virtual ~Obj() = default;
-
-    void retain() {
-        refCount++;
-    }
-    void release() {
-        if (--refCount == 0) {
-            delete this;
-        }
-    }
 };
 
 #define QNAN ((uint64_t)0x7ffc000000000000)
@@ -76,29 +66,17 @@ class VMValue {
 
     VMValue(Obj *obj) {
         val = SIGN_BIT | QNAN | (uint64_t)(uintptr_t)obj;
-        if (obj)
-            obj->retain();
     }
 
     VMValue(const VMValue &other) : val(other.val) {
-        if (isObj() && asObj())
-            asObj()->retain();
     }
 
     VMValue &operator=(const VMValue &other) {
-        if (this == &other)
-            return *this;
-        if (isObj() && asObj())
-            asObj()->release();
         val = other.val;
-        if (isObj() && asObj())
-            asObj()->retain();
         return *this;
     }
 
     ~VMValue() {
-        if (isObj() && asObj())
-            asObj()->release();
     }
 
     bool isNumber() const {

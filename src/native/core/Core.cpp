@@ -6,7 +6,7 @@
 namespace StdLib {
 namespace Core {
 
-thread_local VM *currentVM = nullptr;
+// currentVM defined in VM.cpp
 
 static std::string stringify(const VMValue &val, bool inContainer = false) {
     if (val.isNumber()) {

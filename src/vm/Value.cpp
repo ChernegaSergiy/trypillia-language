@@ -10,11 +10,19 @@
 VMValue::VMValue(const std::string &s) {
     Obj *obj = new ObjString(s);
     val = SIGN_BIT | QNAN | (uint64_t)(uintptr_t)obj;
-    obj->retain();
 }
 
 VMValue::VMValue(const char *s) {
     Obj *obj = new ObjString(std::string(s));
     val = SIGN_BIT | QNAN | (uint64_t)(uintptr_t)obj;
-    obj->retain();
+}
+
+extern thread_local VM *currentVM;
+
+Obj::Obj(ObjType type) : type(type), isMarked(false), nextObj(nullptr) {
+    if (currentVM) {
+        this->nextObj = currentVM->objects;
+        currentVM->objects = this;
+        currentVM->bytesAllocated += 256; // heuristic
+    }
 }

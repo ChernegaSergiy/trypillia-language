@@ -1,4 +1,7 @@
 #include "VM.h"
+#include "runtime/GC.h"
+
+thread_local VM *currentVM = nullptr;
 #include "runtime/ObjectRuntime.h"
 #include <cmath>
 #include <iostream>
@@ -7,6 +10,7 @@
 #include "../native/StdLib.h"
 
 VM::VM() {
+    currentVM = this;
     StdLib::registerAll(this);
 }
 
@@ -386,6 +390,8 @@ InterpretResult VM::run(int targetFrameDepth) {
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_LOOP): {
+            if (bytesAllocated > nextGC)
+                GC::collect(this);
             uint16_t offset = READ_SHORT();
             frame->ip -= offset;
             break;
