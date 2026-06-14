@@ -95,7 +95,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 VMValue constant = function->chunk->constants[constantIdx];
                 if (!constant.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                std::string name = constant.asString()->flatten();
+                const std::string& name = constant.asString()->flatten();
                 emitter.emitGetGlobal(name, sp);
                 sp++;
                 break;
@@ -105,7 +105,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 VMValue constant = function->chunk->constants[constantIdx];
                 if (!constant.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 if (sp < 1) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                std::string name = constant.asString()->flatten();
+                const std::string& name = constant.asString()->flatten();
                 // Value is at sp - 1
                 emitter.emitSetGlobal(name, sp - 1);
                 // Value remains on stack
@@ -116,7 +116,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 VMValue constant = function->chunk->constants[constantIdx];
                 if (!constant.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 if (sp < 1) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                std::string name = constant.asString()->flatten();
+                const std::string& name = constant.asString()->flatten();
                 // Value is at sp - 1
                 emitter.emitSetGlobal(name, sp - 1);
                 sp--; // Pop value
@@ -354,7 +354,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 VMValue nameVal = function->chunk->constants[constIdx];
                 if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 if (sp < 1) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                std::string name = nameVal.asString()->flatten();
+                const std::string& name = nameVal.asString()->flatten();
                 emitter.emitPropertyGet(sp - 1, name);
                 break;
             }
@@ -363,7 +363,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 VMValue nameVal = function->chunk->constants[constIdx];
                 if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                std::string name = nameVal.asString()->flatten();
+                const std::string& name = nameVal.asString()->flatten();
                 emitter.emitPropertySet(sp - 2, name);
                 sp--;
                 break;
@@ -410,7 +410,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 uint8_t constIdx = function->chunk->code[++i];
                 VMValue nameVal = function->chunk->constants[constIdx];
                 if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                std::string name = nameVal.asString()->flatten();
+                const std::string& name = nameVal.asString()->flatten();
                 if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitCreateClass(sp, name);
                 sp++;
@@ -420,7 +420,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 uint8_t constIdx = function->chunk->code[++i];
                 VMValue nameVal = function->chunk->constants[constIdx];
                 if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                std::string name = nameVal.asString()->flatten();
+                const std::string& name = nameVal.asString()->flatten();
                 if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitCreateAbstractClass(sp, name);
                 sp++;
@@ -442,7 +442,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 uint8_t constIdx = function->chunk->code[++i];
                 VMValue nameVal = function->chunk->constants[constIdx];
                 if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                std::string name = nameVal.asString()->flatten();
+                const std::string& name = nameVal.asString()->flatten();
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitGetSuper(sp - 2, name);
                 sp--;
@@ -452,7 +452,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 uint8_t constIdx = function->chunk->code[++i];
                 VMValue nameVal = function->chunk->constants[constIdx];
                 if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                std::string name = nameVal.asString()->flatten();
+                const std::string& name = nameVal.asString()->flatten();
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitBindMethod(sp - 2, name, false);
                 sp--;
@@ -462,7 +462,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 uint8_t constIdx = function->chunk->code[++i];
                 VMValue nameVal = function->chunk->constants[constIdx];
                 if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                std::string name = nameVal.asString()->flatten();
+                const std::string& name = nameVal.asString()->flatten();
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitBindMethod(sp - 2, name, true);
                 sp--;
@@ -472,7 +472,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 uint8_t constIdx = function->chunk->code[++i];
                 VMValue nameVal = function->chunk->constants[constIdx];
                 if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                std::string name = nameVal.asString()->flatten();
+                const std::string& name = nameVal.asString()->flatten();
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitBindStaticMethod(sp - 2, name);
                 sp--;
@@ -482,7 +482,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 uint8_t constIdx = function->chunk->code[++i];
                 VMValue nameVal = function->chunk->constants[constIdx];
                 if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                std::string name = nameVal.asString()->flatten();
+                const std::string& name = nameVal.asString()->flatten();
                 uint8_t modifier = function->chunk->code[++i];
                 if (sp < 1) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitFieldModifier(sp - 1, name, modifier);
