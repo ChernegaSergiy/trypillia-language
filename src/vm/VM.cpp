@@ -867,8 +867,11 @@ InterpretResult VM::run(int targetFrameDepth) {
                 if (compiledFuncs.count(funcPtr)) {
                     nativeJitFunc = compiledFuncs[funcPtr];
                 } else {
-                    nativeJitFunc = jit.compileMathFunction(function);
-                    compiledFuncs[funcPtr] = nativeJitFunc; // caches nullptr if incompatible
+                    funcPtr->callCount++;
+                    if (funcPtr->callCount >= 50) {
+                        nativeJitFunc = jit.compileMathFunction(function);
+                        compiledFuncs[funcPtr] = nativeJitFunc; // caches nullptr if incompatible
+                    }
                 }
 
                 if (nativeJitFunc) {

@@ -231,8 +231,9 @@ struct ObjFunction {
     std::string enclosingClassName = "";
     std::string filename = "";
     int upvalueCount = 0;
+    int callCount = 0;
 
-    ObjFunction() : arity(0), maxArity(0), upvalueCount(0) {
+    ObjFunction() : arity(0), maxArity(0), upvalueCount(0), callCount(0) {
     }
 };
 
