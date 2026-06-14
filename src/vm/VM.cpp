@@ -1,6 +1,7 @@
 #include "VM.h"
 #include <iostream>
 #include <cmath>
+#include <map>
 
 VMValue::VMValue(const std::string& s) {
     Obj* obj = new ObjString(s);
@@ -116,11 +117,22 @@ extern "C" double jit_build_list_helper(double* args, int count) {
     }
     ObjList* list = new ObjList(elements);
     list->retain();
-    // Manually construct the NaN-boxed value to avoid temporary VMValue
-    // The result variable below gives the Ref 1; the manual retain above gives Ref 2.
-    // After result destructor releases (Ref 1), the list survives until the calling
-    // JIT code properly retains it (via VMValue copy in push/stack operations).
     VMValue result(list);
+    double dresult;
+    memcpy(&dresult, &result, sizeof(double));
+    return dresult;
+}
+
+extern "C" double jit_build_map_helper(double* args, int count) {
+    ObjMap* map = new ObjMap();
+    for (int i = 0; i < count; i++) {
+        VMValue key, val;
+        memcpy(&key, &args[i * 2], sizeof(double));
+        memcpy(&val, &args[i * 2 + 1], sizeof(double));
+        map->values[key] = val;
+    }
+    map->retain();
+    VMValue result(map);
     double dresult;
     memcpy(&dresult, &result, sizeof(double));
     return dresult;
@@ -369,6 +381,16 @@ extern "C" void jit_set_global_helper(void* vm_ptr, const char* name, double val
 
 extern "C" double jit_create_class_helper(void* vm, const char* name) {
     auto klass = new ObjClass(name);
+    klass->retain();
+    VMValue result(klass);
+    double ret;
+    memcpy(&ret, &result, sizeof(double));
+    return ret;
+}
+
+extern "C" double jit_create_abstract_class_helper(void* vm, const char* name) {
+    auto klass = new ObjClass(name);
+    klass->isAbstract = true;
     klass->retain();
     VMValue result(klass);
     double ret;

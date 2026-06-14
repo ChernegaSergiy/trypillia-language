@@ -14,10 +14,12 @@ extern "C" double jit_index_get_helper(void* vm_ptr, double object_val, double i
 extern "C" double jit_index_set_helper(void* vm_ptr, double object_val, double index_val, double value_val);
 extern "C" double jit_mod_helper(double a, double b);
 extern "C" double jit_build_list_helper(double* args, int count);
+extern "C" double jit_build_map_helper(double* args, int count);
 extern "C" double jit_property_get_helper(void* vm_ptr, double object_val, const char* name);
 extern "C" double jit_property_set_helper(void* vm_ptr, double object_val, const char* name, double value_val);
 extern "C" double jit_iter_has_next_helper(double index_val, double iterable_val);
 extern "C" double jit_create_class_helper(void* vm, const char* name);
+extern "C" double jit_create_abstract_class_helper(void* vm, const char* name);
 extern "C" double jit_bind_method_helper(double class_val, double method_val, const char* name, int isAbstract);
 extern "C" double jit_bind_static_method_helper(double class_val, double method_val, const char* name);
 extern "C" void jit_inherit_helper(double subclass_val, double superclass_val);
@@ -474,6 +476,27 @@ public:
                 SLJIT_MEM1(SLJIT_S1), j * sizeof(double));
     }
 
+    void emitBuildMap(int targetOffset, int count) override {
+        int maxOffset = targetOffset + (count * 2) - 1;
+        for (int j = 0; j <= maxOffset; ++j)
+            sljit_emit_fop1(compiler, SLJIT_MOV_F64,
+                SLJIT_MEM1(SLJIT_S1), j * sizeof(double),
+                getFloatReg(8 + j), 0);
+
+        sljit_emit_op2(compiler, SLJIT_ADD, SLJIT_R0, 0, SLJIT_S1, 0, SLJIT_IMM, targetOffset * sizeof(double));
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R1, 0, SLJIT_IMM, count);
+        sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS2(F64, P, W), SLJIT_IMM, (sljit_sw)jit_build_map_helper);
+
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64,
+            SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double),
+            SLJIT_FR0, 0);
+
+        for (int j = 0; j <= maxOffset; ++j)
+            sljit_emit_fop1(compiler, SLJIT_MOV_F64,
+                getFloatReg(8 + j), 0,
+                SLJIT_MEM1(SLJIT_S1), j * sizeof(double));
+    }
+
     void emitPropertyGet(int objectOffset, const std::string& name) override {
         for (int j = 0; j <= objectOffset; ++j)
             sljit_emit_fop1(compiler, SLJIT_MOV_F64,
@@ -548,6 +571,28 @@ public:
         sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R1, 0, SLJIT_IMM, (sljit_sw)cname);
 
         sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS2(F64, W, W), SLJIT_IMM, (sljit_sw)jit_create_class_helper);
+
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64,
+            SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double),
+            SLJIT_FR0, 0);
+
+        for (int j = 0; j <= targetOffset; ++j)
+            sljit_emit_fop1(compiler, SLJIT_MOV_F64,
+                getFloatReg(8 + j), 0,
+                SLJIT_MEM1(SLJIT_S1), j * sizeof(double));
+    }
+
+    void emitCreateAbstractClass(int targetOffset, const std::string& name) override {
+        for (int j = 0; j <= targetOffset; ++j)
+            sljit_emit_fop1(compiler, SLJIT_MOV_F64,
+                SLJIT_MEM1(SLJIT_S1), j * sizeof(double),
+                getFloatReg(8 + j), 0);
+
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_S0, 0);
+        char* cname = strdup(name.c_str());
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R1, 0, SLJIT_IMM, (sljit_sw)cname);
+
+        sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS2(F64, W, W), SLJIT_IMM, (sljit_sw)jit_create_abstract_class_helper);
 
         sljit_emit_fop1(compiler, SLJIT_MOV_F64,
             SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double),

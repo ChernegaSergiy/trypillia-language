@@ -325,6 +325,14 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 sp = sp - count + 1;
                 break;
             }
+            case static_cast<uint8_t>(OpCode::OP_BUILD_MAP): {
+                uint8_t count = function->chunk->code[++i];
+                if (sp < count * 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                if (sp - (count * 2) + 1 >= 8) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                emitter.emitBuildMap(sp - (count * 2), count);
+                sp = sp - (count * 2) + 1;
+                break;
+            }
             case static_cast<uint8_t>(OpCode::OP_PROPERTY_GET): {
                 uint8_t constIdx = function->chunk->code[++i];
                 VMValue nameVal = function->chunk->constants[constIdx];
@@ -389,6 +397,16 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 std::string name = nameVal.asString()->flatten();
                 if (sp >= 8) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitCreateClass(sp, name);
+                sp++;
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_ABSTRACT_CLASS): {
+                uint8_t constIdx = function->chunk->code[++i];
+                VMValue nameVal = function->chunk->constants[constIdx];
+                if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                std::string name = nameVal.asString()->flatten();
+                if (sp >= 8) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                emitter.emitCreateAbstractClass(sp, name);
                 sp++;
                 break;
             }

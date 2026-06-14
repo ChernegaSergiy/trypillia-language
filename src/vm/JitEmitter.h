@@ -58,6 +58,7 @@ public:
 
     // Object operations
     virtual void emitBuildList(int targetOffset, int count) = 0;
+    virtual void emitBuildMap(int targetOffset, int count) = 0;
     virtual void emitPropertyGet(int objectOffset, const std::string& name) = 0;
     virtual void emitPropertySet(int objectOffset, const std::string& name) = 0;
     virtual void emitIterHasNext(int targetOffset) = 0;
@@ -65,6 +66,7 @@ public:
 
     // Class operations
     virtual void emitCreateClass(int targetOffset, const std::string& name) = 0;
+    virtual void emitCreateAbstractClass(int targetOffset, const std::string& name) = 0;
     virtual void emitBindMethod(int targetOffset, const std::string& name, bool isAbstract) = 0;
     virtual void emitBindStaticMethod(int targetOffset, const std::string& name) = 0;
     virtual void emitInherit(int targetOffset) = 0;
