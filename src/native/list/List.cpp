@@ -33,8 +33,7 @@ static VMValue listPop(int argCount, VMValue *args) {
 }
 
 static VMValue listInsert(int argCount, VMValue *args) {
-    if (argCount != 3 || !args[0].isList() ||
-        !args[1].isNumber())
+    if (argCount != 3 || !args[0].isList() || !args[1].isNumber())
         return nullptr;
     auto list = args[0].asList();
     int index = args[1].asNumber();
@@ -46,8 +45,7 @@ static VMValue listInsert(int argCount, VMValue *args) {
 }
 
 static VMValue listRemove(int argCount, VMValue *args) {
-    if (argCount != 2 || !args[0].isList() ||
-        !args[1].isNumber())
+    if (argCount != 2 || !args[0].isList() || !args[1].isNumber())
         return nullptr;
     auto list = args[0].asList();
     int index = args[1].asNumber();
@@ -68,8 +66,7 @@ static VMValue listReverse(int argCount, VMValue *args) {
 }
 
 static VMValue listJoin(int argCount, VMValue *args) {
-    if (argCount != 2 || !args[0].isList() ||
-        !args[1].isString())
+    if (argCount != 2 || !args[0].isList() || !args[1].isString())
         return nullptr;
     auto list = args[0].asList();
     std::string delim = args[1].asString()->flatten();

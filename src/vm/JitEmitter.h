@@ -2,11 +2,11 @@
 #include <cstdint>
 #include <stddef.h>
 
-typedef double (*JitFunc)(void*, double*, int, double);
+typedef double (*JitFunc)(void *, double *, int, double);
 
 // Abstract base class for machine code generation
 class JitEmitter {
-public:
+  public:
     virtual ~JitEmitter() = default;
 
     // Memory and invocation management
@@ -49,8 +49,8 @@ public:
 
     // Calls and Globals
     virtual void emitCallDynamic(int targetOffset, int calleeOffset, int argCount) = 0;
-    virtual void emitGetGlobal(const std::string& name, int targetOffset) = 0;
-    virtual void emitSetGlobal(const std::string& name, int sourceOffset) = 0;
+    virtual void emitGetGlobal(const std::string &name, int targetOffset) = 0;
+    virtual void emitSetGlobal(const std::string &name, int sourceOffset) = 0;
 
     // Arrays and maps
     virtual void emitIndexGet(int targetOffset, int objectOffset, int indexOffset) = 0;
@@ -59,23 +59,23 @@ public:
     // Object operations
     virtual void emitBuildList(int targetOffset, int count) = 0;
     virtual void emitBuildMap(int targetOffset, int count) = 0;
-    virtual void emitPropertyGet(int objectOffset, const std::string& name) = 0;
-    virtual void emitPropertySet(int objectOffset, const std::string& name) = 0;
+    virtual void emitPropertyGet(int objectOffset, const std::string &name) = 0;
+    virtual void emitPropertySet(int objectOffset, const std::string &name) = 0;
     virtual void emitIterHasNext(int targetOffset) = 0;
-    virtual void setCapturedLocals(const std::vector<int>& slots) = 0;
+    virtual void setCapturedLocals(const std::vector<int> &slots) = 0;
 
     // Class operations
-    virtual void emitCreateClass(int targetOffset, const std::string& name) = 0;
-    virtual void emitCreateAbstractClass(int targetOffset, const std::string& name) = 0;
-    virtual void emitBindMethod(int targetOffset, const std::string& name, bool isAbstract) = 0;
-    virtual void emitBindStaticMethod(int targetOffset, const std::string& name) = 0;
+    virtual void emitCreateClass(int targetOffset, const std::string &name) = 0;
+    virtual void emitCreateAbstractClass(int targetOffset, const std::string &name) = 0;
+    virtual void emitBindMethod(int targetOffset, const std::string &name, bool isAbstract) = 0;
+    virtual void emitBindStaticMethod(int targetOffset, const std::string &name) = 0;
     virtual void emitInherit(int targetOffset) = 0;
     virtual void emitMixin(int targetOffset) = 0;
-    virtual void emitGetSuper(int targetOffset, const std::string& name) = 0;
-    virtual void emitFieldModifier(int targetOffset, const std::string& name, uint8_t modifier) = 0;
+    virtual void emitGetSuper(int targetOffset, const std::string &name) = 0;
+    virtual void emitFieldModifier(int targetOffset, const std::string &name, uint8_t modifier) = 0;
 
     // Closure and upvalue operations
-    virtual void emitCreateClosure(int targetOffset, double funcRaw, const uint8_t* upvalueBytes, int upvalueCount) = 0;
+    virtual void emitCreateClosure(int targetOffset, double funcRaw, const uint8_t *upvalueBytes, int upvalueCount) = 0;
     virtual void emitGetUpvalue(int targetOffset, int slot) = 0;
     virtual void emitSetUpvalue(int slot, int sourceOffset) = 0;
     virtual void emitCloseUpvalue(int stackOffset) = 0;

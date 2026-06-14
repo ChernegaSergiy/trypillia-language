@@ -46,8 +46,7 @@ static VMValue wsServerCreate(int argCount, VMValue *args) {
         return makeResultErr(currentVM, "Bind failed");
     }
 
-    auto inst =
-        new ObjInstance(currentVM->globals["WebSocketServer"].asClass());
+    auto inst = new ObjInstance(currentVM->globals["WebSocketServer"].asClass());
     inst->nativeData = data;
     inst->freeFn = freeServer;
     return makeResultOk(currentVM, inst);

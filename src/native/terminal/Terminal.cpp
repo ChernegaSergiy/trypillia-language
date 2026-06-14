@@ -88,16 +88,25 @@ static VMValue terminalColor(int argCount, VMValue *args) {
     if (argCount == 1 && args[0].isString()) {
         std::string color = args[0].asString()->flatten();
         std::string code = "";
-        if (color == "black") code = "\033[30m";
-        else if (color == "red") code = "\033[31m";
-        else if (color == "green") code = "\033[32m";
-        else if (color == "yellow") code = "\033[33m";
-        else if (color == "blue") code = "\033[34m";
-        else if (color == "magenta") code = "\033[35m";
-        else if (color == "cyan") code = "\033[36m";
-        else if (color == "white") code = "\033[37m";
-        else if (color == "gray" || color == "grey") code = "\033[90m";
-        
+        if (color == "black")
+            code = "\033[30m";
+        else if (color == "red")
+            code = "\033[31m";
+        else if (color == "green")
+            code = "\033[32m";
+        else if (color == "yellow")
+            code = "\033[33m";
+        else if (color == "blue")
+            code = "\033[34m";
+        else if (color == "magenta")
+            code = "\033[35m";
+        else if (color == "cyan")
+            code = "\033[36m";
+        else if (color == "white")
+            code = "\033[37m";
+        else if (color == "gray" || color == "grey")
+            code = "\033[90m";
+
         if (!code.empty()) {
             std::cout << code << std::flush;
         }
@@ -143,12 +152,13 @@ static VMValue terminalGetCursor(int argCount, VMValue *args) {
     std::string response;
     char c;
     while (read(STDIN_FILENO, &c, 1) == 1) {
-        if (c == 'R') break;
+        if (c == 'R')
+            break;
         response += c;
     }
 
     tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-    
+
     int y = 1, x = 1;
     size_t bracket = response.find('[');
     size_t semicolon = response.find(';');

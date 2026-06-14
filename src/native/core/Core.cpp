@@ -8,12 +8,14 @@ namespace Core {
 
 thread_local VM *currentVM = nullptr;
 
-static std::string stringify(const VMValue& val, bool inContainer = false) {
+static std::string stringify(const VMValue &val, bool inContainer = false) {
     if (val.isNumber()) {
         std::string s = std::to_string(val.asNumber());
         s.erase(s.find_last_not_of('0') + 1, std::string::npos);
-        if (s.back() == '.') s.pop_back();
-        if (s.empty()) return "0";
+        if (s.back() == '.')
+            s.pop_back();
+        if (s.empty())
+            return "0";
         return s;
     } else if (val.isString()) {
         if (inContainer) {
@@ -28,7 +30,8 @@ static std::string stringify(const VMValue& val, bool inContainer = false) {
         auto list = val.asList();
         for (size_t i = 0; i < list->elements.size(); ++i) {
             s += stringify(list->elements[i], true);
-            if (i < list->elements.size() - 1) s += ", ";
+            if (i < list->elements.size() - 1)
+                s += ", ";
         }
         s += "]";
         return s;
@@ -36,9 +39,10 @@ static std::string stringify(const VMValue& val, bool inContainer = false) {
         std::string s = "{";
         auto map = val.asMap();
         size_t i = 0;
-        for (auto const& [k, v] : map->values) {
+        for (auto const &[k, v] : map->values) {
             s += stringify(k, true) + ": " + stringify(v, true);
-            if (i < map->values.size() - 1) s += ", ";
+            if (i < map->values.size() - 1)
+                s += ", ";
             i++;
         }
         s += "}";
@@ -151,7 +155,8 @@ static VMValue weakRefInit(int argCount, VMValue *args) {
         return nullptr;
     auto instance = receiver.asInstance();
 
-    if (argCount != 1) return nullptr;
+    if (argCount != 1)
+        return nullptr;
 
     auto weakObj = new ObjWeakRef();
     VMValue val = args[0];
@@ -167,8 +172,9 @@ static VMValue weakRefInit(int argCount, VMValue *args) {
 static VMValue weakRefLock(int argCount, VMValue *args) {
     VMValue receiver = args[-1];
     auto instance = receiver.asInstance();
-    if (instance->fields.find("_ref") == instance->fields.end()) return nullptr;
-    
+    if (instance->fields.find("_ref") == instance->fields.end())
+        return nullptr;
+
     auto ref = instance->fields["_ref"];
     if (ref.isWeakRef()) {
         return ref.asWeakRef()->lock();

@@ -169,8 +169,8 @@ static VMValue httpPost(int argCount, VMValue *args) {
 
     std::string payload = args[1].asString()->flatten();
     std::string req = "POST " + path + " HTTP/1.1\r\nHost: " + host +
-                      "\r\nContent-Type: application/json\r\nContent-Length: " + std::to_string(payload.length()) + "\r\nConnection: close\r\n\r\n" +
-                      payload;
+                      "\r\nContent-Type: application/json\r\nContent-Length: " + std::to_string(payload.length()) +
+                      "\r\nConnection: close\r\n\r\n" + payload;
     bool success;
     std::string err;
     std::string res = makeHttpRequest(host, port, req, success, err);
@@ -213,8 +213,8 @@ static VMValue socketListen(int argCount, VMValue *args) {
         return nullptr;
     SocketData *data = new SocketData();
     mbedtls_net_init(&data->fd);
-    if (mbedtls_net_bind(&data->fd, NULL, std::to_string((int)args[0].asNumber()).c_str(),
-                         MBEDTLS_NET_PROTO_TCP) != 0) {
+    if (mbedtls_net_bind(&data->fd, NULL, std::to_string((int)args[0].asNumber()).c_str(), MBEDTLS_NET_PROTO_TCP) !=
+        0) {
         delete data;
         return makeResultErr(currentVM, "Bind failed");
     }

@@ -7,14 +7,14 @@
 // Actually, looking at VM.cpp, it included "VM.h". Let's just include "VM.h" which has ObjString.
 #include "VM.h"
 
-VMValue::VMValue(const std::string& s) {
-    Obj* obj = new ObjString(s);
+VMValue::VMValue(const std::string &s) {
+    Obj *obj = new ObjString(s);
     val = SIGN_BIT | QNAN | (uint64_t)(uintptr_t)obj;
     obj->retain();
 }
 
-VMValue::VMValue(const char* s) {
-    Obj* obj = new ObjString(std::string(s));
+VMValue::VMValue(const char *s) {
+    Obj *obj = new ObjString(std::string(s));
     val = SIGN_BIT | QNAN | (uint64_t)(uintptr_t)obj;
     obj->retain();
 }

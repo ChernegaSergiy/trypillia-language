@@ -42,7 +42,6 @@ int getMethodMaxArity(const VMValue &method) {
     return -1;
 }
 
-
 int utf8_length(const std::string &str) {
     int length = 0;
     for (size_t i = 0; i < str.length(); i++) {
@@ -70,7 +69,7 @@ std::string utf8_char_at(const std::string &str, int index) {
     return "";
 }
 
-bool checkAccess(VMAccessModifier modifier, ObjClass* klass, const std::string &callerClass) {
+bool checkAccess(VMAccessModifier modifier, ObjClass *klass, const std::string &callerClass) {
     if (modifier == VMAccessModifier::PUBLIC)
         return true;
     if (modifier == VMAccessModifier::PRIVATE)
@@ -88,8 +87,6 @@ bool checkAccess(VMAccessModifier modifier, ObjClass* klass, const std::string &
     }
     return true;
 }
-
-
 
 VMValue VM::callClosure(VMValue closureVal, int argCount, VMValue *args) {
     if (!closureVal.isClosure())
@@ -117,12 +114,15 @@ VMValue VM::callClosure(VMValue closureVal, int argCount, VMValue *args) {
     return pop();
 }
 
-VMValue VM::instantiateClass(VMValue classVal, int argCount, VMValue* args) {
-    if (!classVal.isClass()) return nullptr;
+VMValue VM::instantiateClass(VMValue classVal, int argCount, VMValue *args) {
+    if (!classVal.isClass())
+        return nullptr;
     auto klass = classVal.asClass();
-    if (klass->isAbstract) return nullptr;
-    for (auto const& [name, method] : klass->methods) {
-        if (isMethodAbstract(method)) return nullptr;
+    if (klass->isAbstract)
+        return nullptr;
+    for (auto const &[name, method] : klass->methods) {
+        if (isMethodAbstract(method))
+            return nullptr;
     }
     auto instance = new ObjInstance(klass);
 
@@ -160,9 +160,9 @@ VMValue VM::instantiateClass(VMValue classVal, int argCount, VMValue* args) {
     return instance;
 }
 
-ObjUpvalue* VM::captureUpvalue(VMValue *local) {
-    ObjUpvalue* prevUpvalue = nullptr;
-    ObjUpvalue* upvalue = openUpvalues;
+ObjUpvalue *VM::captureUpvalue(VMValue *local) {
+    ObjUpvalue *prevUpvalue = nullptr;
+    ObjUpvalue *upvalue = openUpvalues;
     while (upvalue != nullptr && upvalue->location > local) {
         prevUpvalue = upvalue;
         upvalue = upvalue->next;
@@ -196,4 +196,3 @@ void VM::closeUpvalues(VMValue *last) {
 void VM::defineNative(const std::string &name, int arity, NativeFn function) {
     globals[name] = new ObjNative(name, arity, function);
 }
-

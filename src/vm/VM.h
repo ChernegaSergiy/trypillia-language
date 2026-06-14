@@ -10,7 +10,7 @@
 enum class InterpretResult { INTERPRET_OK, INTERPRET_COMPILE_ERROR, INTERPRET_RUNTIME_ERROR };
 
 struct CallFrame {
-    ObjClosure* closure;
+    ObjClosure *closure;
     uint8_t *ip;
     int stackStart;
 };
@@ -20,7 +20,7 @@ class VM {
     std::vector<CallFrame> frames;
     std::vector<VMValue> stack;
     std::unordered_map<std::string, VMValue> globals_private_removed;
-    ObjUpvalue* openUpvalues;
+    ObjUpvalue *openUpvalues;
 
     void resetStack();
     void push(VMValue value);
@@ -31,11 +31,11 @@ class VM {
     InterpretResult run(int targetFrameDepth = 0);
 
     bool executeCall(uint8_t argCount);
-    bool executePropertyGet(const std::string& name);
+    bool executePropertyGet(const std::string &name);
     bool executeIndexGet();
 
   public:
-    ObjUpvalue* captureUpvalue(VMValue *local);
+    ObjUpvalue *captureUpvalue(VMValue *local);
     void closeUpvalues(VMValue *last);
 
     std::unordered_map<std::string, VMValue> globals;
@@ -45,13 +45,13 @@ class VM {
     VM();
     ~VM();
 
-    ObjClosure* jitClosure = nullptr;
+    ObjClosure *jitClosure = nullptr;
     JITCompiler jit;
-    std::unordered_map<void*, JitFunc> compiledFuncs;
+    std::unordered_map<void *, JitFunc> compiledFuncs;
 
-    VMValue instantiateClass(VMValue classVal, int argCount, VMValue* args);
+    VMValue instantiateClass(VMValue classVal, int argCount, VMValue *args);
 
-    InterpretResult interpret(ObjFunction* function);
+    InterpretResult interpret(ObjFunction *function);
 };
 
 #endif // TRYPILLIA_VM_H

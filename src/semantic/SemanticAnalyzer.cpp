@@ -12,6 +12,7 @@
 class SemanticVisitor : public ASTVisitor {
   public:
     std::string currentFilename = "";
+
   private:
     SymbolTable *currentScope;
     std::string currentNamespace = "";
@@ -185,8 +186,6 @@ class SemanticVisitor : public ASTVisitor {
     void visit(ExpressionStmt *node) override {
         node->expression->accept(this);
     }
-
-
 
     void visit(VarStmt *node) override {
         if (node->initializer) {
@@ -384,7 +383,7 @@ class SemanticVisitor : public ASTVisitor {
         ifaceSymbol.type = "interface";
         ifaceSymbol.isConst = true;
         currentScope->define(ifaceSymbol);
-        
+
         currentScope = new SymbolTable(currentScope);
         Symbol thisSymbol;
         thisSymbol.name = "this";
@@ -410,7 +409,7 @@ class SemanticVisitor : public ASTVisitor {
         traitSymbol.type = "trait";
         traitSymbol.isConst = true;
         currentScope->define(traitSymbol);
-        
+
         currentScope = new SymbolTable(currentScope);
         Symbol thisSymbol;
         thisSymbol.name = "this";

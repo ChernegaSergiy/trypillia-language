@@ -1,3 +1,4 @@
+#include "ast/ASTOptimizer.h"
 #include "lexer/Lexer.h"
 #include "native/os/OS.h"
 #include "parser/Parser.h"
@@ -5,7 +6,6 @@
 #include "vm/Compiler.h"
 #include "vm/VM.h"
 #include "vm/serializer/Serializer.h"
-#include "ast/ASTOptimizer.h"
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -13,14 +13,14 @@
 #ifdef _WIN32
 #include <windows.h>
 #else
-#include <unistd.h>
 #include <limits.h>
+#include <unistd.h>
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #endif
 #endif
 
-std::string getExecutablePath(const char* argv0) {
+std::string getExecutablePath(const char *argv0) {
 #ifdef _WIN32
     char buffer[MAX_PATH];
     GetModuleFileNameA(NULL, buffer, MAX_PATH);
@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
         command = argv[1];
 
     std::string exePath = getExecutablePath(argv[0]);
-    ObjFunction* function = nullptr;
+    ObjFunction *function = nullptr;
 
     // 1. Check for embedded bytecode first (standalone executable)
     function = Serializer::loadEmbeddedBytecode(exePath);

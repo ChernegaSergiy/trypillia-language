@@ -153,7 +153,7 @@ class JsonParser {
                     try {
                         int codePoint = std::stoi(hexStr, nullptr, 16);
                         pos += 4;
-                        
+
                         // Handle surrogate pairs
                         if (codePoint >= 0xD800 && codePoint <= 0xDBFF) {
                             if (pos + 6 < src.length() && src[pos + 1] == '\\' && src[pos + 2] == 'u') {
@@ -164,7 +164,8 @@ class JsonParser {
                                         codePoint = 0x10000 + (((codePoint - 0xD800) << 10) | (lowSurrogate - 0xDC00));
                                         pos += 6;
                                     }
-                                } catch (...) {}
+                                } catch (...) {
+                                }
                             }
                         }
 
@@ -213,7 +214,8 @@ class JsonParser {
     }
 
     VMValue parseArray(int depth) {
-        if (depth > MAX_DEPTH) return nullptr;
+        if (depth > MAX_DEPTH)
+            return nullptr;
         pos++; // skip [
         skipWhitespace();
         std::vector<VMValue> elements;
@@ -238,7 +240,8 @@ class JsonParser {
     }
 
     VMValue parseObject(int depth) {
-        if (depth > MAX_DEPTH) return nullptr;
+        if (depth > MAX_DEPTH)
+            return nullptr;
         pos++; // skip {
         skipWhitespace();
         auto map = new ObjMap();
@@ -276,7 +279,8 @@ class JsonParser {
     }
 
     VMValue parseValue(int depth = 0) {
-        if (depth > MAX_DEPTH) return nullptr;
+        if (depth > MAX_DEPTH)
+            return nullptr;
         skipWhitespace();
         if (pos >= src.length())
             return nullptr;

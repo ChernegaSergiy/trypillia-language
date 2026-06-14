@@ -15,8 +15,7 @@ static VMValue stringLength(int argCount, VMValue *args) {
 }
 
 static VMValue stringSubstring(int argCount, VMValue *args) {
-    if (argCount != 3 || !args[0].isString() || !args[1].isNumber() ||
-        !args[2].isNumber())
+    if (argCount != 3 || !args[0].isString() || !args[1].isNumber() || !args[2].isNumber())
         return nullptr;
 
     std::string str = args[0].asString()->flatten();
@@ -86,8 +85,7 @@ static VMValue stringSplit(int argCount, VMValue *args) {
 }
 
 static VMValue stringReplace(int argCount, VMValue *args) {
-    if (argCount != 3 || !args[0].isString() ||
-        !args[1].isString() || !args[2].isString())
+    if (argCount != 3 || !args[0].isString() || !args[1].isString() || !args[2].isString())
         return nullptr;
 
     std::string str = args[0].asString()->flatten();

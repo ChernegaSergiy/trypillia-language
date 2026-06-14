@@ -2,12 +2,12 @@
 #define TRYPILLIA_CHUNK_H
 
 #include "OpCode.h"
+#include "Value.h"
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "Value.h"
 enum class VMAccessModifier { PUBLIC, PRIVATE, PROTECTED };
 
 class Chunk;
@@ -25,38 +25,48 @@ struct ObjWeakRef;
 
 struct ObjString : public Obj {
     mutable std::string flatData;
-    mutable ObjString* left;
-    mutable ObjString* right;
+    mutable ObjString *left;
+    mutable ObjString *right;
     size_t length;
     mutable bool isFlat;
 
-    ObjString(std::string s) : Obj(ObjType::OBJ_STRING), flatData(std::move(s)), left(nullptr), right(nullptr), length(flatData.length()), isFlat(true) {}
-    ObjString(ObjString* l, ObjString* r) : Obj(ObjType::OBJ_STRING), left(l), right(r), length(l->length + r->length), isFlat(false) {}
+    ObjString(std::string s)
+        : Obj(ObjType::OBJ_STRING), flatData(std::move(s)), left(nullptr), right(nullptr), length(flatData.length()),
+          isFlat(true) {
+    }
+    ObjString(ObjString *l, ObjString *r)
+        : Obj(ObjType::OBJ_STRING), left(l), right(r), length(l->length + r->length), isFlat(false) {
+    }
 
     std::string flatten() const {
-        if (isFlat) return flatData;
+        if (isFlat)
+            return flatData;
 
-        std::vector<const ObjString*> stack;
+        std::vector<const ObjString *> stack;
         std::string result;
         result.reserve(length);
 
         stack.push_back(this);
 
         while (!stack.empty()) {
-            const ObjString* current = stack.back();
+            const ObjString *current = stack.back();
             stack.pop_back();
 
             if (current->isFlat) {
                 result += current->flatData;
             } else {
-                if (current->right) stack.push_back(current->right);
-                if (current->left) stack.push_back(current->left);
+                if (current->right)
+                    stack.push_back(current->right);
+                if (current->left)
+                    stack.push_back(current->left);
             }
         }
 
         flatData = std::move(result);
-        if (left) left->release();
-        if (right) right->release();
+        if (left)
+            left->release();
+        if (right)
+            right->release();
         left = nullptr;
         right = nullptr;
         isFlat = true;
@@ -64,11 +74,12 @@ struct ObjString : public Obj {
     }
 
     ~ObjString() {
-        if (left) left->release();
-        if (right) right->release();
+        if (left)
+            left->release();
+        if (right)
+            right->release();
     }
 };
-
 
 using NativeFn = VMValue (*)(int argCount, VMValue *args);
 
@@ -95,7 +106,7 @@ struct VMValueEqual {
 struct ObjClass : public Obj {
     std::string name;
     std::unordered_map<std::string, VMValue> methods;
-    ObjClass* superclass;
+    ObjClass *superclass;
     bool isAbstract = false;
     std::unordered_map<std::string, VMValue> statics;
     std::unordered_map<std::string, VMAccessModifier> fieldModifiers;
@@ -104,14 +115,14 @@ struct ObjClass : public Obj {
 };
 
 struct ObjInstance : public Obj {
-    ObjClass* klass;
+    ObjClass *klass;
     std::unordered_map<std::string, VMValue> fields;
 
     // Native resource binding
     void *nativeData = nullptr;
     void (*freeFn)(void *) = nullptr;
 
-    ObjInstance(ObjClass* k) : Obj(ObjType::OBJ_INSTANCE), klass(k) {
+    ObjInstance(ObjClass *k) : Obj(ObjType::OBJ_INSTANCE), klass(k) {
     }
 
     ~ObjInstance() {
@@ -130,8 +141,9 @@ struct ObjBoundMethod : public Obj {
 };
 
 struct ObjWeakRef : public Obj {
-    Obj* weakRef;
-    ObjWeakRef() : Obj(ObjType::OBJ_WEAK_REF), weakRef(nullptr) {}
+    Obj *weakRef;
+    ObjWeakRef() : Obj(ObjType::OBJ_WEAK_REF), weakRef(nullptr) {
+    }
     VMValue lock() const {
         return weakRef ? VMValue(weakRef) : VMValue(nullptr);
     }
@@ -145,7 +157,8 @@ struct ObjList : public Obj {
 
 struct ObjMap : public Obj {
     std::unordered_map<VMValue, VMValue, VMValueHash, VMValueEqual> values;
-    ObjMap() : Obj(ObjType::OBJ_MAP) {}
+    ObjMap() : Obj(ObjType::OBJ_MAP) {
+    }
 };
 
 struct ObjNative : public Obj {
@@ -163,7 +176,7 @@ struct ObjFunction : public Obj {
     std::string name;
     int arity;
     int maxArity;
-    Chunk* chunk;
+    Chunk *chunk;
     bool isAbstract = false;
     std::unordered_map<std::string, VMValue> statics;
     VMAccessModifier accessModifier = VMAccessModifier::PUBLIC;
@@ -171,7 +184,7 @@ struct ObjFunction : public Obj {
     std::string filename = "";
     int upvalueCount = 0;
     int callCount = 0;
-    void* jitAddr = nullptr;
+    void *jitAddr = nullptr;
 
     ObjFunction() : Obj(ObjType::OBJ_FUNCTION), arity(0), maxArity(0), upvalueCount(0), callCount(0), jitAddr(nullptr) {
     }
@@ -180,17 +193,17 @@ struct ObjFunction : public Obj {
 struct ObjUpvalue : public Obj {
     VMValue *location;
     VMValue closed;
-    ObjUpvalue* next;
+    ObjUpvalue *next;
 
     ObjUpvalue(VMValue *slot) : Obj(ObjType::OBJ_UPVALUE), location(slot), closed(nullptr), next(nullptr) {
     }
 };
 
 struct ObjClosure : public Obj {
-    ObjFunction* function;
-    std::vector<ObjUpvalue*> upvalues;
+    ObjFunction *function;
+    std::vector<ObjUpvalue *> upvalues;
 
-    ObjClosure(ObjFunction* f) : Obj(ObjType::OBJ_CLOSURE), function(f) {
+    ObjClosure(ObjFunction *f) : Obj(ObjType::OBJ_CLOSURE), function(f) {
     }
 };
 

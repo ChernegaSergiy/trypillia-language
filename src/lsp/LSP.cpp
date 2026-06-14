@@ -415,9 +415,11 @@ void LSPServer::handleSignatureHelp(const json &message) {
                         size_t dotPos = funcName.find_last_of('.');
                         std::string shortName = (dotPos != std::string::npos) ? funcName.substr(dotPos + 1) : funcName;
                         std::string suffix = "." + shortName;
-                        for (auto& el : nativeDocs.items()) {
+                        for (auto &el : nativeDocs.items()) {
                             std::string k = el.key();
-                            if (k == shortName || (k.length() >= suffix.length() && k.compare(k.length() - suffix.length(), suffix.length(), suffix) == 0)) {
+                            if (k == shortName ||
+                                (k.length() >= suffix.length() &&
+                                 k.compare(k.length() - suffix.length(), suffix.length(), suffix) == 0)) {
                                 matchedKey = k;
                                 break;
                             }
@@ -498,7 +500,7 @@ void LSPServer::handleSignatureHelp(const json &message) {
                                     }
                                 }
                                 if (!docStr.empty())
-                                documentation = docStr;
+                                    documentation = docStr;
                             }
 
                             label = "fn " + funcName + "(";

@@ -318,19 +318,22 @@ Token Lexer::string(int startColumn) {
                     std::string hexStr = source.substr(currentIndex, 4);
                     bool isHex = true;
                     for (char h : hexStr) {
-                        if (!std::isxdigit(h)) isHex = false;
+                        if (!std::isxdigit(h))
+                            isHex = false;
                     }
                     if (isHex) {
                         int codePoint = std::stoi(hexStr, nullptr, 16);
                         currentIndex += 4;
                         column += 4;
-                        
+
                         if (codePoint >= 0xD800 && codePoint <= 0xDBFF) {
-                            if (currentIndex + 5 < source.length() && source[currentIndex] == '\\' && source[currentIndex+1] == 'u') {
+                            if (currentIndex + 5 < source.length() && source[currentIndex] == '\\' &&
+                                source[currentIndex + 1] == 'u') {
                                 std::string hexStr2 = source.substr(currentIndex + 2, 4);
                                 bool isHex2 = true;
                                 for (char h : hexStr2) {
-                                    if (!std::isxdigit(h)) isHex2 = false;
+                                    if (!std::isxdigit(h))
+                                        isHex2 = false;
                                 }
                                 if (isHex2) {
                                     int lowSurrogate = std::stoi(hexStr2, nullptr, 16);

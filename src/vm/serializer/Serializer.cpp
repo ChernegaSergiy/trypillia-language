@@ -8,7 +8,7 @@ enum ValueType { VAL_NIL = 0, VAL_BOOL = 1, VAL_DOUBLE = 2, VAL_STRING = 3, VAL_
 
 // .tryc serialization removed in favor of standalone executables
 
-bool Serializer::buildStandalone(ObjFunction* function, const std::string &trypilliaExePath,
+bool Serializer::buildStandalone(ObjFunction *function, const std::string &trypilliaExePath,
                                  const std::string &outputPath) {
     // 1. Copy the interpreter executable
     std::ifstream src(trypilliaExePath, std::ios::binary);
@@ -37,7 +37,7 @@ bool Serializer::buildStandalone(ObjFunction* function, const std::string &trypi
     return true;
 }
 
-ObjFunction* Serializer::loadEmbeddedBytecode(const std::string &currentExePath) {
+ObjFunction *Serializer::loadEmbeddedBytecode(const std::string &currentExePath) {
     std::ifstream in(currentExePath, std::ios::binary);
     if (!in.is_open())
         return nullptr;
@@ -71,7 +71,7 @@ ObjFunction* Serializer::loadEmbeddedBytecode(const std::string &currentExePath)
     return readFunction(in);
 }
 
-void Serializer::writeFunction(std::ofstream &out, ObjFunction* function) {
+void Serializer::writeFunction(std::ofstream &out, ObjFunction *function) {
     writeString(out, function->name);
     out.write(reinterpret_cast<const char *>(&function->arity), sizeof(function->arity));
     out.write(reinterpret_cast<const char *>(&function->maxArity), sizeof(function->maxArity));
@@ -80,7 +80,7 @@ void Serializer::writeFunction(std::ofstream &out, ObjFunction* function) {
     writeChunk(out, function->chunk);
 }
 
-ObjFunction* Serializer::readFunction(std::ifstream &in) {
+ObjFunction *Serializer::readFunction(std::ifstream &in) {
     auto function = new ObjFunction();
     function->name = readString(in);
     in.read(reinterpret_cast<char *>(&function->arity), sizeof(function->arity));
@@ -90,7 +90,7 @@ ObjFunction* Serializer::readFunction(std::ifstream &in) {
     return function;
 }
 
-void Serializer::writeChunk(std::ofstream &out, Chunk* chunk) {
+void Serializer::writeChunk(std::ofstream &out, Chunk *chunk) {
     uint32_t codeSize = static_cast<uint32_t>(chunk->code.size());
     out.write(reinterpret_cast<const char *>(&codeSize), sizeof(codeSize));
     if (codeSize > 0)
@@ -108,7 +108,7 @@ void Serializer::writeChunk(std::ofstream &out, Chunk* chunk) {
     }
 }
 
-Chunk* Serializer::readChunk(std::ifstream &in) {
+Chunk *Serializer::readChunk(std::ifstream &in) {
     auto chunk = new Chunk();
 
     uint32_t codeSize;

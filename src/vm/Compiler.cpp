@@ -5,9 +5,9 @@
 #include "../symbol/SymbolTable.h"
 #include "../utils/ErrorHandling.h"
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <map>
-#include <functional>
 
 class CompilerVisitor : public ASTVisitor {
   private:
@@ -36,7 +36,7 @@ class CompilerVisitor : public ASTVisitor {
         scopeDepth++;
     }
 
-    void compileDefaultParameters(const std::vector<Parameter>& params) {
+    void compileDefaultParameters(const std::vector<Parameter> &params) {
         int slot = 1;
         for (const auto &param : params) {
             if (param.defaultValue) {
@@ -298,8 +298,6 @@ class CompilerVisitor : public ASTVisitor {
         node->expression->accept(this);
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
     }
-
-
 
     void visit(VariableExpr *node) override {
         currentLine = node->name.line;
@@ -588,8 +586,10 @@ class CompilerVisitor : public ASTVisitor {
         func->maxArity = static_cast<int>(node->params.size());
         func->arity = func->maxArity;
         for (auto it = node->params.rbegin(); it != node->params.rend(); ++it) {
-            if (it->defaultValue) func->arity--;
-            else break;
+            if (it->defaultValue)
+                func->arity--;
+            else
+                break;
         }
         func->chunk = new Chunk();
         func->filename = compiler_filename;
@@ -731,8 +731,10 @@ class CompilerVisitor : public ASTVisitor {
         func->maxArity = static_cast<int>(node->params.size());
         func->arity = func->maxArity;
         for (auto it = node->params.rbegin(); it != node->params.rend(); ++it) {
-            if (it->defaultValue) func->arity--;
-            else break;
+            if (it->defaultValue)
+                func->arity--;
+            else
+                break;
         }
         func->chunk = new Chunk();
         func->filename = compiler_filename;
@@ -780,8 +782,10 @@ class CompilerVisitor : public ASTVisitor {
         func->maxArity = static_cast<int>(node->params.size());
         func->arity = func->maxArity;
         for (auto it = node->params.rbegin(); it != node->params.rend(); ++it) {
-            if (it->defaultValue) func->arity--;
-            else break;
+            if (it->defaultValue)
+                func->arity--;
+            else
+                break;
         }
         func->chunk = new Chunk();
         func->filename = compiler_filename;
@@ -1027,7 +1031,7 @@ class CompilerVisitor : public ASTVisitor {
     }
 };
 
-ObjFunction* Compiler::compile(ASTNode *ast, SymbolTable *globals) {
+ObjFunction *Compiler::compile(ASTNode *ast, SymbolTable *globals) {
     if (!ast) {
         return nullptr;
     }

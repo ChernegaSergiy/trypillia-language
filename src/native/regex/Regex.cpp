@@ -7,8 +7,7 @@ namespace RegexModule {
 thread_local VM *currentVM = nullptr;
 
 static VMValue regexTest(int argCount, VMValue *args) {
-    if (argCount != 2 || !args[0].isString() ||
-        !args[1].isString()) {
+    if (argCount != 2 || !args[0].isString() || !args[1].isString()) {
         return nullptr;
     }
     std::string pattern = args[0].asString()->flatten();
@@ -23,8 +22,7 @@ static VMValue regexTest(int argCount, VMValue *args) {
 }
 
 static VMValue regexMatch(int argCount, VMValue *args) {
-    if (argCount != 2 || !args[0].isString() ||
-        !args[1].isString()) {
+    if (argCount != 2 || !args[0].isString() || !args[1].isString()) {
         return nullptr;
     }
     std::string pattern = args[0].asString()->flatten();
@@ -47,8 +45,7 @@ static VMValue regexMatch(int argCount, VMValue *args) {
 }
 
 static VMValue regexReplace(int argCount, VMValue *args) {
-    if (argCount != 3 || !args[0].isString() ||
-        !args[1].isString() || !args[2].isString()) {
+    if (argCount != 3 || !args[0].isString() || !args[1].isString() || !args[2].isString()) {
         return nullptr;
     }
     std::string pattern = args[0].asString()->flatten();

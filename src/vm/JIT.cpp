@@ -1,31 +1,23 @@
 #include "JIT.h"
-#include <vector>
-#include <iostream>
-#include <cstring>
-#include <set>
-#include <cassert>
 #include "OpCode.h"
 #include "UniversalEmitter.h"
+#include <cassert>
+#include <cstring>
+#include <iostream>
+#include <set>
+#include <vector>
 
-enum class InferredType {
-    UNKNOWN,
-    NUMBER,
-    BOOL,
-    STRING,
-    NIL,
-    OBJECT,
-    CLOSURE
-};
+enum class InferredType { UNKNOWN, NUMBER, BOOL, STRING, NIL, OBJECT, CLOSURE };
 
-JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
-    if (!function || !function->chunk) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+JitFunc JITCompiler::compileMathFunction(ObjFunction *function) {
+    if (!function || !function->chunk)
+        return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
 
     // 1. Base Case Detection Heuristic (for fib-like functions)
     bool hasBaseCase = false;
     double baseCaseThreshold = 0;
-    if (function->chunk->code.size() > 10 &&
-        function->chunk->code[0] == static_cast<uint8_t>(OpCode::OP_GET_LOCAL) && function->chunk->code[1] == 0 &&
-        function->chunk->code[2] == static_cast<uint8_t>(OpCode::OP_CONSTANT)) {
+    if (function->chunk->code.size() > 10 && function->chunk->code[0] == static_cast<uint8_t>(OpCode::OP_GET_LOCAL) &&
+        function->chunk->code[1] == 0 && function->chunk->code[2] == static_cast<uint8_t>(OpCode::OP_CONSTANT)) {
         uint8_t constIdx = function->chunk->code[3];
         VMValue val = function->chunk->constants[constIdx];
         if (val.isNumber() && function->chunk->code[4] == static_cast<uint8_t>(OpCode::OP_LESS)) {
@@ -38,43 +30,43 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
 
     int maxLocal = 0;
     std::set<int> capturedLocals;
-    for (size_t i = 0; i < function->chunk->code.size(); ) {
+    for (size_t i = 0; i < function->chunk->code.size();) {
         uint8_t op = function->chunk->code[i];
         if (op == static_cast<uint8_t>(OpCode::OP_NOP)) {
             i += 1;
-        } else if (op == static_cast<uint8_t>(OpCode::OP_JUMP) || op == static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE)) {
+        } else if (op == static_cast<uint8_t>(OpCode::OP_JUMP) ||
+                   op == static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE)) {
             i += 3;
         } else if (op == static_cast<uint8_t>(OpCode::OP_LOOP)) {
             i += 3;
-        } else if (op == static_cast<uint8_t>(OpCode::OP_GET_LOCAL) || op == static_cast<uint8_t>(OpCode::OP_SET_LOCAL)) {
-            int slot = function->chunk->code[i+1];
-            if (slot > maxLocal) maxLocal = slot;
+        } else if (op == static_cast<uint8_t>(OpCode::OP_GET_LOCAL) ||
+                   op == static_cast<uint8_t>(OpCode::OP_SET_LOCAL)) {
+            int slot = function->chunk->code[i + 1];
+            if (slot > maxLocal)
+                maxLocal = slot;
             i += 2;
         } else if (op == static_cast<uint8_t>(OpCode::OP_CONSTANT) ||
                    op == static_cast<uint8_t>(OpCode::OP_GET_GLOBAL) ||
                    op == static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL) ||
-                   op == static_cast<uint8_t>(OpCode::OP_SET_GLOBAL) ||
-                   op == static_cast<uint8_t>(OpCode::OP_CALL) ||
+                   op == static_cast<uint8_t>(OpCode::OP_SET_GLOBAL) || op == static_cast<uint8_t>(OpCode::OP_CALL) ||
                    op == static_cast<uint8_t>(OpCode::OP_BUILD_LIST) ||
                    op == static_cast<uint8_t>(OpCode::OP_BUILD_MAP) ||
                    op == static_cast<uint8_t>(OpCode::OP_PROPERTY_GET) ||
                    op == static_cast<uint8_t>(OpCode::OP_PROPERTY_SET) ||
                    op == static_cast<uint8_t>(OpCode::OP_GET_UPVALUE) ||
-                   op == static_cast<uint8_t>(OpCode::OP_SET_UPVALUE) ||
-                   op == static_cast<uint8_t>(OpCode::OP_CLASS) ||
+                   op == static_cast<uint8_t>(OpCode::OP_SET_UPVALUE) || op == static_cast<uint8_t>(OpCode::OP_CLASS) ||
                    op == static_cast<uint8_t>(OpCode::OP_ABSTRACT_CLASS) ||
-                   op == static_cast<uint8_t>(OpCode::OP_GET_SUPER) ||
-                   op == static_cast<uint8_t>(OpCode::OP_METHOD) ||
+                   op == static_cast<uint8_t>(OpCode::OP_GET_SUPER) || op == static_cast<uint8_t>(OpCode::OP_METHOD) ||
                    op == static_cast<uint8_t>(OpCode::OP_ABSTRACT_METHOD) ||
                    op == static_cast<uint8_t>(OpCode::OP_STATIC_METHOD)) {
             i += 2;
         } else if (op == static_cast<uint8_t>(OpCode::OP_FIELD_MODIFIER)) {
             i += 3;
         } else if (op == static_cast<uint8_t>(OpCode::OP_CLOSURE)) {
-            uint8_t constIdx = function->chunk->code[i+1];
+            uint8_t constIdx = function->chunk->code[i + 1];
             VMValue funcVal = function->chunk->constants[constIdx];
             int upvalueCount = funcVal.asFunction()->upvalueCount;
-            const uint8_t* upvalueBytes = &function->chunk->code[i + 2];
+            const uint8_t *upvalueBytes = &function->chunk->code[i + 2];
             for (int j = 0; j < upvalueCount; j++) {
                 if (upvalueBytes[j * 2]) { // isLocal
                     capturedLocals.insert(upvalueBytes[j * 2 + 1]);
@@ -86,7 +78,8 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
         }
     }
 
-    if (maxLocal + 1 > 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+    if (maxLocal + 1 > 256)
+        return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
 
     std::vector<int> capturedVec(capturedLocals.begin(), capturedLocals.end());
     emitter.setCapturedLocals(capturedVec);
@@ -95,13 +88,14 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
     // Type tracking and ToS caching
     std::vector<InferredType> typeStack(256, InferredType::UNKNOWN);
     std::vector<InferredType> localTypes(256, InferredType::UNKNOWN);
-    for (int i = 0; i <= function->arity; i++) localTypes[i] = InferredType::NUMBER;
+    for (int i = 0; i <= function->arity; i++)
+        localTypes[i] = InferredType::NUMBER;
 
     bool tosInFR0 = false; // Is the top stack value in the FR0 register?
 
     // Initial SP includes the function itself (slot 0) and any arguments
     int sp = function->arity >= 0 ? function->arity + 1 : 1;
-    
+
     std::map<size_t, int> expectedSp;
     std::map<size_t, std::vector<InferredType>> expectedStackTypes;
 
@@ -119,196 +113,239 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
             typeStack = expectedStackTypes[i];
         }
         emitter.bindLabel(i);
-        
+
         uint8_t op = function->chunk->code[i];
         switch (op) {
-            case static_cast<uint8_t>(OpCode::OP_NOP):
-                break;
-            case static_cast<uint8_t>(OpCode::OP_POP):
-                if (sp == 0) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                if (tosInFR0) tosInFR0 = false;
-                else sp--;
-                break;
-            case static_cast<uint8_t>(OpCode::OP_GET_LOCAL): {
-                uint8_t slot = function->chunk->code[++i];
-                if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                flushTos(sp);
-                emitter.emitGetLocalToFR0(slot);
-                tosInFR0 = true;
-                typeStack[sp] = localTypes[slot];
-                sp++;
-                break;
+        case static_cast<uint8_t>(OpCode::OP_NOP):
+            break;
+        case static_cast<uint8_t>(OpCode::OP_POP):
+            if (sp == 0)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            if (tosInFR0)
+                tosInFR0 = false;
+            else
+                sp--;
+            break;
+        case static_cast<uint8_t>(OpCode::OP_GET_LOCAL): {
+            uint8_t slot = function->chunk->code[++i];
+            if (sp >= 256)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitGetLocalToFR0(slot);
+            tosInFR0 = true;
+            typeStack[sp] = localTypes[slot];
+            sp++;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_SET_LOCAL): {
+            uint8_t slot = function->chunk->code[++i];
+            if (sp == 0)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            if (tosInFR0)
+                emitter.emitSetLocalFromFR0(slot);
+            else
+                emitter.emitSetLocal(slot, sp - 1);
+            localTypes[slot] = typeStack[sp - 1];
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_GET_GLOBAL): {
+            uint8_t constantIdx = function->chunk->code[++i];
+            VMValue constant = function->chunk->constants[constantIdx];
+            if (sp >= 256)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            const std::string &name = constant.asString()->flatten();
+            emitter.emitGetGlobal(name, sp);
+            typeStack[sp] = InferredType::UNKNOWN;
+            sp++;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_CONSTANT): {
+            uint8_t idx = function->chunk->code[++i];
+            VMValue val = function->chunk->constants[idx];
+            flushTos(sp);
+            double raw;
+            memcpy(&raw, &val, sizeof(double));
+            if (sp >= 256)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+
+            // Constant + Arithmetic optimization
+            uint8_t nextOp = (i + 1 < function->chunk->code.size()) ? function->chunk->code[i + 1] : 0;
+            if (val.isNumber() && (nextOp == static_cast<uint8_t>(OpCode::OP_ADD) ||
+                                   nextOp == static_cast<uint8_t>(OpCode::OP_SUBTRACT))) {
+                // We skip this for now to keep ToS logic simple, or we could optimize it
             }
-            case static_cast<uint8_t>(OpCode::OP_SET_LOCAL): {
-                uint8_t slot = function->chunk->code[++i];
-                if (sp == 0) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                if (tosInFR0) emitter.emitSetLocalFromFR0(slot);
-                else emitter.emitSetLocal(slot, sp - 1);
-                localTypes[slot] = typeStack[sp - 1];
-                break;
-            }
-            case static_cast<uint8_t>(OpCode::OP_GET_GLOBAL): {
-                uint8_t constantIdx = function->chunk->code[++i];
-                VMValue constant = function->chunk->constants[constantIdx];
-                if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                flushTos(sp);
-                const std::string& name = constant.asString()->flatten();
-                emitter.emitGetGlobal(name, sp);
+
+            emitter.emitLoadConstToFR0(raw);
+            tosInFR0 = true;
+            if (val.isNumber())
+                typeStack[sp] = InferredType::NUMBER;
+            else
                 typeStack[sp] = InferredType::UNKNOWN;
-                sp++;
-                break;
+            sp++;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_ADD): {
+            if (sp < 2)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            if (tosInFR0) {
+                emitter.emitAddMemToFR0(sp - 2);
+            } else {
+                emitter.emitAdd(sp - 2, sp - 1);
+                emitter.emitGetLocalToFR0(sp - 2); // Put result in FR0
             }
-            case static_cast<uint8_t>(OpCode::OP_CONSTANT): {
-                uint8_t idx = function->chunk->code[++i];
-                VMValue val = function->chunk->constants[idx];
-                flushTos(sp);
-                double raw;
-                memcpy(&raw, &val, sizeof(double));
-                if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                
-                // Constant + Arithmetic optimization
-                uint8_t nextOp = (i + 1 < function->chunk->code.size()) ? function->chunk->code[i + 1] : 0;
-                if (val.isNumber() && (nextOp == static_cast<uint8_t>(OpCode::OP_ADD) || nextOp == static_cast<uint8_t>(OpCode::OP_SUBTRACT))) {
-                     // We skip this for now to keep ToS logic simple, or we could optimize it
-                }
+            tosInFR0 = true;
+            typeStack[sp - 2] = InferredType::NUMBER;
+            sp--;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_SUBTRACT): {
+            if (sp < 2)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            if (tosInFR0) {
+                emitter.emitSubMemToFR0(sp - 2);
+            } else {
+                emitter.emitSub(sp - 2, sp - 1);
+                emitter.emitGetLocalToFR0(sp - 2);
+            }
+            tosInFR0 = true;
+            typeStack[sp - 2] = InferredType::NUMBER;
+            sp--;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_MULTIPLY): {
+            if (sp < 2)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            if (tosInFR0)
+                emitter.emitMulMemToFR0(sp - 2);
+            else {
+                emitter.emitMul(sp - 2, sp - 1);
+                emitter.emitGetLocalToFR0(sp - 2);
+            }
+            tosInFR0 = true;
+            typeStack[sp - 2] = InferredType::NUMBER;
+            sp--;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_DIVIDE): {
+            if (sp < 2)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            if (tosInFR0)
+                emitter.emitDivMemToFR0(sp - 2);
+            else {
+                emitter.emitDiv(sp - 2, sp - 1);
+                emitter.emitGetLocalToFR0(sp - 2);
+            }
+            tosInFR0 = true;
+            typeStack[sp - 2] = InferredType::NUMBER;
+            sp--;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_LESS): {
+            if (sp < 2)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitCmpLt(sp - 2, sp - 1);
+            typeStack[sp - 2] = InferredType::BOOL;
+            sp--;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE): {
+            uint16_t offset = (function->chunk->code[i + 1] << 8) | function->chunk->code[i + 2];
+            size_t target = i + 3 + offset;
+            flushTos(sp);
+            emitter.emitJumpIfFalse(sp - 1, target);
+            expectedSp[target] = sp;
+            expectedStackTypes[target] = typeStack;
+            i += 2;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_JUMP): {
+            uint16_t offset = (function->chunk->code[i + 1] << 8) | function->chunk->code[i + 2];
+            size_t target = i + 3 + offset;
+            flushTos(sp);
+            emitter.emitJump(target);
+            expectedSp[target] = sp;
+            expectedStackTypes[target] = typeStack;
+            i += 2;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_LOOP): {
+            uint16_t offset = (function->chunk->code[i + 1] << 8) | function->chunk->code[i + 2];
+            size_t target = i + 3 - offset;
+            flushTos(sp);
+            emitter.emitJump(target);
+            i += 2;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_RETURN): {
+            if (function->upvalueCount > 0)
+                emitter.emitCloseUpvalue(0);
+            if (sp > 0) {
+                if (!tosInFR0)
+                    emitter.emitReturnValue(sp - 1);
+            } else {
+                emitter.emitLoadConstToFR0(0.0);
+            }
+            emitter.emitEpilogue(maxLocal + 1);
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_CALL): {
+            uint8_t argCount = function->chunk->code[++i];
+            flushTos(sp);
+            int calleeSp = sp - argCount - 1;
 
-                emitter.emitLoadConstToFR0(raw);
-                tosInFR0 = true;
-                if (val.isNumber()) typeStack[sp] = InferredType::NUMBER;
-                else typeStack[sp] = InferredType::UNKNOWN;
-                sp++;
-                break;
-            }
-            case static_cast<uint8_t>(OpCode::OP_ADD): {
-                if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                if (tosInFR0) {
-                    emitter.emitAddMemToFR0(sp - 2);
-                } else {
-                    emitter.emitAdd(sp - 2, sp - 1);
-                    emitter.emitGetLocalToFR0(sp - 2); // Put result in FR0
-                }
-                tosInFR0 = true;
-                typeStack[sp-2] = InferredType::NUMBER;
-                sp--;
-                break;
-            }
-            case static_cast<uint8_t>(OpCode::OP_SUBTRACT): {
-                if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                if (tosInFR0) {
-                    emitter.emitSubMemToFR0(sp - 2);
-                } else {
-                    emitter.emitSub(sp - 2, sp - 1);
-                    emitter.emitGetLocalToFR0(sp - 2);
-                }
-                tosInFR0 = true;
-                typeStack[sp-2] = InferredType::NUMBER;
-                sp--;
-                break;
-            }
-            case static_cast<uint8_t>(OpCode::OP_MULTIPLY): {
-                if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                if (tosInFR0) emitter.emitMulMemToFR0(sp - 2);
-                else { emitter.emitMul(sp - 2, sp - 1); emitter.emitGetLocalToFR0(sp - 2); }
-                tosInFR0 = true;
-                typeStack[sp-2] = InferredType::NUMBER;
-                sp--;
-                break;
-            }
-            case static_cast<uint8_t>(OpCode::OP_DIVIDE): {
-                if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                if (tosInFR0) emitter.emitDivMemToFR0(sp - 2);
-                else { emitter.emitDiv(sp - 2, sp - 1); emitter.emitGetLocalToFR0(sp - 2); }
-                tosInFR0 = true;
-                typeStack[sp-2] = InferredType::NUMBER;
-                sp--;
-                break;
-            }
-            case static_cast<uint8_t>(OpCode::OP_LESS): {
-                if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                flushTos(sp);
-                emitter.emitCmpLt(sp - 2, sp - 1);
-                typeStack[sp-2] = InferredType::BOOL;
-                sp--;
-                break;
-            }
-            case static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE): {
-                uint16_t offset = (function->chunk->code[i+1] << 8) | function->chunk->code[i+2];
-                size_t target = i + 3 + offset;
-                flushTos(sp);
-                emitter.emitJumpIfFalse(sp - 1, target);
-                expectedSp[target] = sp;
-                expectedStackTypes[target] = typeStack;
-                i += 2;
-                break;
-            }
-            case static_cast<uint8_t>(OpCode::OP_JUMP): {
-                uint16_t offset = (function->chunk->code[i+1] << 8) | function->chunk->code[i+2];
-                size_t target = i + 3 + offset;
-                flushTos(sp);
-                emitter.emitJump(target);
-                expectedSp[target] = sp;
-                expectedStackTypes[target] = typeStack;
-                i += 2;
-                break;
-            }
-            case static_cast<uint8_t>(OpCode::OP_LOOP): {
-                uint16_t offset = (function->chunk->code[i+1] << 8) | function->chunk->code[i+2];
-                size_t target = i + 3 - offset;
-                flushTos(sp);
-                emitter.emitJump(target);
-                i += 2;
-                break;
-            }
-            case static_cast<uint8_t>(OpCode::OP_RETURN): {
-                if (function->upvalueCount > 0) emitter.emitCloseUpvalue(0);
-                if (sp > 0) {
-                    if (!tosInFR0) emitter.emitReturnValue(sp - 1);
-                } else {
-                    emitter.emitLoadConstToFR0(0.0);
-                }
-                emitter.emitEpilogue(maxLocal + 1);
-                break;
-            }
-            case static_cast<uint8_t>(OpCode::OP_CALL): {
-                uint8_t argCount = function->chunk->code[++i];
-                flushTos(sp);
-                int calleeSp = sp - argCount - 1;
+            if (hasBaseCase && argCount == 1) {
+                struct sljit_jump *isBaseCase = nullptr;
+                // Inline the check: if (args[1] < baseCaseThreshold) result = args[1]
+                emitter.emitRecursiveFastPath(calleeSp + 1, baseCaseThreshold, &isBaseCase);
 
-                if (hasBaseCase && argCount == 1) {
-                    struct sljit_jump* isBaseCase = nullptr;
-                    // Inline the check: if (args[1] < baseCaseThreshold) result = args[1]
-                    emitter.emitRecursiveFastPath(calleeSp + 1, baseCaseThreshold, &isBaseCase);
-                    
-                    // SLOW PATH: Real recursive call
-                    emitter.emitCallDynamic(calleeSp, calleeSp, argCount);
-                    struct sljit_jump* recursiveEnd = sljit_emit_jump(emitter.getCompiler(), SLJIT_JUMP);
-                    
-                    // FAST PATH (Base Case)
-                    sljit_set_label(isBaseCase, sljit_emit_label(emitter.getCompiler()));
-                    // result = arg
-                    emitter.emitGetLocalToFR0(calleeSp + 1);
-                    emitter.emitMove(calleeSp, -1); // Move FR0 to result slot
-                    
-                    sljit_set_label(recursiveEnd, sljit_emit_label(emitter.getCompiler()));
-                } else {
-                    emitter.emitCallDynamic(calleeSp, calleeSp, argCount);
-                }
-                
-                sp = calleeSp + 1;
-                typeStack[calleeSp] = InferredType::UNKNOWN;
-                break;
+                // SLOW PATH: Real recursive call
+                emitter.emitCallDynamic(calleeSp, calleeSp, argCount);
+                struct sljit_jump *recursiveEnd = sljit_emit_jump(emitter.getCompiler(), SLJIT_JUMP);
+
+                // FAST PATH (Base Case)
+                sljit_set_label(isBaseCase, sljit_emit_label(emitter.getCompiler()));
+                // result = arg
+                emitter.emitGetLocalToFR0(calleeSp + 1);
+                emitter.emitMove(calleeSp, -1); // Move FR0 to result slot
+
+                sljit_set_label(recursiveEnd, sljit_emit_label(emitter.getCompiler()));
+            } else {
+                emitter.emitCallDynamic(calleeSp, calleeSp, argCount);
             }
-            case static_cast<uint8_t>(OpCode::OP_NIL):
-                flushTos(sp); emitter.emitLoadConst(sp, 0.0); typeStack[sp] = InferredType::NIL; sp++; break;
-            case static_cast<uint8_t>(OpCode::OP_TRUE):
-                flushTos(sp); emitter.emitLoadConst(sp, 1.0); typeStack[sp] = InferredType::BOOL; sp++; break;
-            case static_cast<uint8_t>(OpCode::OP_FALSE):
-                flushTos(sp); emitter.emitLoadConst(sp, 0.0); typeStack[sp] = InferredType::BOOL; sp++; break;
-            case static_cast<uint8_t>(OpCode::OP_DUP):
-                flushTos(sp); emitter.emitMove(sp, sp - 1); typeStack[sp] = typeStack[sp-1]; sp++; break;
-            default:
-                flushTos(sp);
-                return (printf("JIT Abort at line %d opcode %d\n", __LINE__, op), nullptr);
+
+            sp = calleeSp + 1;
+            typeStack[calleeSp] = InferredType::UNKNOWN;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_NIL):
+            flushTos(sp);
+            emitter.emitLoadConst(sp, 0.0);
+            typeStack[sp] = InferredType::NIL;
+            sp++;
+            break;
+        case static_cast<uint8_t>(OpCode::OP_TRUE):
+            flushTos(sp);
+            emitter.emitLoadConst(sp, 1.0);
+            typeStack[sp] = InferredType::BOOL;
+            sp++;
+            break;
+        case static_cast<uint8_t>(OpCode::OP_FALSE):
+            flushTos(sp);
+            emitter.emitLoadConst(sp, 0.0);
+            typeStack[sp] = InferredType::BOOL;
+            sp++;
+            break;
+        case static_cast<uint8_t>(OpCode::OP_DUP):
+            flushTos(sp);
+            emitter.emitMove(sp, sp - 1);
+            typeStack[sp] = typeStack[sp - 1];
+            sp++;
+            break;
+        default:
+            flushTos(sp);
+            return (printf("JIT Abort at line %d opcode %d\n", __LINE__, op), nullptr);
         }
     }
     emitter.bindLabel(function->chunk->code.size());
