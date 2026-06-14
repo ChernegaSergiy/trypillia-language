@@ -27,13 +27,13 @@ class VM {
     VMValue pop();
     VMValue peek(int distance);
 
-    ObjUpvalue* captureUpvalue(VMValue *local);
-    void closeUpvalues(VMValue *last);
-
     InterpretResult runtimeError(const std::string &message);
     InterpretResult run(int targetFrameDepth = 0);
 
   public:
+    ObjUpvalue* captureUpvalue(VMValue *local);
+    void closeUpvalues(VMValue *last);
+
     std::unordered_map<std::string, VMValue> globals;
     void defineNative(const std::string &name, int arity, NativeFn function);
     VMValue callClosure(VMValue closureVal, int argCount, VMValue *args);

@@ -56,22 +56,32 @@ public:
         if (compiler) sljit_free_compiler(compiler);
     }
 
+    std::set<int> capturedSlots;
+    void setCapturedLocals(const std::vector<int>& slots) override {
+        capturedSlots.clear();
+        for (int s : slots) capturedSlots.insert(s);
+    }
+
     void emitPrologue(int maxLocals) override {
         // f = return type (float), P = arg1 (void* vm), P = arg2 (double* args), W = arg3 (int argCount)
         sljit_emit_enter(compiler, 0, SLJIT_ARGS3(F64, W, P, W), 4 | SLJIT_ENTER_FLOAT(SLJIT_NUMBER_OF_FLOAT_REGISTERS), 3, 0);
 
         for (int j = 0; j < maxLocals; ++j) {
-            sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
-                getFloatReg(j), 0, 
-                SLJIT_MEM1(SLJIT_S1), j * sizeof(double));
+            if (!capturedSlots.count(j)) {
+                sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
+                    getFloatReg(j), 0, 
+                    SLJIT_MEM1(SLJIT_S1), j * sizeof(double));
+            }
         }
     }
 
     void emitEpilogue(int maxLocals) override {
         for (int j = 0; j < maxLocals; ++j) {
-            sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
-                SLJIT_MEM1(SLJIT_S1), j * sizeof(double), 
-                getFloatReg(j), 0);
+            if (!capturedSlots.count(j)) {
+                sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
+                    SLJIT_MEM1(SLJIT_S1), j * sizeof(double), 
+                    getFloatReg(j), 0);
+            }
         }
         
         sljit_emit_return(compiler, SLJIT_MOV_F64, getFloatReg(0), 0);
@@ -82,25 +92,25 @@ public:
     }
 
     void emitGetLocal(int stackOffset, int localSlot) override {
-        if (localSlot <= funcArity) {
+        if (capturedSlots.count(localSlot)) {
             sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
                 getFloatReg(8 + stackOffset), 0, 
-                getFloatReg(localSlot - 1), 0);
+                SLJIT_MEM1(SLJIT_S1), localSlot * sizeof(double));
         } else {
             sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
                 getFloatReg(8 + stackOffset), 0, 
-                getFloatReg(8 + localSlot), 0);
+                getFloatReg(localSlot), 0);
         }
     }
 
     void emitSetLocal(int localSlot, int stackOffset) override {
-        if (localSlot <= funcArity) {
+        if (capturedSlots.count(localSlot)) {
             sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
-                getFloatReg(localSlot - 1), 0, 
+                SLJIT_MEM1(SLJIT_S1), localSlot * sizeof(double), 
                 getFloatReg(8 + stackOffset), 0);
         } else {
             sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
-                getFloatReg(8 + localSlot), 0, 
+                getFloatReg(localSlot), 0, 
                 getFloatReg(8 + stackOffset), 0);
         }
     }
@@ -684,14 +694,24 @@ public:
                 SLJIT_MEM1(SLJIT_S1), j * sizeof(double),
                 getFloatReg(8 + j), 0);
 
-        // Store upvalue data in scratch buffer
+        // Store upvalue data in scratch buffer: 2 doubles per upvalue [metadata, addr/value]
         for (int j = 0; j < upvalueCount; j++) {
-            int packed = (upvalueBytes[j * 2] << 8) | upvalueBytes[j * 2 + 1];
+            bool isLocal = upvalueBytes[j * 2];
+            int index = upvalueBytes[j * 2 + 1];
+            int packed = (isLocal << 8) | index;
+
+            // Metadata
             sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_IMM, packed);
             sljit_emit_fop1(compiler, SLJIT_CONV_F64_FROM_SW, SLJIT_FR2, 0, SLJIT_R0, 0);
             sljit_emit_fop1(compiler, SLJIT_MOV_F64,
-                SLJIT_MEM1(SLJIT_S1), (dataOffset + j) * sizeof(double),
+                SLJIT_MEM1(SLJIT_S1), (dataOffset + j * 2) * sizeof(double),
                 SLJIT_FR2, 0);
+
+            if (isLocal) {
+                // Pass address of the stack slot
+                sljit_emit_op2(compiler, SLJIT_ADD, SLJIT_R0, 0, SLJIT_S1, 0, SLJIT_IMM, index * sizeof(double));
+                sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_MEM1(SLJIT_S1), (dataOffset + j * 2 + 1) * sizeof(double), SLJIT_R0, 0);
+            }
         }
 
         sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_S0, 0);

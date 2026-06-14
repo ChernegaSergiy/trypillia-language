@@ -497,14 +497,9 @@ extern "C" double jit_create_closure_helper(void* vm_ptr, double func_val, doubl
         int index = packed & 0xFF;
 
         if (isLocal) {
-            uint64_t valRaw;
-            memcpy(&valRaw, &upvalue_data[i * 2 + 1], sizeof(uint64_t));
-            VMValue val;
-            memcpy(&val, &valRaw, sizeof(VMValue));
-            auto upvalue = new ObjUpvalue(nullptr);
-            upvalue->closed = val;
-            upvalue->location = &upvalue->closed;
-            closure->upvalues.push_back(upvalue);
+            uint64_t addrRaw;
+            memcpy(&addrRaw, &upvalue_data[i * 2 + 1], sizeof(uint64_t));
+            closure->upvalues.push_back(vm->captureUpvalue((VMValue*)addrRaw));
         } else {
             if (vm->jitClosure && index < (int)vm->jitClosure->upvalues.size()) {
                 closure->upvalues.push_back(vm->jitClosure->upvalues[index]);
@@ -542,8 +537,8 @@ extern "C" void jit_set_upvalue_helper(void* vm_ptr, int slot, double val) {
 }
 
 extern "C" void jit_close_upvalue_helper(void* vm_ptr, double* addr) {
-    // JIT-compiled functions don't have local upvalues on the VM stack,
-    // so closeUpvalues is a no-op. JIT-created upvalues are already heap-allocated.
+    VM* vm = static_cast<VM*>(vm_ptr);
+    vm->closeUpvalues((VMValue*)addr);
 }
 
 VM::VM() {

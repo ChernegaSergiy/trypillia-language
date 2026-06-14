@@ -61,6 +61,7 @@ public:
     virtual void emitPropertyGet(int objectOffset, const std::string& name) = 0;
     virtual void emitPropertySet(int objectOffset, const std::string& name) = 0;
     virtual void emitIterHasNext(int targetOffset) = 0;
+    virtual void setCapturedLocals(const std::vector<int>& slots) = 0;
 
     // Class operations
     virtual void emitCreateClass(int targetOffset, const std::string& name) = 0;

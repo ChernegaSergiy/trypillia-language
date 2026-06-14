@@ -2,6 +2,7 @@
 #include <vector>
 #include <iostream>
 #include <cstring>
+#include <set>
 #include "OpCode.h"
 #include "UniversalEmitter.h"
 
@@ -11,6 +12,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
     UniversalEmitter emitter(function->arity);
 
     int maxLocal = 0;
+    std::set<int> capturedLocals;
     for (size_t i = 0; i < function->chunk->code.size(); ) {
         uint8_t op = function->chunk->code[i];
         if (op == static_cast<uint8_t>(OpCode::OP_NOP)) {
@@ -47,6 +49,12 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
             uint8_t constIdx = function->chunk->code[i+1];
             VMValue funcVal = function->chunk->constants[constIdx];
             int upvalueCount = funcVal.asFunction()->upvalueCount;
+            const uint8_t* upvalueBytes = &function->chunk->code[i + 2];
+            for (int j = 0; j < upvalueCount; j++) {
+                if (upvalueBytes[j * 2]) { // isLocal
+                    capturedLocals.insert(upvalueBytes[j * 2 + 1]);
+                }
+            }
             i += 2 + 2 * upvalueCount;
         } else {
             i += 1;
@@ -55,6 +63,8 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
 
     if (maxLocal + 1 > 8) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
 
+    std::vector<int> capturedVec(capturedLocals.begin(), capturedLocals.end());
+    emitter.setCapturedLocals(capturedVec);
     emitter.emitPrologue(maxLocal + 1);
 
     // Initial SP includes the function itself (slot 0) and any arguments
@@ -279,7 +289,8 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                     emitter.emitLoadConst(0, 0.0);
                     emitter.emitReturnValue(0);
                 }
-                emitter.emitEpilogue(maxLocal);
+                emitter.emitCloseUpvalue(0);
+                emitter.emitEpilogue(maxLocal + 1);
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_NIL): {
