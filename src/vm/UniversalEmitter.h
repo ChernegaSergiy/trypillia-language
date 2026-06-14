@@ -38,6 +38,13 @@ private:
     int funcArity;
     std::map<size_t, struct sljit_label*> labels;
     std::map<size_t, std::vector<struct sljit_jump*>> unresolvedJumps;
+    std::vector<char*> ownedStrings;
+
+    const char* cacheString(const std::string& s) {
+        char* cached = strdup(s.c_str());
+        ownedStrings.push_back(cached);
+        return cached;
+    }
 
 public:
     UniversalEmitter(int arity = 0) : funcArity(arity) {
@@ -46,6 +53,7 @@ public:
 
     ~UniversalEmitter() {
         if (compiler) sljit_free_compiler(compiler);
+        for (char* s : ownedStrings) free(s);
     }
 
     void setCapturedLocals(const std::vector<int>& slots) override {
@@ -257,7 +265,7 @@ public:
 
     void emitGetGlobal(const std::string& name, int targetOffset) override {
         sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_S0, 0);
-        char* cname = strdup(name.c_str());
+        const char* cname = cacheString(name);
         sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R1, 0, SLJIT_IMM, (sljit_sw)cname);
         sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS2(F64, W, W), SLJIT_IMM, (sljit_sw)jit_get_global_helper);
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_FR0, 0);
@@ -265,7 +273,7 @@ public:
 
     void emitSetGlobal(const std::string& name, int sourceOffset) override {
         sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_S0, 0);
-        char* cname = strdup(name.c_str());
+        const char* cname = cacheString(name);
         sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R1, 0, SLJIT_IMM, (sljit_sw)cname);
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR0, 0, SLJIT_MEM1(SLJIT_S1), sourceOffset * sizeof(double));
         sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS3V(W, W, F64), SLJIT_IMM, (sljit_sw)jit_set_global_helper);
@@ -304,7 +312,7 @@ public:
     void emitPropertyGet(int objectOffset, const std::string& name) override {
         sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_S0, 0);
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR0, 0, SLJIT_MEM1(SLJIT_S1), objectOffset * sizeof(double));
-        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R1, 0, SLJIT_IMM, (sljit_sw)strdup(name.c_str()));
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R1, 0, SLJIT_IMM, (sljit_sw)cacheString(name));
         sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS3(F64, W, F64, W), SLJIT_IMM, (sljit_sw)jit_property_get_helper);
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), objectOffset * sizeof(double), SLJIT_FR0, 0);
     }
@@ -312,7 +320,7 @@ public:
     void emitPropertySet(int objectOffset, const std::string& name) override {
         sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_S0, 0);
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR0, 0, SLJIT_MEM1(SLJIT_S1), objectOffset * sizeof(double));
-        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R1, 0, SLJIT_IMM, (sljit_sw)strdup(name.c_str()));
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R1, 0, SLJIT_IMM, (sljit_sw)cacheString(name));
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), (objectOffset + 1) * sizeof(double));
         sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS4(F64, W, F64, W, F64), SLJIT_IMM, (sljit_sw)jit_property_set_helper);
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), objectOffset * sizeof(double), SLJIT_FR0, 0);
@@ -327,14 +335,14 @@ public:
 
     void emitCreateClass(int targetOffset, const std::string& name) override {
         sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_S0, 0);
-        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R1, 0, SLJIT_IMM, (sljit_sw)strdup(name.c_str()));
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R1, 0, SLJIT_IMM, (sljit_sw)cacheString(name));
         sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS2(F64, W, W), SLJIT_IMM, (sljit_sw)jit_create_class_helper);
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_FR0, 0);
     }
 
     void emitCreateAbstractClass(int targetOffset, const std::string& name) override {
         sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_S0, 0);
-        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R1, 0, SLJIT_IMM, (sljit_sw)strdup(name.c_str()));
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R1, 0, SLJIT_IMM, (sljit_sw)cacheString(name));
         sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS2(F64, W, W), SLJIT_IMM, (sljit_sw)jit_create_abstract_class_helper);
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_FR0, 0);
     }
@@ -342,7 +350,7 @@ public:
     void emitBindMethod(int targetOffset, const std::string& name, bool isAbstract) override {
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR0, 0, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double));
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), (targetOffset + 1) * sizeof(double));
-        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_IMM, (sljit_sw)strdup(name.c_str()));
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_IMM, (sljit_sw)cacheString(name));
         sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R1, 0, SLJIT_IMM, isAbstract ? 1 : 0);
         sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS4(F64, F64, F64, W, W), SLJIT_IMM, (sljit_sw)jit_bind_method_helper);
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_FR0, 0);
@@ -351,7 +359,7 @@ public:
     void emitBindStaticMethod(int targetOffset, const std::string& name) override {
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR0, 0, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double));
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), (targetOffset + 1) * sizeof(double));
-        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_IMM, (sljit_sw)strdup(name.c_str()));
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_IMM, (sljit_sw)cacheString(name));
         sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS3(F64, F64, F64, W), SLJIT_IMM, (sljit_sw)jit_bind_static_method_helper);
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_FR0, 0);
     }
@@ -369,16 +377,16 @@ public:
     }
 
     void emitGetSuper(int targetOffset, const std::string& name) override {
-        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR0, 0, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double));
-        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), (targetOffset + 1) * sizeof(double));
-        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_IMM, (sljit_sw)strdup(name.c_str()));
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR0, 0, SLJIT_MEM1(SLJIT_S1), (targetOffset + 1) * sizeof(double)); // receiver
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double)); // superclass
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_IMM, (sljit_sw)cacheString(name));
         sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS3(F64, F64, F64, W), SLJIT_IMM, (sljit_sw)jit_get_super_helper);
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_FR0, 0);
     }
 
     void emitFieldModifier(int targetOffset, const std::string& name, uint8_t modifier) override {
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR0, 0, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double));
-        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_IMM, (sljit_sw)strdup(name.c_str()));
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_IMM, (sljit_sw)cacheString(name));
         sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R1, 0, SLJIT_IMM, modifier);
         sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS3V(F64, W, W), SLJIT_IMM, (sljit_sw)jit_field_modifier_helper);
     }

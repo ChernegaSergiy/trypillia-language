@@ -412,7 +412,7 @@ extern "C" double jit_bind_method_helper(double class_val, double method_val, co
             method.asNative()->isAbstract = true;
     }
     klass->methods[name] = method;
-    free((void*)name);
+    // String owned by JIT compiler
     return class_val;
 }
 
@@ -424,7 +424,7 @@ extern "C" double jit_bind_static_method_helper(double class_val, double method_
     VMValue method;
     memcpy(&method, &methodRaw, sizeof(VMValue));
     klass->statics[name] = method;
-    free((void*)name);
+    // String owned by JIT compiler
     return class_val;
 }
 
@@ -475,7 +475,7 @@ extern "C" double jit_get_super_helper(double receiver_val, double superclass_va
         receiver = (ObjInstance*)(recvRaw & ~(QNAN | SIGN_BIT));
     }
     std::string methodName(name);
-    free((void*)name);
+    // String owned by JIT compiler
     if (superclass && receiver && superclass->methods.count(methodName)) {
         auto method = superclass->methods[methodName];
         auto bound = new ObjBoundMethod(receiver, method);
@@ -492,11 +492,10 @@ extern "C" double jit_get_super_helper(double receiver_val, double superclass_va
 extern "C" void jit_field_modifier_helper(double class_val, const char* name, int modifier) {
     uint64_t klassRaw;
     memcpy(&klassRaw, &class_val, sizeof(uint64_t));
-    if ((klassRaw & (QNAN | SIGN_BIT)) != (QNAN | SIGN_BIT)) { free((void*)name); return; }
+    if ((klassRaw & (QNAN | SIGN_BIT)) != (QNAN | SIGN_BIT)) return;
     ObjClass* klass = (ObjClass*)(klassRaw & ~(QNAN | SIGN_BIT));
-    if (klass->type != ObjType::OBJ_CLASS) { free((void*)name); return; }
+    if (klass->type != ObjType::OBJ_CLASS) return;
     klass->fieldModifiers[name] = static_cast<VMAccessModifier>(modifier);
-    free((void*)name);
 }
 
 extern "C" double jit_create_closure_helper(void* vm_ptr, double func_val, double* upvalue_data, int upvalue_count) {
