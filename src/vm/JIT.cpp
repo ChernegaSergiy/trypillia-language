@@ -70,8 +70,13 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
 
     // Initial SP includes the function itself (slot 0) and any arguments
     int sp = function->arity >= 0 ? function->arity + 1 : 1;
+    
+    std::map<size_t, int> expectedSp;
 
     for (size_t i = 0; i < function->chunk->code.size(); ++i) {
+        if (expectedSp.count(i)) {
+            sp = expectedSp[i];
+        }
         emitter.bindLabel(i);
         
         uint8_t op = function->chunk->code[i];
@@ -280,6 +285,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
             case static_cast<uint8_t>(OpCode::OP_JUMP): {
                 uint16_t offset = (function->chunk->code[i+1] << 8) | function->chunk->code[i+2];
                 size_t target = i + 3 + offset;
+                expectedSp[target] = sp;
                 i += 2;
                 emitter.emitJump(target);
                 break;
@@ -287,6 +293,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
             case static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE): {
                 uint16_t offset = (function->chunk->code[i+1] << 8) | function->chunk->code[i+2];
                 size_t target = i + 3 + offset;
+                expectedSp[target] = sp;
                 i += 2;
                 if (sp < 1) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitJumpIfFalse(sp - 1, target);

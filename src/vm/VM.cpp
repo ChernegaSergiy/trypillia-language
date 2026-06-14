@@ -1427,8 +1427,8 @@ InterpretResult VM::run(int targetFrameDepth) {
 
                 if (nativeJitFunc) {
                     std::vector<double> jitArgs(256, 0.0);
-                    for (int i = 0; i < argCount; ++i) {
-                        VMValue arg = peek(argCount - i - 1);
+                    for (int i = 0; i <= argCount; ++i) {
+                        VMValue arg = peek(argCount - i);
                         double raw;
                         memcpy(&raw, &arg, sizeof(double));
                         jitArgs[i] = raw;

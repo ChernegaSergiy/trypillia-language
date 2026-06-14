@@ -175,77 +175,84 @@ public:
     void emitCmpEq(int targetOffset, int srcOffset) override {
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double));
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR2, 0, SLJIT_MEM1(SLJIT_S1), srcOffset * sizeof(double));
-        sljit_emit_fcmp(compiler, SLJIT_F_EQUAL, SLJIT_FR1, 0, SLJIT_FR2, 0);
-        sljit_emit_fset64(compiler, SLJIT_FR1, 0.0);
-        struct sljit_jump* jump = sljit_emit_jump(compiler, SLJIT_F_NOT_EQUAL);
+        struct sljit_jump* jump = sljit_emit_fcmp(compiler, SLJIT_F_NOT_EQUAL, SLJIT_FR1, 0, SLJIT_FR2, 0);
         sljit_emit_fset64(compiler, SLJIT_FR1, 1.0);
+        struct sljit_jump* jump_end = sljit_emit_jump(compiler, SLJIT_JUMP);
         sljit_set_label(jump, sljit_emit_label(compiler));
+        sljit_emit_fset64(compiler, SLJIT_FR1, 0.0);
+        sljit_set_label(jump_end, sljit_emit_label(compiler));
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_FR1, 0);
     }
 
     void emitCmpNe(int targetOffset, int srcOffset) override {
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double));
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR2, 0, SLJIT_MEM1(SLJIT_S1), srcOffset * sizeof(double));
-        sljit_emit_fcmp(compiler, SLJIT_F_NOT_EQUAL, SLJIT_FR1, 0, SLJIT_FR2, 0);
-        sljit_emit_fset64(compiler, SLJIT_FR1, 0.0);
-        struct sljit_jump* jump = sljit_emit_jump(compiler, SLJIT_F_EQUAL);
+        struct sljit_jump* jump = sljit_emit_fcmp(compiler, SLJIT_F_EQUAL, SLJIT_FR1, 0, SLJIT_FR2, 0);
         sljit_emit_fset64(compiler, SLJIT_FR1, 1.0);
+        struct sljit_jump* jump_end = sljit_emit_jump(compiler, SLJIT_JUMP);
         sljit_set_label(jump, sljit_emit_label(compiler));
+        sljit_emit_fset64(compiler, SLJIT_FR1, 0.0);
+        sljit_set_label(jump_end, sljit_emit_label(compiler));
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_FR1, 0);
     }
 
     void emitCmpLt(int targetOffset, int srcOffset) override {
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double));
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR2, 0, SLJIT_MEM1(SLJIT_S1), srcOffset * sizeof(double));
-        sljit_emit_fcmp(compiler, SLJIT_F_LESS, SLJIT_FR1, 0, SLJIT_FR2, 0);
-        sljit_emit_fset64(compiler, SLJIT_FR1, 0.0);
-        struct sljit_jump* jump = sljit_emit_jump(compiler, SLJIT_F_GREATER_EQUAL);
+        struct sljit_jump* jump = sljit_emit_fcmp(compiler, SLJIT_F_GREATER_EQUAL, SLJIT_FR1, 0, SLJIT_FR2, 0);
         sljit_emit_fset64(compiler, SLJIT_FR1, 1.0);
+        struct sljit_jump* jump_end = sljit_emit_jump(compiler, SLJIT_JUMP);
         sljit_set_label(jump, sljit_emit_label(compiler));
+        sljit_emit_fset64(compiler, SLJIT_FR1, 0.0);
+        sljit_set_label(jump_end, sljit_emit_label(compiler));
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_FR1, 0);
     }
 
     void emitCmpLe(int targetOffset, int srcOffset) override {
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double));
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR2, 0, SLJIT_MEM1(SLJIT_S1), srcOffset * sizeof(double));
-        sljit_emit_fcmp(compiler, SLJIT_F_LESS_EQUAL, SLJIT_FR1, 0, SLJIT_FR2, 0);
-        sljit_emit_fset64(compiler, SLJIT_FR1, 0.0);
-        struct sljit_jump* jump = sljit_emit_jump(compiler, SLJIT_F_GREATER);
+        struct sljit_jump* jump = sljit_emit_fcmp(compiler, SLJIT_F_GREATER, SLJIT_FR1, 0, SLJIT_FR2, 0);
         sljit_emit_fset64(compiler, SLJIT_FR1, 1.0);
+        struct sljit_jump* jump_end = sljit_emit_jump(compiler, SLJIT_JUMP);
         sljit_set_label(jump, sljit_emit_label(compiler));
+        sljit_emit_fset64(compiler, SLJIT_FR1, 0.0);
+        sljit_set_label(jump_end, sljit_emit_label(compiler));
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_FR1, 0);
     }
 
     void emitCmpGt(int targetOffset, int srcOffset) override {
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double));
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR2, 0, SLJIT_MEM1(SLJIT_S1), srcOffset * sizeof(double));
-        sljit_emit_fcmp(compiler, SLJIT_F_GREATER, SLJIT_FR1, 0, SLJIT_FR2, 0);
-        sljit_emit_fset64(compiler, SLJIT_FR1, 0.0);
-        struct sljit_jump* jump = sljit_emit_jump(compiler, SLJIT_F_LESS_EQUAL);
+        struct sljit_jump* jump = sljit_emit_fcmp(compiler, SLJIT_F_LESS_EQUAL, SLJIT_FR1, 0, SLJIT_FR2, 0);
         sljit_emit_fset64(compiler, SLJIT_FR1, 1.0);
+        struct sljit_jump* jump_end = sljit_emit_jump(compiler, SLJIT_JUMP);
         sljit_set_label(jump, sljit_emit_label(compiler));
+        sljit_emit_fset64(compiler, SLJIT_FR1, 0.0);
+        sljit_set_label(jump_end, sljit_emit_label(compiler));
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_FR1, 0);
     }
 
     void emitCmpGe(int targetOffset, int srcOffset) override {
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double));
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR2, 0, SLJIT_MEM1(SLJIT_S1), srcOffset * sizeof(double));
-        sljit_emit_fcmp(compiler, SLJIT_F_GREATER_EQUAL, SLJIT_FR1, 0, SLJIT_FR2, 0);
-        sljit_emit_fset64(compiler, SLJIT_FR1, 0.0);
-        struct sljit_jump* jump = sljit_emit_jump(compiler, SLJIT_F_LESS);
+        struct sljit_jump* jump = sljit_emit_fcmp(compiler, SLJIT_F_LESS, SLJIT_FR1, 0, SLJIT_FR2, 0);
         sljit_emit_fset64(compiler, SLJIT_FR1, 1.0);
+        struct sljit_jump* jump_end = sljit_emit_jump(compiler, SLJIT_JUMP);
         sljit_set_label(jump, sljit_emit_label(compiler));
+        sljit_emit_fset64(compiler, SLJIT_FR1, 0.0);
+        sljit_set_label(jump_end, sljit_emit_label(compiler));
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_FR1, 0);
     }
 
     void emitNot(int targetOffset) override {
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double));
         sljit_emit_fset64(compiler, SLJIT_FR2, 0.0);
-        sljit_emit_fcmp(compiler, SLJIT_F_EQUAL, SLJIT_FR1, 0, SLJIT_FR2, 0);
-        sljit_emit_fset64(compiler, SLJIT_FR1, 0.0);
-        struct sljit_jump* jump = sljit_emit_jump(compiler, SLJIT_F_NOT_EQUAL);
+        struct sljit_jump* jump = sljit_emit_fcmp(compiler, SLJIT_F_NOT_EQUAL, SLJIT_FR1, 0, SLJIT_FR2, 0);
         sljit_emit_fset64(compiler, SLJIT_FR1, 1.0);
+        struct sljit_jump* jump_end = sljit_emit_jump(compiler, SLJIT_JUMP);
         sljit_set_label(jump, sljit_emit_label(compiler));
+        sljit_emit_fset64(compiler, SLJIT_FR1, 0.0);
+        sljit_set_label(jump_end, sljit_emit_label(compiler));
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_FR1, 0);
     }
 
@@ -464,6 +471,12 @@ public:
     }
 
     JitFunc finalize() override {
+        if (!unresolvedJumps.empty()) {
+            for (const auto& pair : unresolvedJumps) {
+                std::cerr << "JIT Abort: unresolved jump to target bytecode index " << pair.first << std::endl;
+            }
+            return nullptr;
+        }
         return (JitFunc)sljit_generate_code(compiler, 0, NULL);
     }
 };
