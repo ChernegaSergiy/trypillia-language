@@ -3,6 +3,7 @@
 #include <iostream>
 #include <cstring>
 #include <set>
+#include <cassert>
 #include "OpCode.h"
 #include "UniversalEmitter.h"
 
@@ -93,7 +94,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
             case static_cast<uint8_t>(OpCode::OP_GET_GLOBAL): {
                 uint8_t constantIdx = function->chunk->code[++i];
                 VMValue constant = function->chunk->constants[constantIdx];
-                if (!constant.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                assert(constant.isString() && "Operand must be a string");
                 if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 const std::string& name = constant.asString()->flatten();
                 emitter.emitGetGlobal(name, sp);
@@ -103,7 +104,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
             case static_cast<uint8_t>(OpCode::OP_SET_GLOBAL): {
                 uint8_t constantIdx = function->chunk->code[++i];
                 VMValue constant = function->chunk->constants[constantIdx];
-                if (!constant.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                assert(constant.isString() && "Operand must be a string");
                 if (sp < 1) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 const std::string& name = constant.asString()->flatten();
                 // Value is at sp - 1
@@ -114,7 +115,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
             case static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL): {
                 uint8_t constantIdx = function->chunk->code[++i];
                 VMValue constant = function->chunk->constants[constantIdx];
-                if (!constant.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                assert(constant.isString() && "Operand must be a string");
                 if (sp < 1) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 const std::string& name = constant.asString()->flatten();
                 // Value is at sp - 1
@@ -352,7 +353,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
             case static_cast<uint8_t>(OpCode::OP_PROPERTY_GET): {
                 uint8_t constIdx = function->chunk->code[++i];
                 VMValue nameVal = function->chunk->constants[constIdx];
-                if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                assert(nameVal.isString() && "Operand must be a string");
                 if (sp < 1) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 const std::string& name = nameVal.asString()->flatten();
                 emitter.emitPropertyGet(sp - 1, name);
@@ -361,7 +362,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
             case static_cast<uint8_t>(OpCode::OP_PROPERTY_SET): {
                 uint8_t constIdx = function->chunk->code[++i];
                 VMValue nameVal = function->chunk->constants[constIdx];
-                if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                assert(nameVal.isString() && "Operand must be a string");
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 const std::string& name = nameVal.asString()->flatten();
                 emitter.emitPropertySet(sp - 2, name);
@@ -409,7 +410,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
             case static_cast<uint8_t>(OpCode::OP_CLASS): {
                 uint8_t constIdx = function->chunk->code[++i];
                 VMValue nameVal = function->chunk->constants[constIdx];
-                if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                assert(nameVal.isString() && "Operand must be a string");
                 const std::string& name = nameVal.asString()->flatten();
                 if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitCreateClass(sp, name);
@@ -419,7 +420,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
             case static_cast<uint8_t>(OpCode::OP_ABSTRACT_CLASS): {
                 uint8_t constIdx = function->chunk->code[++i];
                 VMValue nameVal = function->chunk->constants[constIdx];
-                if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                assert(nameVal.isString() && "Operand must be a string");
                 const std::string& name = nameVal.asString()->flatten();
                 if (sp >= 256) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitCreateAbstractClass(sp, name);
@@ -441,7 +442,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
             case static_cast<uint8_t>(OpCode::OP_GET_SUPER): {
                 uint8_t constIdx = function->chunk->code[++i];
                 VMValue nameVal = function->chunk->constants[constIdx];
-                if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                assert(nameVal.isString() && "Operand must be a string");
                 const std::string& name = nameVal.asString()->flatten();
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitGetSuper(sp - 2, name);
@@ -451,7 +452,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
             case static_cast<uint8_t>(OpCode::OP_METHOD): {
                 uint8_t constIdx = function->chunk->code[++i];
                 VMValue nameVal = function->chunk->constants[constIdx];
-                if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                assert(nameVal.isString() && "Operand must be a string");
                 const std::string& name = nameVal.asString()->flatten();
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitBindMethod(sp - 2, name, false);
@@ -461,7 +462,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
             case static_cast<uint8_t>(OpCode::OP_ABSTRACT_METHOD): {
                 uint8_t constIdx = function->chunk->code[++i];
                 VMValue nameVal = function->chunk->constants[constIdx];
-                if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                assert(nameVal.isString() && "Operand must be a string");
                 const std::string& name = nameVal.asString()->flatten();
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitBindMethod(sp - 2, name, true);
@@ -471,7 +472,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
             case static_cast<uint8_t>(OpCode::OP_STATIC_METHOD): {
                 uint8_t constIdx = function->chunk->code[++i];
                 VMValue nameVal = function->chunk->constants[constIdx];
-                if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                assert(nameVal.isString() && "Operand must be a string");
                 const std::string& name = nameVal.asString()->flatten();
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitBindStaticMethod(sp - 2, name);
@@ -481,7 +482,7 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
             case static_cast<uint8_t>(OpCode::OP_FIELD_MODIFIER): {
                 uint8_t constIdx = function->chunk->code[++i];
                 VMValue nameVal = function->chunk->constants[constIdx];
-                if (!nameVal.isString()) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                assert(nameVal.isString() && "Operand must be a string");
                 const std::string& name = nameVal.asString()->flatten();
                 uint8_t modifier = function->chunk->code[++i];
                 if (sp < 1) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
