@@ -24,17 +24,22 @@ set(MBEDTLS_FATAL_WARNINGS OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(mbedtls)
 
 FetchContent_Declare(
-  asmjit
-  GIT_REPOSITORY https://github.com/asmjit/asmjit.git
+  sljit
+  GIT_REPOSITORY https://github.com/zherczeg/sljit.git
   GIT_TAG        master
 )
-set(ASMJIT_STATIC ON CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(asmjit)
-add_executable(trypillia src/main.cpp ${CORE_SOURCES})
-target_link_libraries(trypillia mbedtls mbedx509 mbedcrypto asmjit)
+FetchContent_GetProperties(sljit)
+if(NOT sljit_POPULATED)
+  FetchContent_Populate(sljit)
+endif()
 
-add_executable(trypillia-lsp src/lsp/LSPMain.cpp src/lsp/LSP.cpp ${CORE_SOURCES})
-target_link_libraries(trypillia-lsp mbedtls mbedx509 mbedcrypto asmjit)
+include_directories(include ${sljit_SOURCE_DIR}/sljit_src)
+
+add_executable(trypillia src/main.cpp ${CORE_SOURCES} ${sljit_SOURCE_DIR}/sljit_src/sljitLir.c)
+target_link_libraries(trypillia mbedtls mbedx509 mbedcrypto)
+
+add_executable(trypillia-lsp src/lsp/LSPMain.cpp src/lsp/LSP.cpp ${CORE_SOURCES} ${sljit_SOURCE_DIR}/sljit_src/sljitLir.c)
+target_link_libraries(trypillia-lsp mbedtls mbedx509 mbedcrypto)
 
 # Explicitly link atomic for 32-bit ARM (like Android/Termux armv7)
 include(CheckLibraryExists)
