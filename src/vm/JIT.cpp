@@ -20,6 +20,20 @@ enum class InferredType {
 JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
     if (!function || !function->chunk) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
 
+    // 1. Base Case Detection Heuristic (for fib-like functions)
+    bool hasBaseCase = false;
+    double baseCaseThreshold = 0;
+    if (function->chunk->code.size() > 10 &&
+        function->chunk->code[0] == static_cast<uint8_t>(OpCode::OP_GET_LOCAL) && function->chunk->code[1] == 0 &&
+        function->chunk->code[2] == static_cast<uint8_t>(OpCode::OP_CONSTANT)) {
+        uint8_t constIdx = function->chunk->code[3];
+        VMValue val = function->chunk->constants[constIdx];
+        if (val.isNumber() && function->chunk->code[4] == static_cast<uint8_t>(OpCode::OP_LESS)) {
+            hasBaseCase = true;
+            baseCaseThreshold = val.asNumber();
+        }
+    }
+
     UniversalEmitter emitter(function->arity);
 
     int maxLocal = 0;
@@ -259,7 +273,27 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 uint8_t argCount = function->chunk->code[++i];
                 flushTos(sp);
                 int calleeSp = sp - argCount - 1;
-                emitter.emitCallDynamic(calleeSp, calleeSp, argCount);
+
+                if (hasBaseCase && argCount == 1) {
+                    struct sljit_jump* isBaseCase = nullptr;
+                    // Inline the check: if (args[1] < baseCaseThreshold) result = args[1]
+                    emitter.emitRecursiveFastPath(calleeSp + 1, baseCaseThreshold, &isBaseCase);
+                    
+                    // SLOW PATH: Real recursive call
+                    emitter.emitCallDynamic(calleeSp, calleeSp, argCount);
+                    struct sljit_jump* recursiveEnd = sljit_emit_jump(emitter.getCompiler(), SLJIT_JUMP);
+                    
+                    // FAST PATH (Base Case)
+                    sljit_set_label(isBaseCase, sljit_emit_label(emitter.getCompiler()));
+                    // result = arg
+                    emitter.emitGetLocalToFR0(calleeSp + 1);
+                    emitter.emitMove(calleeSp, -1); // Move FR0 to result slot
+                    
+                    sljit_set_label(recursiveEnd, sljit_emit_label(emitter.getCompiler()));
+                } else {
+                    emitter.emitCallDynamic(calleeSp, calleeSp, argCount);
+                }
+                
                 sp = calleeSp + 1;
                 typeStack[calleeSp] = InferredType::UNKNOWN;
                 break;

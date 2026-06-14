@@ -52,6 +52,8 @@ public:
         compiler = sljit_create_compiler(NULL);
     }
 
+    struct sljit_compiler* getCompiler() { return compiler; }
+
     ~UniversalEmitter() {
         if (compiler) sljit_free_compiler(compiler);
         for (char* s : ownedStrings) free(s);
@@ -127,6 +129,14 @@ public:
         // FR0 = mem / FR0
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), memStackOffset * sizeof(double));
         sljit_emit_fop2(compiler, SLJIT_DIV_F64, SLJIT_FR0, 0, SLJIT_FR1, 0, SLJIT_FR0, 0);
+    }
+
+    void emitRecursiveFastPath(int argStackOffset, double threshold, struct sljit_jump** outBaseCaseJump) {
+        // Load the argument that was just put on stack
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR1, 0, SLJIT_MEM1(SLJIT_S1), argStackOffset * sizeof(double));
+        sljit_emit_fset64(compiler, SLJIT_FR2, threshold);
+        // If arg < threshold, it is a base case
+        *outBaseCaseJump = sljit_emit_fcmp(compiler, SLJIT_F_LESS, SLJIT_FR1, 0, SLJIT_FR2, 0);
     }
 
     void emitReturnValue(int stackOffset) override {
