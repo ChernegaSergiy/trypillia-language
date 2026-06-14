@@ -908,6 +908,22 @@ InterpretResult VM::run(int targetFrameDepth) {
             }
             break;
         }
+        case static_cast<uint8_t>(OpCode::OP_NOT_EQUAL): {
+            VMValue b = pop();
+            VMValue a = pop();
+            if (a.isNumber() && b.isNumber()) {
+                push(a.asNumber() != b.asNumber());
+            } else if (a.isString() && b.isString()) {
+                push(a.asString()->flatten() != b.asString()->flatten());
+            } else if (a.isBool() && b.isBool()) {
+                push(a.asBool() != b.asBool());
+            } else if (a.isNil() && b.isNil()) {
+                push(false);
+            } else {
+                push(true);
+            }
+            break;
+        }
         case static_cast<uint8_t>(OpCode::OP_LESS): {
             VMValue b = pop();
             VMValue a = pop();
@@ -918,11 +934,31 @@ InterpretResult VM::run(int targetFrameDepth) {
             }
             break;
         }
+        case static_cast<uint8_t>(OpCode::OP_LESS_EQUAL): {
+            VMValue b = pop();
+            VMValue a = pop();
+            if (a.isNumber() && b.isNumber()) {
+                push(a.asNumber() <= b.asNumber());
+            } else {
+                return runtimeError("Operands must be numbers.");
+            }
+            break;
+        }
         case static_cast<uint8_t>(OpCode::OP_GREATER): {
             VMValue b = pop();
             VMValue a = pop();
             if (a.isNumber() && b.isNumber()) {
                 push(a.asNumber() > b.asNumber());
+            } else {
+                return runtimeError("Operands must be numbers.");
+            }
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_GREATER_EQUAL): {
+            VMValue b = pop();
+            VMValue a = pop();
+            if (a.isNumber() && b.isNumber()) {
+                push(a.asNumber() >= b.asNumber());
             } else {
                 return runtimeError("Operands must be numbers.");
             }

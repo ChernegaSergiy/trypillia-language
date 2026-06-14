@@ -246,22 +246,19 @@ class CompilerVisitor : public ASTVisitor {
             emitByte(static_cast<uint8_t>(OpCode::OP_EQUAL));
             break;
         case TokenType::BANG_EQUAL:
-            emitByte(static_cast<uint8_t>(OpCode::OP_EQUAL));
-            emitByte(static_cast<uint8_t>(OpCode::OP_NOT));
+            emitByte(static_cast<uint8_t>(OpCode::OP_NOT_EQUAL));
             break;
         case TokenType::LESS:
             emitByte(static_cast<uint8_t>(OpCode::OP_LESS));
             break;
         case TokenType::LESS_EQUAL:
-            emitByte(static_cast<uint8_t>(OpCode::OP_GREATER));
-            emitByte(static_cast<uint8_t>(OpCode::OP_NOT));
+            emitByte(static_cast<uint8_t>(OpCode::OP_LESS_EQUAL));
             break;
         case TokenType::GREATER:
             emitByte(static_cast<uint8_t>(OpCode::OP_GREATER));
             break;
         case TokenType::GREATER_EQUAL:
-            emitByte(static_cast<uint8_t>(OpCode::OP_LESS));
-            emitByte(static_cast<uint8_t>(OpCode::OP_NOT));
+            emitByte(static_cast<uint8_t>(OpCode::OP_GREATER_EQUAL));
             break;
         case TokenType::BITWISE_AND:
             emitByte(static_cast<uint8_t>(OpCode::OP_BIT_AND));

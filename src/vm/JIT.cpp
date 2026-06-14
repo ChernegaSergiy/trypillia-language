@@ -174,12 +174,6 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 sp--;
                 break;
             }
-            case static_cast<uint8_t>(OpCode::OP_LESS): {
-                if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
-                emitter.emitCmpLt(sp - 2, sp - 1);
-                sp--;
-                break;
-            }
             case static_cast<uint8_t>(OpCode::OP_BIT_AND): {
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitBitAnd(sp - 2, sp - 1);
@@ -221,9 +215,33 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
                 sp--;
                 break;
             }
+            case static_cast<uint8_t>(OpCode::OP_GREATER_EQUAL): {
+                if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                emitter.emitCmpGe(sp - 2, sp - 1);
+                sp--;
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_LESS): {
+                if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                emitter.emitCmpLt(sp - 2, sp - 1);
+                sp--;
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_LESS_EQUAL): {
+                if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                emitter.emitCmpLe(sp - 2, sp - 1);
+                sp--;
+                break;
+            }
             case static_cast<uint8_t>(OpCode::OP_EQUAL): {
                 if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
                 emitter.emitCmpEq(sp - 2, sp - 1);
+                sp--;
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_NOT_EQUAL): {
+                if (sp < 2) return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+                emitter.emitCmpNe(sp - 2, sp - 1);
                 sp--;
                 break;
             }
