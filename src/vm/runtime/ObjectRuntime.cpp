@@ -103,7 +103,7 @@ VMValue VM::callClosure(VMValue closureVal, int argCount, VMValue *args) {
     CallFrame newFrame;
     newFrame.closure = closure;
     newFrame.ip = closure->function->chunk->code.data();
-    newFrame.stackStart = static_cast<int>(stack.size() - argCount - 1);
+    newFrame.stackStart = static_cast<int>((stackTop - stack) - argCount - 1);
     frames.push_back(newFrame);
 
     InterpretResult result = run(initialFrameCount);
@@ -147,7 +147,7 @@ VMValue VM::instantiateClass(VMValue classVal, int argCount, VMValue *args) {
             CallFrame newFrame;
             newFrame.closure = closure;
             newFrame.ip = closure->function->chunk->code.data();
-            newFrame.stackStart = static_cast<int>(stack.size() - argCount - 1);
+            newFrame.stackStart = static_cast<int>((stackTop - stack) - argCount - 1);
             frames.push_back(newFrame);
             int initialDepth = static_cast<int>(frames.size() - 1);
             InterpretResult res = run(initialDepth);

@@ -107,8 +107,8 @@ void processGrayStack() {
 
 void GC::collect(VM *vm) {
     // 1. Mark roots
-    for (auto &val : vm->stack)
-        markValue(val);
+    for (VMValue *slot = vm->stack; slot < vm->stackTop; slot++)
+        markValue(*slot);
     for (auto &pair : vm->globals) {
         VMValue v = pair.second;
         markValue(v);

@@ -15,6 +15,7 @@ struct CallFrame {
     int stackStart;
 };
 
+#define STACK_MAX 8192
 class VM;
 extern thread_local VM *currentVM;
 
@@ -24,7 +25,8 @@ class VM {
     Obj *objects = nullptr;
     size_t bytesAllocated = 0;
     size_t nextGC = 1024 * 1024;
-    std::vector<VMValue> stack;
+    VMValue stack[STACK_MAX];
+    VMValue *stackTop;
     std::unordered_map<std::string, VMValue> globals;
     ObjUpvalue *openUpvalues;
 

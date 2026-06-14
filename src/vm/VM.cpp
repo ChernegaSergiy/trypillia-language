@@ -18,25 +18,25 @@ VM::~VM() {
 }
 
 void VM::resetStack() {
-    stack.clear();
+    stackTop = stack;
 }
 
 void VM::push(VMValue value) {
-    stack.push_back(value);
+    *stackTop++ = value;
 }
 
 VMValue VM::pop() {
-    VMValue value = stack.back();
-    stack.pop_back();
+    VMValue value = *(stackTop - 1);
+    stackTop--;
     return value;
 }
 
 VMValue VM::peek(int distance) {
-    return stack[stack.size() - 1 - distance];
+    return stack[(stackTop - stack) - 1 - distance];
 }
 
 InterpretResult VM::interpret(ObjFunction *function) {
-    stack.clear();
+    resetStack();
     frames.clear();
     openUpvalues = nullptr;
 
@@ -357,7 +357,7 @@ InterpretResult VM::run(int targetFrameDepth) {
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_CLOSE_UPVALUE): {
-            closeUpvalues(&stack.back());
+            closeUpvalues((stackTop - 1));
             pop();
             break;
         }
@@ -621,12 +621,12 @@ InterpretResult VM::run(int targetFrameDepth) {
             frames.pop_back();
 
             if (frames.size() == targetFrameDepth) {
-                stack.resize(newStackSize);
+                stackTop = stack + newStackSize;
                 push(result);
                 return InterpretResult::INTERPRET_OK;
             }
 
-            stack.resize(newStackSize);
+            stackTop = stack + newStackSize;
             push(result);
             frame = &frames.back();
             break;
@@ -824,14 +824,14 @@ bool VM::executeCall(uint8_t argCount) {
             jitClosure = closure;
             double result = nativeJitFunc(this, jitArgs.data(), argCount, 0.0);
             jitClosure = nullptr;
-            stack.resize(stack.size() - argCount - 1);
+            stackTop -= argCount + 1;
             push(result);
             return true; // Skip standard frame push!
         }
         CallFrame newFrame;
         newFrame.closure = closure;
         newFrame.ip = function->chunk->code.data();
-        newFrame.stackStart = static_cast<int>(stack.size() - argCount - 1);
+        newFrame.stackStart = static_cast<int>((stackTop - stack) - argCount - 1);
         frames.push_back(newFrame);
 
     } else if (callee.isNative()) {
@@ -841,8 +841,8 @@ bool VM::executeCall(uint8_t argCount) {
                          std::to_string(argCount) + ".");
             return false;
         }
-        VMValue result = native->function(argCount, stack.data() + stack.size() - argCount);
-        stack.resize(stack.size() - argCount - 1);
+        VMValue result = native->function(argCount, stack + (stackTop - stack) - argCount);
+        stackTop -= argCount + 1;
         push(result);
 
     } else if (callee.isClass()) {
@@ -860,7 +860,7 @@ bool VM::executeCall(uint8_t argCount) {
         }
         auto instance = new ObjInstance(klass);
 
-        stack[stack.size() - argCount - 1] = instance;
+        stack[(stackTop - stack) - argCount - 1] = instance;
 
         if (klass->methods.count("init")) {
             auto initMethod = klass->methods["init"];
@@ -884,13 +884,13 @@ bool VM::executeCall(uint8_t argCount) {
                 CallFrame newFrame;
                 newFrame.closure = closure;
                 newFrame.ip = func->chunk->code.data();
-                newFrame.stackStart = static_cast<int>(stack.size() - argCount - 1);
+                newFrame.stackStart = static_cast<int>((stackTop - stack) - argCount - 1);
                 frames.push_back(newFrame);
 
             } else {
                 auto native = initMethod.asNative();
-                native->function(argCount, stack.data() + stack.size() - argCount);
-                stack.resize(stack.size() - argCount); // leave the instance on stack
+                native->function(argCount, stack + (stackTop - stack) - argCount);
+                stackTop -= argCount; // leave the instance on stack
             }
         } else if (argCount != 0) {
             runtimeError(std::string("Expected 0 arguments but got ") + std::to_string(argCount) + ".");
@@ -927,7 +927,7 @@ bool VM::executeCall(uint8_t argCount) {
             runtimeError(std::string("Stack overflow."));
             return false;
         }
-        stack[stack.size() - argCount - 1] = bound->receiver;
+        stack[(stackTop - stack) - argCount - 1] = bound->receiver;
 
         if (function.isClosure()) {
             auto closure = function.asClosure();
@@ -935,7 +935,7 @@ bool VM::executeCall(uint8_t argCount) {
             CallFrame newFrame;
             newFrame.closure = closure;
             newFrame.ip = func->chunk->code.data();
-            newFrame.stackStart = static_cast<int>(stack.size() - argCount - 1);
+            newFrame.stackStart = static_cast<int>((stackTop - stack) - argCount - 1);
             frames.push_back(newFrame);
 
         } else {
@@ -944,12 +944,12 @@ bool VM::executeCall(uint8_t argCount) {
             VMValue *argsPtr;
             if (!bound->receiver.isInstance()) {
                 passedArgCount += 1;
-                argsPtr = stack.data() + stack.size() - argCount - 1; // Primitive methods expect receiver at args[0]
+                argsPtr = stack + (stackTop - stack) - argCount - 1; // Primitive methods expect receiver at args[0]
             } else {
-                argsPtr = stack.data() + stack.size() - argCount; // Instance methods expect receiver at args[-1]
+                argsPtr = stack + (stackTop - stack) - argCount; // Instance methods expect receiver at args[-1]
             }
             VMValue result = native->function(passedArgCount, argsPtr);
-            stack.resize(stack.size() - argCount - 1);
+            stackTop -= argCount + 1;
             push(result);
         }
     } else {
