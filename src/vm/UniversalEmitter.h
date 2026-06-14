@@ -33,7 +33,7 @@ public:
 
     void emitPrologue(int maxLocals) override {
         // f = return type (float), P = arg1 (pointer)
-        sljit_emit_enter(compiler, 0, SLJIT_ARGS1(F64, P), 3 | SLJIT_ENTER_FLOAT(16), 3, 0);
+        sljit_emit_enter(compiler, 0, SLJIT_ARGS1(F64, P), 3 | SLJIT_ENTER_FLOAT(SLJIT_NUMBER_OF_FLOAT_REGISTERS), 3, 0);
 
         for (int j = 0; j < maxLocals; ++j) {
             sljit_emit_fop1(compiler, SLJIT_MOV_F64, 
@@ -103,11 +103,9 @@ public:
     }
 
     void emitCmpLt(int targetOffset, int srcOffset) override {
-        sljit_emit_fcmp(compiler, SLJIT_CMP_F64 | SLJIT_F_LESS, 
+        struct sljit_jump* jumpLess = sljit_emit_fcmp(compiler, SLJIT_F_LESS, 
             getFloatReg(8 + targetOffset), 0, 
             getFloatReg(8 + srcOffset), 0);
-        
-        struct sljit_jump* jumpLess = sljit_emit_jump(compiler, SLJIT_F_LESS);
         
         sljit_emit_fset64(compiler, getFloatReg(8 + targetOffset), 0.0);
         struct sljit_jump* jumpDone = sljit_emit_jump(compiler, SLJIT_JUMP);
@@ -129,11 +127,10 @@ public:
 
     void emitJumpIfFalse(int stackOffset, size_t targetByteCodeIndex) override {
         sljit_emit_fset64(compiler, SLJIT_FR0, 0.0);
-        sljit_emit_fcmp(compiler, SLJIT_CMP_F64 | SLJIT_F_EQUAL, 
+        struct sljit_jump* jump = sljit_emit_fcmp(compiler, SLJIT_F_EQUAL, 
             getFloatReg(8 + stackOffset), 0, 
             SLJIT_FR0, 0);
             
-        struct sljit_jump* jump = sljit_emit_jump(compiler, SLJIT_F_EQUAL);
         if (labels.count(targetByteCodeIndex)) {
             sljit_set_label(jump, labels[targetByteCodeIndex]);
         } else {
