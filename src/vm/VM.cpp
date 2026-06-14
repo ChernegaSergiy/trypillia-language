@@ -354,6 +354,20 @@ extern "C" double jit_call_helper(void* vm_ptr, double callee_val, double* args,
     return ret;
 }
 
+extern "C" void* jit_resolve_global_address(void* vm_ptr, const char* name, VMValue** cell) {
+    VM* vm = static_cast<VM*>(vm_ptr);
+    // std::map::operator[] or find is stable for pointers to values.
+    // We use find to avoid inserting nulls if not found.
+    auto it = vm->globals.find(name);
+    if (it != vm->globals.end()) {
+        *cell = &(it->second);
+        return (void*)&(it->second);
+    }
+    // Return address of a dummy null if not found
+    static VMValue dummyNull = nullptr;
+    return (void*)&dummyNull;
+}
+
 extern "C" double jit_get_global_helper(void* vm_ptr, const char* name) {
     VM* vm = static_cast<VM*>(vm_ptr);
     auto it = vm->globals.find(name);

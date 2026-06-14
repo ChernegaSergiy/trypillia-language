@@ -19,6 +19,7 @@ extern "C" double jit_build_map_helper(double* args, int count);
 extern "C" double jit_property_get_helper(void* vm_ptr, double object_val, const char* name);
 extern "C" double jit_property_set_helper(void* vm_ptr, double object_val, const char* name, double value_val);
 extern "C" double jit_iter_has_next_helper(double index_val, double iterable_val);
+extern "C" void* jit_resolve_global_address(void* vm_ptr, const char* name, VMValue** cell);
 extern "C" double jit_create_class_helper(void* vm, const char* name);
 extern "C" double jit_create_abstract_class_helper(void* vm, const char* name);
 extern "C" double jit_bind_method_helper(double class_val, double method_val, const char* name, int isAbstract);
@@ -313,11 +314,38 @@ public:
         sljit_set_label(fast_path_end, sljit_emit_label(compiler));
     }
 
+    std::vector<VMValue*> globalCaches;
+
     void emitGetGlobal(const std::string& name, int targetOffset) override {
-        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_S0, 0);
+        // Allocate a persistent "cell" for this global variable
+        VMValue** cell = new VMValue*(nullptr);
+        // We need to keep track of these to free them later, or just let them leak for now for speed
+        
+        // 1. Load the value from the cell
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_IMM, (sljit_sw)cell);
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R1, 0, SLJIT_MEM1(SLJIT_R0), 0);
+        
+        // 2. If cell is null, go to slow path to resolve it
+        struct sljit_jump* is_null = sljit_emit_cmp(compiler, SLJIT_EQUAL, SLJIT_R1, 0, SLJIT_IMM, 0);
+        
+        // --- FAST PATH: Already cached ---
+        // Load VMValue (8 bytes) from the address in R1
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR0, 0, SLJIT_MEM1(SLJIT_R1), 0);
+        struct sljit_jump* fast_end = sljit_emit_jump(compiler, SLJIT_JUMP);
+        
+        // --- SLOW PATH: Resolve and cache ---
+        sljit_set_label(is_null, sljit_emit_label(compiler));
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_S0, 0); // vm_ptr
         const char* cname = cacheString(name);
         sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R1, 0, SLJIT_IMM, (sljit_sw)cname);
-        sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS2(F64, W, W), SLJIT_IMM, (sljit_sw)jit_get_global_helper);
+        
+        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R2, 0, SLJIT_IMM, (sljit_sw)cell);
+        sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS3(W, W, W, W), SLJIT_IMM, (sljit_sw)jit_resolve_global_address);
+        
+        // Result address is in R0. Load value into FR0.
+        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR0, 0, SLJIT_MEM1(SLJIT_R0), 0);
+        
+        sljit_set_label(fast_end, sljit_emit_label(compiler));
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_FR0, 0);
     }
 
