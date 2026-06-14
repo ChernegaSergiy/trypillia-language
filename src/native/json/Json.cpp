@@ -9,12 +9,12 @@ namespace StdLib {
 namespace Json {
 
 static std::string stringifyValue(const VMValue &val, int indent = -1, int currentIndent = 0) {
-    if (std::holds_alternative<std::nullptr_t>(val))
+    if (val.isNil())
         return "null";
-    if (std::holds_alternative<bool>(val))
-        return std::get<bool>(val) ? "true" : "false";
-    if (std::holds_alternative<double>(val)) {
-        double d = std::get<double>(val);
+    if (val.isBool())
+        return val.asBool() ? "true" : "false";
+    if (val.isNumber()) {
+        double d = val.asNumber();
         if (d == static_cast<double>(static_cast<long long>(d))) {
             return std::to_string(static_cast<long long>(d));
         }
@@ -22,8 +22,8 @@ static std::string stringifyValue(const VMValue &val, int indent = -1, int curre
         ss << d;
         return ss.str();
     }
-    if (std::holds_alternative<std::shared_ptr<ObjString>>(val)) {
-        std::string s = std::get<std::shared_ptr<ObjString>>(val)->flatten();
+    if (val.isString()) {
+        std::string s = val.asString()->flatten();
         std::string res = "\"";
         for (char c : s) {
             if (c == '"')
@@ -50,8 +50,8 @@ static std::string stringifyValue(const VMValue &val, int indent = -1, int curre
     std::string nl = (indent >= 0) ? "\n" : "";
     std::string sp = (indent >= 0) ? " " : "";
 
-    if (std::holds_alternative<std::shared_ptr<ObjList>>(val)) {
-        auto list = std::get<std::shared_ptr<ObjList>>(val);
+    if (val.isList()) {
+        auto list = val.asList();
         if (list->elements.empty())
             return "[]";
 
@@ -70,8 +70,8 @@ static std::string stringifyValue(const VMValue &val, int indent = -1, int curre
         res += endIndentStr + "]";
         return res;
     }
-    if (std::holds_alternative<std::shared_ptr<ObjMap>>(val)) {
-        auto map = std::get<std::shared_ptr<ObjMap>>(val);
+    if (val.isMap()) {
+        auto map = val.asMap();
         if (map->values.empty())
             return "{}";
 
@@ -87,20 +87,20 @@ static std::string stringifyValue(const VMValue &val, int indent = -1, int curre
             first = false;
 
             res += indentStr;
-            if (std::holds_alternative<std::shared_ptr<ObjString>>(k)) {
+            if (k.isString()) {
                 res += stringifyValue(k, -1, 0) + ":" + sp + stringifyValue(v, indent, nextIndent);
             } else {
                 std::stringstream ss;
-                if (std::holds_alternative<double>(k)) {
-                    double dk = std::get<double>(k);
+                if (k.isNumber()) {
+                    double dk = k.asNumber();
                     if (dk == static_cast<double>(static_cast<long long>(dk))) {
                         ss << static_cast<long long>(dk);
                     } else {
                         ss << dk;
                     }
-                } else if (std::holds_alternative<bool>(k))
-                    ss << (std::get<bool>(k) ? "true" : "false");
-                else if (std::holds_alternative<std::nullptr_t>(k))
+                } else if (k.isBool())
+                    ss << (k.asBool() ? "true" : "false");
+                else if (k.isNil())
                     ss << "null";
                 res += "\"" + ss.str() + "\":" + sp + stringifyValue(v, indent, nextIndent);
             }
@@ -115,8 +115,8 @@ static VMValue jsonStringify(int argCount, VMValue *args) {
     if (argCount < 1 || argCount > 2)
         return nullptr;
     int indent = -1;
-    if (argCount == 2 && std::holds_alternative<double>(args[1])) {
-        indent = static_cast<int>(std::get<double>(args[1]));
+    if (argCount == 2 && args[1].isNumber()) {
+        indent = static_cast<int>(args[1].asNumber());
     }
     return stringifyValue(args[0], indent, 0);
 }
@@ -219,7 +219,7 @@ class JsonParser {
         std::vector<VMValue> elements;
         if (pos < src.length() && src[pos] == ']') {
             pos++;
-            return std::make_shared<ObjList>(elements);
+            return new ObjList(elements);
         }
         while (pos < src.length()) {
             elements.push_back(parseValue(depth + 1));
@@ -234,14 +234,14 @@ class JsonParser {
                 break; // Unexpected character
             }
         }
-        return std::make_shared<ObjList>(elements);
+        return new ObjList(elements);
     }
 
     VMValue parseObject(int depth) {
         if (depth > MAX_DEPTH) return nullptr;
         pos++; // skip {
         skipWhitespace();
-        auto map = std::make_shared<ObjMap>();
+        auto map = new ObjMap();
         if (pos < src.length() && src[pos] == '}') {
             pos++;
             return map;
@@ -306,17 +306,17 @@ class JsonParser {
 };
 
 static VMValue jsonParse(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
+    if (argCount != 1 || !args[0].isString())
         return nullptr;
-    std::string jsonStr = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
+    std::string jsonStr = args[0].asString()->flatten();
     JsonParser parser(jsonStr);
     return parser.parseValue();
 }
 
 void registerAll(VM *vm) {
-    auto jsonClass = std::make_shared<ObjClass>("Json");
-    jsonClass->statics["stringify"] = std::make_shared<ObjNative>("stringify", -1, jsonStringify);
-    jsonClass->statics["parse"] = std::make_shared<ObjNative>("parse", 1, jsonParse);
+    auto jsonClass = new ObjClass("Json");
+    jsonClass->statics["stringify"] = new ObjNative("stringify", -1, jsonStringify);
+    jsonClass->statics["parse"] = new ObjNative("parse", 1, jsonParse);
     vm->globals["Json"] = jsonClass;
 }
 

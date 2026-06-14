@@ -12,7 +12,7 @@ class Compiler {
     ~Compiler() = default;
 
     std::string currentFilename = "<unknown>";
-    std::shared_ptr<ObjFunction> compile(ASTNode *ast, SymbolTable *globals = nullptr);
+    ObjFunction* compile(ASTNode *ast, SymbolTable *globals = nullptr);
 };
 
 #endif // TRYPILLIA_COMPILER_H

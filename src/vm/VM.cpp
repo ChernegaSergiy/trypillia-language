@@ -1,45 +1,57 @@
 #include "VM.h"
-#include "../native/StdLib.h"
 #include <iostream>
 #include <cmath>
 
+VMValue::VMValue(const std::string& s) {
+    Obj* obj = new ObjString(s);
+    val = SIGN_BIT | QNAN | (uint64_t)(uintptr_t)obj;
+    obj->retain();
+}
+
+VMValue::VMValue(const char* s) {
+    Obj* obj = new ObjString(std::string(s));
+    val = SIGN_BIT | QNAN | (uint64_t)(uintptr_t)obj;
+    obj->retain();
+}
+#include "../native/StdLib.h"
+
 static bool isMethodAbstract(const VMValue &method) {
-    if (std::holds_alternative<std::shared_ptr<ObjClosure>>(method))
-        return std::get<std::shared_ptr<ObjClosure>>(method)->function->isAbstract;
-    if (std::holds_alternative<std::shared_ptr<ObjNative>>(method))
-        return std::get<std::shared_ptr<ObjNative>>(method)->isAbstract;
+    if (method.isClosure())
+        return method.asClosure()->function->isAbstract;
+    if (method.isNative())
+        return method.asNative()->isAbstract;
     return false;
 }
 
 static VMAccessModifier getMethodAccessModifier(const VMValue &method) {
-    if (std::holds_alternative<std::shared_ptr<ObjClosure>>(method))
-        return std::get<std::shared_ptr<ObjClosure>>(method)->function->accessModifier;
-    if (std::holds_alternative<std::shared_ptr<ObjNative>>(method))
-        return std::get<std::shared_ptr<ObjNative>>(method)->accessModifier;
+    if (method.isClosure())
+        return method.asClosure()->function->accessModifier;
+    if (method.isNative())
+        return method.asNative()->accessModifier;
     return VMAccessModifier::PUBLIC;
 }
 
 static std::string getMethodName(const VMValue &method) {
-    if (std::holds_alternative<std::shared_ptr<ObjClosure>>(method))
-        return std::get<std::shared_ptr<ObjClosure>>(method)->function->name;
-    if (std::holds_alternative<std::shared_ptr<ObjNative>>(method))
-        return std::get<std::shared_ptr<ObjNative>>(method)->name;
+    if (method.isClosure())
+        return method.asClosure()->function->name;
+    if (method.isNative())
+        return method.asNative()->name;
     return "";
 }
 
 static int getMethodMinArity(const VMValue &method) {
-    if (std::holds_alternative<std::shared_ptr<ObjClosure>>(method))
-        return std::get<std::shared_ptr<ObjClosure>>(method)->function->arity;
-    if (std::holds_alternative<std::shared_ptr<ObjNative>>(method))
-        return std::get<std::shared_ptr<ObjNative>>(method)->arity;
+    if (method.isClosure())
+        return method.asClosure()->function->arity;
+    if (method.isNative())
+        return method.asNative()->arity;
     return -1;
 }
 
 static int getMethodMaxArity(const VMValue &method) {
-    if (std::holds_alternative<std::shared_ptr<ObjClosure>>(method))
-        return std::get<std::shared_ptr<ObjClosure>>(method)->function->maxArity;
-    if (std::holds_alternative<std::shared_ptr<ObjNative>>(method))
-        return std::get<std::shared_ptr<ObjNative>>(method)->arity;
+    if (method.isClosure())
+        return method.asClosure()->function->maxArity;
+    if (method.isNative())
+        return method.asNative()->arity;
     return -1;
 }
 
@@ -71,7 +83,7 @@ std::string utf8_char_at(const std::string &str, int index) {
     return "";
 }
 
-bool checkAccess(VMAccessModifier modifier, std::shared_ptr<ObjClass> klass, const std::string &callerClass) {
+bool checkAccess(VMAccessModifier modifier, ObjClass* klass, const std::string &callerClass) {
     if (modifier == VMAccessModifier::PUBLIC)
         return true;
     if (modifier == VMAccessModifier::PRIVATE)
@@ -104,15 +116,15 @@ extern "C" double jit_invoke_helper(void* vm_ptr, const char* name, double* args
         vmArgs[i] = args[i];
     }
     
-    if (std::holds_alternative<std::shared_ptr<ObjNative>>(callee)) {
-        auto native = std::get<std::shared_ptr<ObjNative>>(callee);
+    if (callee.isNative()) {
+        auto native = callee.asNative();
         result = native->function(argCount, vmArgs.data());
-    } else if (std::holds_alternative<std::shared_ptr<ObjClosure>>(callee)) {
+    } else if (callee.isClosure()) {
         result = vm->callClosure(callee, argCount, vmArgs.data());
     }
     
-    if (std::holds_alternative<double>(result)) {
-        return std::get<double>(result);
+    if (result.isNumber()) {
+        return result.asNumber();
     }
     return 0.0;
 }
@@ -125,7 +137,7 @@ VM::~VM() {
 }
 
 void VM::defineNative(const std::string &name, int arity, NativeFn function) {
-    globals[name] = std::make_shared<ObjNative>(name, arity, function);
+    globals[name] = new ObjNative(name, arity, function);
 }
 
 void VM::resetStack() {
@@ -147,9 +159,9 @@ VMValue VM::peek(int distance) {
 }
 
 VMValue VM::callClosure(VMValue closureVal, int argCount, VMValue *args) {
-    if (!std::holds_alternative<std::shared_ptr<ObjClosure>>(closureVal))
+    if (!closureVal.isClosure())
         return nullptr;
-    auto closure = std::get<std::shared_ptr<ObjClosure>>(closureVal);
+    auto closure = closureVal.asClosure();
 
     int initialFrameCount = static_cast<int>(frames.size());
 
@@ -172,9 +184,9 @@ VMValue VM::callClosure(VMValue closureVal, int argCount, VMValue *args) {
     return pop();
 }
 
-std::shared_ptr<ObjUpvalue> VM::captureUpvalue(VMValue *local) {
-    std::shared_ptr<ObjUpvalue> prevUpvalue = nullptr;
-    std::shared_ptr<ObjUpvalue> upvalue = openUpvalues;
+ObjUpvalue* VM::captureUpvalue(VMValue *local) {
+    ObjUpvalue* prevUpvalue = nullptr;
+    ObjUpvalue* upvalue = openUpvalues;
     while (upvalue != nullptr && upvalue->location > local) {
         prevUpvalue = upvalue;
         upvalue = upvalue->next;
@@ -184,7 +196,7 @@ std::shared_ptr<ObjUpvalue> VM::captureUpvalue(VMValue *local) {
         return upvalue;
     }
 
-    auto createdUpvalue = std::make_shared<ObjUpvalue>(local);
+    auto createdUpvalue = new ObjUpvalue(local);
     createdUpvalue->next = upvalue;
 
     if (prevUpvalue == nullptr) {
@@ -205,12 +217,12 @@ void VM::closeUpvalues(VMValue *last) {
     }
 }
 
-InterpretResult VM::interpret(std::shared_ptr<ObjFunction> function) {
+InterpretResult VM::interpret(ObjFunction* function) {
     stack.clear();
     frames.clear();
     openUpvalues = nullptr;
 
-    auto closure = std::make_shared<ObjClosure>(function);
+    auto closure = new ObjClosure(function);
     push(closure);
 
     CallFrame frame;
@@ -233,7 +245,7 @@ InterpretResult VM::runtimeError(const std::string &message) {
 
     for (int i = static_cast<int>(frames.size()) - 1; i >= 0; i--) {
         CallFrame *frame = &frames[i];
-        std::shared_ptr<ObjFunction> function = frame->closure->function;
+        ObjFunction* function = frame->closure->function;
         size_t instruction = frame->ip - function->chunk->code.data() - 1;
         int line = function->chunk->lines[static_cast<int>(instruction)];
 
@@ -286,24 +298,24 @@ InterpretResult VM::run(int targetFrameDepth) {
         case static_cast<uint8_t>(OpCode::OP_ADD): {
             VMValue b = pop();
             VMValue a = pop();
-            if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
-                push(std::get<double>(a) + std::get<double>(b));
-            } else if (std::holds_alternative<std::shared_ptr<ObjString>>(a) && std::holds_alternative<std::shared_ptr<ObjString>>(b)) {
-                push(std::make_shared<ObjString>(std::get<std::shared_ptr<ObjString>>(a), std::get<std::shared_ptr<ObjString>>(b)));
-            } else if (std::holds_alternative<std::shared_ptr<ObjString>>(a) && std::holds_alternative<double>(b)) {
-                double val = std::get<double>(b);
+            if (a.isNumber() && b.isNumber()) {
+                push(a.asNumber() + b.asNumber());
+            } else if (a.isString() && b.isString()) {
+                push(new ObjString(a.asString(), b.asString()));
+            } else if (a.isString() && b.isNumber()) {
+                double val = b.asNumber();
                 std::string strVal = std::to_string(val);
                 strVal.erase(strVal.find_last_not_of('0') + 1, std::string::npos);
                 if (strVal.back() == '.')
                     strVal.pop_back();
-                push(std::make_shared<ObjString>(std::get<std::shared_ptr<ObjString>>(a), std::make_shared<ObjString>(strVal)));
-            } else if (std::holds_alternative<double>(a) && std::holds_alternative<std::shared_ptr<ObjString>>(b)) {
-                double val = std::get<double>(a);
+                push(new ObjString(a.asString(), new ObjString(strVal)));
+            } else if (a.isNumber() && b.isString()) {
+                double val = a.asNumber();
                 std::string strVal = std::to_string(val);
                 strVal.erase(strVal.find_last_not_of('0') + 1, std::string::npos);
                 if (strVal.back() == '.')
                     strVal.pop_back();
-                push(std::make_shared<ObjString>(std::make_shared<ObjString>(strVal), std::get<std::shared_ptr<ObjString>>(b)));
+                push(new ObjString(new ObjString(strVal), b.asString()));
             } else {
                 return runtimeError(std::string("Operands must be numbers or strings."));
             }
@@ -312,8 +324,8 @@ InterpretResult VM::run(int targetFrameDepth) {
         case static_cast<uint8_t>(OpCode::OP_SUBTRACT): {
             VMValue b = pop();
             VMValue a = pop();
-            if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
-                push(std::get<double>(a) - std::get<double>(b));
+            if (a.isNumber() && b.isNumber()) {
+                push(a.asNumber() - b.asNumber());
             } else {
                 return runtimeError("Operands must be numbers.");
             }
@@ -322,8 +334,8 @@ InterpretResult VM::run(int targetFrameDepth) {
         case static_cast<uint8_t>(OpCode::OP_MULTIPLY): {
             VMValue b = pop();
             VMValue a = pop();
-            if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
-                push(std::get<double>(a) * std::get<double>(b));
+            if (a.isNumber() && b.isNumber()) {
+                push(a.asNumber() * b.asNumber());
             } else {
                 return runtimeError("Operands must be numbers.");
             }
@@ -332,8 +344,8 @@ InterpretResult VM::run(int targetFrameDepth) {
         case static_cast<uint8_t>(OpCode::OP_DIVIDE): {
             VMValue b = pop();
             VMValue a = pop();
-            if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
-                push(std::get<double>(a) / std::get<double>(b));
+            if (a.isNumber() && b.isNumber()) {
+                push(a.asNumber() / b.asNumber());
             } else {
                 return runtimeError("Operands must be numbers.");
             }
@@ -342,8 +354,8 @@ InterpretResult VM::run(int targetFrameDepth) {
         case static_cast<uint8_t>(OpCode::OP_MOD): {
             VMValue b = pop();
             VMValue a = pop();
-            if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
-                push(std::fmod(std::get<double>(a), std::get<double>(b)));
+            if (a.isNumber() && b.isNumber()) {
+                push(std::fmod(a.asNumber(), b.asNumber()));
             } else {
                 return runtimeError("Operands must be numbers.");
             }
@@ -352,9 +364,9 @@ InterpretResult VM::run(int targetFrameDepth) {
         case static_cast<uint8_t>(OpCode::OP_BIT_AND): {
             VMValue b = pop();
             VMValue a = pop();
-            if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
-                push(static_cast<double>(static_cast<int32_t>(std::get<double>(a)) &
-                                         static_cast<int32_t>(std::get<double>(b))));
+            if (a.isNumber() && b.isNumber()) {
+                push(static_cast<double>(static_cast<int32_t>(a.asNumber()) &
+                                         static_cast<int32_t>(b.asNumber())));
             } else {
                 return runtimeError("Operands must be numbers.");
             }
@@ -363,9 +375,9 @@ InterpretResult VM::run(int targetFrameDepth) {
         case static_cast<uint8_t>(OpCode::OP_BIT_OR): {
             VMValue b = pop();
             VMValue a = pop();
-            if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
-                push(static_cast<double>(static_cast<int32_t>(std::get<double>(a)) |
-                                         static_cast<int32_t>(std::get<double>(b))));
+            if (a.isNumber() && b.isNumber()) {
+                push(static_cast<double>(static_cast<int32_t>(a.asNumber()) |
+                                         static_cast<int32_t>(b.asNumber())));
             } else {
                 return runtimeError("Operands must be numbers.");
             }
@@ -374,9 +386,9 @@ InterpretResult VM::run(int targetFrameDepth) {
         case static_cast<uint8_t>(OpCode::OP_BIT_XOR): {
             VMValue b = pop();
             VMValue a = pop();
-            if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
-                push(static_cast<double>(static_cast<int32_t>(std::get<double>(a)) ^
-                                         static_cast<int32_t>(std::get<double>(b))));
+            if (a.isNumber() && b.isNumber()) {
+                push(static_cast<double>(static_cast<int32_t>(a.asNumber()) ^
+                                         static_cast<int32_t>(b.asNumber())));
             } else {
                 return runtimeError("Operands must be numbers.");
             }
@@ -385,9 +397,9 @@ InterpretResult VM::run(int targetFrameDepth) {
         case static_cast<uint8_t>(OpCode::OP_BIT_SHIFT_LEFT): {
             VMValue b = pop();
             VMValue a = pop();
-            if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
-                push(static_cast<double>(static_cast<int32_t>(std::get<double>(a))
-                                         << static_cast<int32_t>(std::get<double>(b))));
+            if (a.isNumber() && b.isNumber()) {
+                push(static_cast<double>(static_cast<int32_t>(a.asNumber())
+                                         << static_cast<int32_t>(b.asNumber())));
             } else {
                 return runtimeError("Operands must be numbers.");
             }
@@ -396,9 +408,9 @@ InterpretResult VM::run(int targetFrameDepth) {
         case static_cast<uint8_t>(OpCode::OP_BIT_SHIFT_RIGHT): {
             VMValue b = pop();
             VMValue a = pop();
-            if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
-                push(static_cast<double>(static_cast<int32_t>(std::get<double>(a)) >>
-                                         static_cast<int32_t>(std::get<double>(b))));
+            if (a.isNumber() && b.isNumber()) {
+                push(static_cast<double>(static_cast<int32_t>(a.asNumber()) >>
+                                         static_cast<int32_t>(b.asNumber())));
             } else {
                 return runtimeError("Operands must be numbers.");
             }
@@ -407,13 +419,13 @@ InterpretResult VM::run(int targetFrameDepth) {
         case static_cast<uint8_t>(OpCode::OP_EQUAL): {
             VMValue b = pop();
             VMValue a = pop();
-            if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
-                push(std::get<double>(a) == std::get<double>(b));
-            } else if (std::holds_alternative<std::shared_ptr<ObjString>>(a) && std::holds_alternative<std::shared_ptr<ObjString>>(b)) {
-                push(std::get<std::shared_ptr<ObjString>>(a)->flatten() == std::get<std::shared_ptr<ObjString>>(b)->flatten());
-            } else if (std::holds_alternative<bool>(a) && std::holds_alternative<bool>(b)) {
-                push(std::get<bool>(a) == std::get<bool>(b));
-            } else if (std::holds_alternative<std::nullptr_t>(a) && std::holds_alternative<std::nullptr_t>(b)) {
+            if (a.isNumber() && b.isNumber()) {
+                push(a.asNumber() == b.asNumber());
+            } else if (a.isString() && b.isString()) {
+                push(a.asString()->flatten() == b.asString()->flatten());
+            } else if (a.isBool() && b.isBool()) {
+                push(a.asBool() == b.asBool());
+            } else if (a.isNil() && b.isNil()) {
                 push(true);
             } else {
                 push(false);
@@ -423,8 +435,8 @@ InterpretResult VM::run(int targetFrameDepth) {
         case static_cast<uint8_t>(OpCode::OP_LESS): {
             VMValue b = pop();
             VMValue a = pop();
-            if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
-                push(std::get<double>(a) < std::get<double>(b));
+            if (a.isNumber() && b.isNumber()) {
+                push(a.asNumber() < b.asNumber());
             } else {
                 return runtimeError("Operands must be numbers.");
             }
@@ -433,8 +445,8 @@ InterpretResult VM::run(int targetFrameDepth) {
         case static_cast<uint8_t>(OpCode::OP_GREATER): {
             VMValue b = pop();
             VMValue a = pop();
-            if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
-                push(std::get<double>(a) > std::get<double>(b));
+            if (a.isNumber() && b.isNumber()) {
+                push(a.asNumber() > b.asNumber());
             } else {
                 return runtimeError("Operands must be numbers.");
             }
@@ -442,9 +454,9 @@ InterpretResult VM::run(int targetFrameDepth) {
         }
         case static_cast<uint8_t>(OpCode::OP_NOT): {
             VMValue a = pop();
-            if (std::holds_alternative<bool>(a)) {
-                push(!std::get<bool>(a));
-            } else if (std::holds_alternative<std::nullptr_t>(a)) {
+            if (a.isBool()) {
+                push(!a.asBool());
+            } else if (a.isNil()) {
                 push(true);
             } else {
                 push(false);
@@ -453,8 +465,8 @@ InterpretResult VM::run(int targetFrameDepth) {
         }
         case static_cast<uint8_t>(OpCode::OP_BIT_NOT): {
             VMValue value = pop();
-            if (std::holds_alternative<double>(value)) {
-                push(static_cast<double>(~static_cast<int32_t>(std::get<double>(value))));
+            if (value.isNumber()) {
+                push(static_cast<double>(~static_cast<int32_t>(value.asNumber())));
             } else {
                 return runtimeError("Operand must be a number.");
             }
@@ -462,8 +474,8 @@ InterpretResult VM::run(int targetFrameDepth) {
         }
         case static_cast<uint8_t>(OpCode::OP_NEGATE): {
             VMValue a = pop();
-            if (std::holds_alternative<double>(a)) {
-                push(-std::get<double>(a));
+            if (a.isNumber()) {
+                push(-a.asNumber());
             }
             break;
         }
@@ -476,9 +488,9 @@ InterpretResult VM::run(int targetFrameDepth) {
             uint16_t offset = READ_SHORT();
             VMValue condition = peek(0);
             bool isFalsy = false;
-            if (std::holds_alternative<bool>(condition)) {
-                isFalsy = !std::get<bool>(condition);
-            } else if (std::holds_alternative<std::nullptr_t>(condition)) {
+            if (condition.isBool()) {
+                isFalsy = !condition.asBool();
+            } else if (condition.isNil()) {
                 isFalsy = true;
             }
 
@@ -514,8 +526,8 @@ InterpretResult VM::run(int targetFrameDepth) {
         }
         case static_cast<uint8_t>(OpCode::OP_CLOSURE): {
             VMValue funcVal = READ_CONSTANT();
-            auto function = std::get<std::shared_ptr<ObjFunction>>(funcVal);
-            auto closure = std::make_shared<ObjClosure>(function);
+            auto function = funcVal.asFunction();
+            auto closure = new ObjClosure(function);
             push(closure);
             for (int i = 0; i < function->upvalueCount; i++) {
                 uint8_t isLocal = READ_BYTE();
@@ -536,14 +548,14 @@ InterpretResult VM::run(int targetFrameDepth) {
         case static_cast<uint8_t>(OpCode::OP_ITER_HAS_NEXT): {
             VMValue indexVal = pop();
             VMValue iterableVal = pop();
-            if (std::holds_alternative<double>(indexVal)) {
-                int index = static_cast<int>(std::get<double>(indexVal));
-                if (std::holds_alternative<std::shared_ptr<ObjList>>(iterableVal)) {
-                    auto list = std::get<std::shared_ptr<ObjList>>(iterableVal);
+            if (indexVal.isNumber()) {
+                int index = static_cast<int>(indexVal.asNumber());
+                if (iterableVal.isList()) {
+                    auto list = iterableVal.asList();
                     push(index < list->elements.size());
                     break;
-                } else if (std::holds_alternative<std::shared_ptr<ObjString>>(iterableVal)) {
-                    auto str = std::get<std::shared_ptr<ObjString>>(iterableVal)->flatten();
+                } else if (iterableVal.isString()) {
+                    auto str = iterableVal.asString()->flatten();
                     push(index < utf8_length(str));
                     break;
                 }
@@ -555,12 +567,12 @@ InterpretResult VM::run(int targetFrameDepth) {
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL): {
-            std::string name = std::get<std::shared_ptr<ObjString>>(READ_CONSTANT())->flatten();
+            std::string name = READ_CONSTANT().asString()->flatten();
             globals[name] = pop();
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_GET_GLOBAL): {
-            std::string name = std::get<std::shared_ptr<ObjString>>(READ_CONSTANT())->flatten();
+            std::string name = READ_CONSTANT().asString()->flatten();
             if (globals.find(name) == globals.end()) {
                 return runtimeError(std::string("Undefined variable '") + name + "'.");
             }
@@ -568,7 +580,7 @@ InterpretResult VM::run(int targetFrameDepth) {
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_SET_GLOBAL): {
-            std::string name = std::get<std::shared_ptr<ObjString>>(READ_CONSTANT())->flatten();
+            std::string name = READ_CONSTANT().asString()->flatten();
             if (globals.find(name) == globals.end()) {
                 return runtimeError(std::string("Undefined variable '") + name + "'.");
             }
@@ -586,12 +598,12 @@ InterpretResult VM::run(int targetFrameDepth) {
             for (int i = count - 1; i >= 0; i--) {
                 elements[i] = pop();
             }
-            push(std::make_shared<ObjList>(elements));
+            push(new ObjList(elements));
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_BUILD_MAP): {
             uint8_t count = READ_BYTE();
-            auto map = std::make_shared<ObjMap>();
+            auto map = new ObjMap();
             for (int i = count - 1; i >= 0; i--) {
                 VMValue value = pop();
                 VMValue key = pop();
@@ -603,10 +615,10 @@ InterpretResult VM::run(int targetFrameDepth) {
         case static_cast<uint8_t>(OpCode::OP_INDEX_GET): {
             VMValue index = pop();
             VMValue listVal = pop();
-            if (std::holds_alternative<std::shared_ptr<ObjList>>(listVal)) {
-                auto list = std::get<std::shared_ptr<ObjList>>(listVal);
-                if (std::holds_alternative<double>(index)) {
-                    int i = static_cast<int>(std::get<double>(index));
+            if (listVal.isList()) {
+                auto list = listVal.asList();
+                if (index.isNumber()) {
+                    int i = static_cast<int>(index.asNumber());
                     if (i >= 0 && i < static_cast<int>(list->elements.size())) {
                         push(list->elements[i]);
                     } else {
@@ -615,10 +627,10 @@ InterpretResult VM::run(int targetFrameDepth) {
                 } else {
                     return runtimeError(std::string("List index must be a number."));
                 }
-            } else if (std::holds_alternative<std::shared_ptr<ObjString>>(listVal)) {
-                auto str = std::get<std::shared_ptr<ObjString>>(listVal)->flatten();
-                if (std::holds_alternative<double>(index)) {
-                    int i = static_cast<int>(std::get<double>(index));
+            } else if (listVal.isString()) {
+                auto str = listVal.asString()->flatten();
+                if (index.isNumber()) {
+                    int i = static_cast<int>(index.asNumber());
                     int len = utf8_length(str);
                     if (i >= 0 && i < len) {
                         push(utf8_char_at(str, i));
@@ -628,8 +640,8 @@ InterpretResult VM::run(int targetFrameDepth) {
                 } else {
                     return runtimeError(std::string("String index must be a number."));
                 }
-            } else if (std::holds_alternative<std::shared_ptr<ObjMap>>(listVal)) {
-                auto map = std::get<std::shared_ptr<ObjMap>>(listVal);
+            } else if (listVal.isMap()) {
+                auto map = listVal.asMap();
                 if (map->values.count(index)) {
                     push(map->values[index]);
                 } else {
@@ -644,10 +656,10 @@ InterpretResult VM::run(int targetFrameDepth) {
             VMValue value = pop();
             VMValue index = pop();
             VMValue listVal = pop();
-            if (std::holds_alternative<std::shared_ptr<ObjList>>(listVal)) {
-                auto list = std::get<std::shared_ptr<ObjList>>(listVal);
-                if (std::holds_alternative<double>(index)) {
-                    int i = static_cast<int>(std::get<double>(index));
+            if (listVal.isList()) {
+                auto list = listVal.asList();
+                if (index.isNumber()) {
+                    int i = static_cast<int>(index.asNumber());
                     if (i >= 0 && i < static_cast<int>(list->elements.size())) {
                         list->elements[i] = value;
                         push(value);
@@ -657,8 +669,8 @@ InterpretResult VM::run(int targetFrameDepth) {
                 } else {
                     return runtimeError(std::string("List index must be a number."));
                 }
-            } else if (std::holds_alternative<std::shared_ptr<ObjMap>>(listVal)) {
-                auto map = std::get<std::shared_ptr<ObjMap>>(listVal);
+            } else if (listVal.isMap()) {
+                auto map = listVal.asMap();
                 map->values[index] = value;
                 push(value);
             } else {
@@ -667,13 +679,13 @@ InterpretResult VM::run(int targetFrameDepth) {
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_CLASS): {
-            std::string name = std::get<std::shared_ptr<ObjString>>(READ_CONSTANT())->flatten();
-            push(std::make_shared<ObjClass>(name));
+            std::string name = READ_CONSTANT().asString()->flatten();
+            push(new ObjClass(name));
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_ABSTRACT_CLASS): {
-            std::string name = std::get<std::shared_ptr<ObjString>>(READ_CONSTANT())->flatten();
-            auto klass = std::make_shared<ObjClass>(name);
+            std::string name = READ_CONSTANT().asString()->flatten();
+            auto klass = new ObjClass(name);
             klass->isAbstract = true;
             push(klass);
             break;
@@ -681,11 +693,11 @@ InterpretResult VM::run(int targetFrameDepth) {
         case static_cast<uint8_t>(OpCode::OP_INHERIT): {
             VMValue superclassVal = pop();
             VMValue subclassVal = pop();
-            if (!std::holds_alternative<std::shared_ptr<ObjClass>>(superclassVal)) {
+            if (!superclassVal.isClass()) {
                 return runtimeError(std::string("Superclass must be a class."));
             }
-            auto subclass = std::get<std::shared_ptr<ObjClass>>(subclassVal);
-            auto superclass = std::get<std::shared_ptr<ObjClass>>(superclassVal);
+            auto subclass = subclassVal.asClass();
+            auto superclass = superclassVal.asClass();
             subclass->superclass = superclass;
             for (auto const &[name, mod] : superclass->fieldModifiers) {
                 subclass->fieldModifiers[name] = mod;
@@ -698,75 +710,75 @@ InterpretResult VM::run(int targetFrameDepth) {
         case static_cast<uint8_t>(OpCode::OP_MIXIN): {
             VMValue mixinVal = pop();
             VMValue targetVal = pop();
-            if (!std::holds_alternative<std::shared_ptr<ObjClass>>(mixinVal)) {
+            if (!mixinVal.isClass()) {
                 return runtimeError(std::string("Mixin must be a class/trait."));
             }
-            auto targetClass = std::get<std::shared_ptr<ObjClass>>(targetVal);
-            auto mixinClass = std::get<std::shared_ptr<ObjClass>>(mixinVal);
+            auto targetClass = targetVal.asClass();
+            auto mixinClass = mixinVal.asClass();
             for (auto const &[name, method] : mixinClass->methods) {
                 targetClass->methods[name] = method;
             }
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_GET_SUPER): {
-            std::string methodName = std::get<std::shared_ptr<ObjString>>(READ_CONSTANT())->flatten();
+            std::string methodName = READ_CONSTANT().asString()->flatten();
             VMValue superclassVal = pop();
             VMValue receiverVal = pop();
-            auto superclass = std::get<std::shared_ptr<ObjClass>>(superclassVal);
-            auto receiver = std::get<std::shared_ptr<ObjInstance>>(receiverVal);
+            auto superclass = superclassVal.asClass();
+            auto receiver = receiverVal.asInstance();
             if (superclass->methods.count(methodName)) {
                 auto method = superclass->methods[methodName];
-                push(std::make_shared<ObjBoundMethod>(receiver, method));
+                push(new ObjBoundMethod(receiver, method));
             } else {
                 return runtimeError(std::string("Undefined superclass method '") + methodName + "'.");
             }
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_METHOD): {
-            std::string name = std::get<std::shared_ptr<ObjString>>(READ_CONSTANT())->flatten();
+            std::string name = READ_CONSTANT().asString()->flatten();
             VMValue methodVal = pop();
             VMValue classVal = peek(0);
             auto method = methodVal;
-            auto klass = std::get<std::shared_ptr<ObjClass>>(classVal);
+            auto klass = classVal.asClass();
             klass->methods[name] = method;
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_ABSTRACT_METHOD): {
-            std::string name = std::get<std::shared_ptr<ObjString>>(READ_CONSTANT())->flatten();
+            std::string name = READ_CONSTANT().asString()->flatten();
             VMValue methodVal = pop();
             VMValue classVal = peek(0);
             auto method = methodVal;
-            if (std::holds_alternative<std::shared_ptr<ObjClosure>>(method))
-                std::get<std::shared_ptr<ObjClosure>>(method)->function->isAbstract = true;
+            if (method.isClosure())
+                method.asClosure()->function->isAbstract = true;
             else
-                std::get<std::shared_ptr<ObjNative>>(method)->isAbstract = true;
-            auto klass = std::get<std::shared_ptr<ObjClass>>(classVal);
+                method.asNative()->isAbstract = true;
+            auto klass = classVal.asClass();
             klass->methods[name] = method;
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_STATIC_METHOD): {
-            std::string name = std::get<std::shared_ptr<ObjString>>(READ_CONSTANT())->flatten();
+            std::string name = READ_CONSTANT().asString()->flatten();
             VMValue methodVal = pop();
             VMValue classVal = peek(0);
-            auto klass = std::get<std::shared_ptr<ObjClass>>(classVal);
+            auto klass = classVal.asClass();
             klass->statics[name] = methodVal;
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_FIELD_MODIFIER): {
-            std::string name = std::get<std::shared_ptr<ObjString>>(READ_CONSTANT())->flatten();
+            std::string name = READ_CONSTANT().asString()->flatten();
             VMAccessModifier modifier = static_cast<VMAccessModifier>(READ_BYTE());
             VMValue classVal = peek(0);
-            auto klass = std::get<std::shared_ptr<ObjClass>>(classVal);
+            auto klass = classVal.asClass();
             klass->fieldModifiers[name] = modifier;
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_PROPERTY_GET): {
-            std::string name = std::get<std::shared_ptr<ObjString>>(READ_CONSTANT())->flatten();
+            std::string name = READ_CONSTANT().asString()->flatten();
             VMValue instanceVal = peek(0);
             std::string callerClass = frame->closure ? frame->closure->function->enclosingClassName : "";
 
-            if (std::holds_alternative<std::shared_ptr<ObjInstance>>(instanceVal)) {
-                auto instance = std::get<std::shared_ptr<ObjInstance>>(instanceVal);
+            if (instanceVal.isInstance()) {
+                auto instance = instanceVal.asInstance();
                 if (instance->fields.count(name)) {
                     VMAccessModifier mod = VMAccessModifier::PUBLIC;
                     if (instance->klass->fieldModifiers.count(name))
@@ -779,23 +791,23 @@ InterpretResult VM::run(int targetFrameDepth) {
                 } else if (instance->klass->methods.count(name)) {
                     auto method = instance->klass->methods[name];
                     VMAccessModifier mod = VMAccessModifier::PUBLIC;
-                    if (std::holds_alternative<std::shared_ptr<ObjClosure>>(method)) {
-                        mod = std::get<std::shared_ptr<ObjClosure>>(method)->function->accessModifier;
+                    if (method.isClosure()) {
+                        mod = method.asClosure()->function->accessModifier;
                     }
                     if (!checkAccess(mod, instance->klass, callerClass)) {
                         return runtimeError(std::string("Access error: Cannot access method '") + name + "'.");
                     }
                     pop(); // instance
-                    push(std::make_shared<ObjBoundMethod>(instance, method));
+                    push(new ObjBoundMethod(instance, method));
                 } else {
                     return runtimeError(std::string("Undefined property '") + name + "'.");
                 }
-            } else if (std::holds_alternative<std::shared_ptr<ObjClass>>(instanceVal)) {
-                auto klass = std::get<std::shared_ptr<ObjClass>>(instanceVal);
+            } else if (instanceVal.isClass()) {
+                auto klass = instanceVal.asClass();
                 if (klass->statics.count(name)) {
                     auto methodVal = klass->statics[name];
-                    if (std::holds_alternative<std::shared_ptr<ObjClosure>>(methodVal)) {
-                        auto func = std::get<std::shared_ptr<ObjClosure>>(methodVal)->function;
+                    if (methodVal.isClosure()) {
+                        auto func = methodVal.asClosure()->function;
                         if (!checkAccess(func->accessModifier, klass, callerClass)) {
                             return runtimeError(std::string("Access error: Cannot access static method '") + name +
                                                 "'.");
@@ -807,32 +819,32 @@ InterpretResult VM::run(int targetFrameDepth) {
                 } else {
                     return runtimeError(std::string("Undefined static property '") + name + "'.");
                 }
-            } else if (std::holds_alternative<std::shared_ptr<ObjString>>(instanceVal)) {
+            } else if (instanceVal.isString()) {
                 if (globals.count("String")) {
-                    auto klass = std::get<std::shared_ptr<ObjClass>>(globals["String"]);
+                    auto klass = globals["String"].asClass();
                     if (klass->statics.count(name)) {
                         pop(); // pop string
-                        push(std::make_shared<ObjBoundMethod>(instanceVal, klass->statics[name]));
+                        push(new ObjBoundMethod(instanceVal, klass->statics[name]));
                         break;
                     }
                 }
                 return runtimeError(std::string("Undefined property '") + name + "' on String.");
-            } else if (std::holds_alternative<std::shared_ptr<ObjList>>(instanceVal)) {
+            } else if (instanceVal.isList()) {
                 if (globals.count("List")) {
-                    auto klass = std::get<std::shared_ptr<ObjClass>>(globals["List"]);
+                    auto klass = globals["List"].asClass();
                     if (klass->statics.count(name)) {
                         pop(); // pop list
-                        push(std::make_shared<ObjBoundMethod>(instanceVal, klass->statics[name]));
+                        push(new ObjBoundMethod(instanceVal, klass->statics[name]));
                         break;
                     }
                 }
                 return runtimeError(std::string("Undefined property '") + name + "' on List.");
-            } else if (std::holds_alternative<std::shared_ptr<ObjMap>>(instanceVal)) {
+            } else if (instanceVal.isMap()) {
                 if (globals.count("Map")) {
-                    auto klass = std::get<std::shared_ptr<ObjClass>>(globals["Map"]);
+                    auto klass = globals["Map"].asClass();
                     if (klass->statics.count(name)) {
                         pop(); // pop map
-                        push(std::make_shared<ObjBoundMethod>(instanceVal, klass->statics[name]));
+                        push(new ObjBoundMethod(instanceVal, klass->statics[name]));
                         break;
                     }
                 }
@@ -843,13 +855,13 @@ InterpretResult VM::run(int targetFrameDepth) {
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_PROPERTY_SET): {
-            std::string name = std::get<std::shared_ptr<ObjString>>(READ_CONSTANT())->flatten();
+            std::string name = READ_CONSTANT().asString()->flatten();
             VMValue value = pop();
             VMValue instanceVal = pop();
             std::string callerClass = frame->closure ? frame->closure->function->enclosingClassName : "";
 
-            if (std::holds_alternative<std::shared_ptr<ObjInstance>>(instanceVal)) {
-                auto instance = std::get<std::shared_ptr<ObjInstance>>(instanceVal);
+            if (instanceVal.isInstance()) {
+                auto instance = instanceVal.asInstance();
                 VMAccessModifier mod = VMAccessModifier::PUBLIC;
                 if (instance->klass->fieldModifiers.count(name))
                     mod = instance->klass->fieldModifiers[name];
@@ -858,8 +870,8 @@ InterpretResult VM::run(int targetFrameDepth) {
                 }
                 instance->fields[name] = value;
                 push(value);
-            } else if (std::holds_alternative<std::shared_ptr<ObjClass>>(instanceVal)) {
-                auto klass = std::get<std::shared_ptr<ObjClass>>(instanceVal);
+            } else if (instanceVal.isClass()) {
+                auto klass = instanceVal.asClass();
                 klass->statics[name] = value;
                 push(value);
             } else {
@@ -870,8 +882,8 @@ InterpretResult VM::run(int targetFrameDepth) {
         case static_cast<uint8_t>(OpCode::OP_CALL): {
             uint8_t argCount = READ_BYTE();
             VMValue callee = peek(argCount);
-            if (std::holds_alternative<std::shared_ptr<ObjClosure>>(callee)) {
-                auto closure = std::get<std::shared_ptr<ObjClosure>>(callee);
+            if (callee.isClosure()) {
+                auto closure = callee.asClosure();
                 auto function = closure->function;
                 if (function->arity != -1 && (argCount < function->arity || argCount > function->maxArity)) {
                     std::string expected = function->arity == function->maxArity 
@@ -889,7 +901,7 @@ InterpretResult VM::run(int targetFrameDepth) {
                 }
 
                 JitFunc nativeJitFunc = nullptr;
-                auto funcPtr = function.get();
+                auto funcPtr = function;
                 if (compiledFuncs.count(funcPtr)) {
                     nativeJitFunc = compiledFuncs[funcPtr];
                 } else {
@@ -905,8 +917,8 @@ InterpretResult VM::run(int targetFrameDepth) {
                     std::vector<double> jitArgs(256, 0.0);
                     for (int i = 0; i < argCount; ++i) {
                         VMValue arg = peek(argCount - i - 1); // Top of stack is last argument
-                        if (std::holds_alternative<double>(arg)) {
-                            jitArgs[i] = std::get<double>(arg);
+                        if (arg.isNumber()) {
+                            jitArgs[i] = arg.asNumber();
                         } else {
                             canRunJit = false;
                             break;
@@ -926,8 +938,8 @@ InterpretResult VM::run(int targetFrameDepth) {
                 newFrame.stackStart = static_cast<int>(stack.size() - argCount - 1);
                 frames.push_back(newFrame);
                 frame = &frames.back();
-            } else if (std::holds_alternative<std::shared_ptr<ObjNative>>(callee)) {
-                auto native = std::get<std::shared_ptr<ObjNative>>(callee);
+            } else if (callee.isNative()) {
+                auto native = callee.asNative();
                 if (native->arity != -1 && argCount != native->arity) {
                     return runtimeError(std::string("Expected ") + std::to_string(native->arity) +
                                         " arguments but got " + std::to_string(argCount) + ".");
@@ -936,8 +948,8 @@ InterpretResult VM::run(int targetFrameDepth) {
                 stack.resize(stack.size() - argCount - 1);
                 push(result);
                 frame = &frames.back();
-            } else if (std::holds_alternative<std::shared_ptr<ObjClass>>(callee)) {
-                auto klass = std::get<std::shared_ptr<ObjClass>>(callee);
+            } else if (callee.isClass()) {
+                auto klass = callee.asClass();
                 if (klass->isAbstract) {
                     return runtimeError(std::string("Cannot instantiate abstract class '") + klass->name + "'.");
                 }
@@ -947,7 +959,7 @@ InterpretResult VM::run(int targetFrameDepth) {
                                             "' because abstract method '" + name + "' is not implemented.");
                     }
                 }
-                auto instance = std::make_shared<ObjInstance>(klass);
+                auto instance = new ObjInstance(klass);
 
                 stack[stack.size() - argCount - 1] = instance;
 
@@ -967,8 +979,8 @@ InterpretResult VM::run(int targetFrameDepth) {
                         argCount++;
                     }
 
-                    if (std::holds_alternative<std::shared_ptr<ObjClosure>>(initMethod)) {
-                        auto closure = std::get<std::shared_ptr<ObjClosure>>(initMethod);
+                    if (initMethod.isClosure()) {
+                        auto closure = initMethod.asClosure();
                         auto func = closure->function;
                         CallFrame newFrame;
                         newFrame.closure = closure;
@@ -977,7 +989,7 @@ InterpretResult VM::run(int targetFrameDepth) {
                         frames.push_back(newFrame);
                         frame = &frames.back();
                     } else {
-                        auto native = std::get<std::shared_ptr<ObjNative>>(initMethod);
+                        auto native = initMethod.asNative();
                         native->function(argCount, stack.data() + stack.size() - argCount);
                         stack.resize(stack.size() - argCount); // leave the instance on stack
                         frame = &frames.back();
@@ -985,16 +997,16 @@ InterpretResult VM::run(int targetFrameDepth) {
                 } else if (argCount != 0) {
                     return runtimeError(std::string("Expected 0 arguments but got ") + std::to_string(argCount) + ".");
                 }
-            } else if (std::holds_alternative<std::shared_ptr<ObjBoundMethod>>(callee)) {
-                auto bound = std::get<std::shared_ptr<ObjBoundMethod>>(callee);
+            } else if (callee.isBoundMethod()) {
+                auto bound = callee.asBoundMethod();
                 auto function = bound->method;
                 if (isMethodAbstract(function)) {
                     return runtimeError(std::string("Cannot call abstract method '") + getMethodName(function) + "'.");
                 }
                 int minArity = getMethodMinArity(function);
                 int maxArity = getMethodMaxArity(function);
-                if (std::holds_alternative<std::shared_ptr<ObjNative>>(function)) {
-                    if (!std::holds_alternative<std::shared_ptr<ObjInstance>>(bound->receiver)) {
+                if (function.isNative()) {
+                    if (!bound->receiver.isInstance()) {
                         if (minArity != -1) minArity -= 1;
                         if (maxArity != -1) maxArity -= 1;
                     }
@@ -1015,8 +1027,8 @@ InterpretResult VM::run(int targetFrameDepth) {
                 }
                 stack[stack.size() - argCount - 1] = bound->receiver;
 
-                if (std::holds_alternative<std::shared_ptr<ObjClosure>>(function)) {
-                    auto closure = std::get<std::shared_ptr<ObjClosure>>(function);
+                if (function.isClosure()) {
+                    auto closure = function.asClosure();
                     auto func = closure->function;
                     CallFrame newFrame;
                     newFrame.closure = closure;
@@ -1025,10 +1037,10 @@ InterpretResult VM::run(int targetFrameDepth) {
                     frames.push_back(newFrame);
                     frame = &frames.back();
                 } else {
-                    auto native = std::get<std::shared_ptr<ObjNative>>(function);
+                    auto native = function.asNative();
                     int passedArgCount = argCount;
                     VMValue *argsPtr;
-                    if (!std::holds_alternative<std::shared_ptr<ObjInstance>>(bound->receiver)) {
+                    if (!bound->receiver.isInstance()) {
                         passedArgCount += 1;
                         argsPtr = stack.data() + stack.size() - argCount - 1; // Primitive methods expect receiver at args[0]
                     } else {

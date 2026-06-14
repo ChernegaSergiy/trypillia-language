@@ -141,11 +141,11 @@ static std::string makeHttpRequest(const std::string &host, int port, const std:
 }
 
 static VMValue httpGet(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
+    if (argCount != 1 || !args[0].isString())
         return nullptr;
     std::string host, path;
     int port;
-    if (!parseUrl(std::get<std::shared_ptr<ObjString>>(args[0])->flatten(), host, port, path))
+    if (!parseUrl(args[0].asString()->flatten(), host, port, path))
         return makeResultErr(currentVM, "Invalid URL");
 
     std::string req = "GET " + path + " HTTP/1.1\r\nHost: " + host + "\r\nConnection: close\r\n\r\n";
@@ -160,14 +160,14 @@ static VMValue httpGet(int argCount, VMValue *args) {
 }
 
 static VMValue httpPost(int argCount, VMValue *args) {
-    if (argCount != 2 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]) || !std::holds_alternative<std::shared_ptr<ObjString>>(args[1]))
+    if (argCount != 2 || !args[0].isString() || !args[1].isString())
         return nullptr;
     std::string host, path;
     int port;
-    if (!parseUrl(std::get<std::shared_ptr<ObjString>>(args[0])->flatten(), host, port, path))
+    if (!parseUrl(args[0].asString()->flatten(), host, port, path))
         return makeResultErr(currentVM, "Invalid URL");
 
-    std::string payload = std::get<std::shared_ptr<ObjString>>(args[1])->flatten();
+    std::string payload = args[1].asString()->flatten();
     std::string req = "POST " + path + " HTTP/1.1\r\nHost: " + host +
                       "\r\nContent-Type: application/json\r\nContent-Length: " + std::to_string(payload.length()) + "\r\nConnection: close\r\n\r\n" +
                       payload;
@@ -192,16 +192,16 @@ static void freeSocket(void *data) {
 }
 
 static VMValue socketConnect(int argCount, VMValue *args) {
-    if (argCount != 2 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]) || !std::holds_alternative<double>(args[1]))
+    if (argCount != 2 || !args[0].isString() || !args[1].isNumber())
         return nullptr;
     SocketData *data = new SocketData();
     mbedtls_net_init(&data->fd);
-    if (mbedtls_net_connect(&data->fd, std::get<std::shared_ptr<ObjString>>(args[0])->flatten().c_str(),
-                            std::to_string((int)std::get<double>(args[1])).c_str(), MBEDTLS_NET_PROTO_TCP) != 0) {
+    if (mbedtls_net_connect(&data->fd, args[0].asString()->flatten().c_str(),
+                            std::to_string((int)args[1].asNumber()).c_str(), MBEDTLS_NET_PROTO_TCP) != 0) {
         delete data;
         return makeResultErr(currentVM, "Connect failed");
     }
-    auto inst = std::make_shared<ObjInstance>(std::get<std::shared_ptr<ObjClass>>(currentVM->globals["Socket"]));
+    auto inst = new ObjInstance(currentVM->globals["Socket"].asClass());
     inst->nativeData = data;
     inst->freeFn = freeSocket;
     return makeResultOk(currentVM, inst);
@@ -209,23 +209,23 @@ static VMValue socketConnect(int argCount, VMValue *args) {
 
 // TCP Server Support
 static VMValue socketListen(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<double>(args[0]))
+    if (argCount != 1 || !args[0].isNumber())
         return nullptr;
     SocketData *data = new SocketData();
     mbedtls_net_init(&data->fd);
-    if (mbedtls_net_bind(&data->fd, NULL, std::to_string((int)std::get<double>(args[0])).c_str(),
+    if (mbedtls_net_bind(&data->fd, NULL, std::to_string((int)args[0].asNumber()).c_str(),
                          MBEDTLS_NET_PROTO_TCP) != 0) {
         delete data;
         return makeResultErr(currentVM, "Bind failed");
     }
-    auto inst = std::make_shared<ObjInstance>(std::get<std::shared_ptr<ObjClass>>(currentVM->globals["Socket"]));
+    auto inst = new ObjInstance(currentVM->globals["Socket"].asClass());
     inst->nativeData = data;
     inst->freeFn = freeSocket;
     return makeResultOk(currentVM, inst);
 }
 
 static VMValue socketAccept(int argCount, VMValue *args) {
-    auto inst = std::get<std::shared_ptr<ObjInstance>>(args[-1]);
+    auto inst = args[-1].asInstance();
     SocketData *data = (SocketData *)inst->nativeData;
     SocketData *clientData = new SocketData();
     mbedtls_net_init(&clientData->fd);
@@ -233,21 +233,21 @@ static VMValue socketAccept(int argCount, VMValue *args) {
         delete clientData;
         return nullptr;
     }
-    auto clientInst = std::make_shared<ObjInstance>(std::get<std::shared_ptr<ObjClass>>(currentVM->globals["Socket"]));
+    auto clientInst = new ObjInstance(currentVM->globals["Socket"].asClass());
     clientInst->nativeData = clientData;
     clientInst->freeFn = freeSocket;
     return clientInst;
 }
 
 static VMValue socketSend(int argCount, VMValue *args) {
-    auto inst = std::get<std::shared_ptr<ObjInstance>>(args[-1]);
+    auto inst = args[-1].asInstance();
     SocketData *data = (SocketData *)inst->nativeData;
-    std::string p = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
+    std::string p = args[0].asString()->flatten();
     return makeResultOk(currentVM, mbedtls_net_send(&data->fd, (const unsigned char *)p.c_str(), p.length()) >= 0);
 }
 
 static VMValue socketRecv(int argCount, VMValue *args) {
-    auto inst = std::get<std::shared_ptr<ObjInstance>>(args[-1]);
+    auto inst = args[-1].asInstance();
     SocketData *data = (SocketData *)inst->nativeData;
     unsigned char buf[4096];
     int ret = mbedtls_net_recv(&data->fd, buf, 4096);
@@ -255,7 +255,7 @@ static VMValue socketRecv(int argCount, VMValue *args) {
 }
 
 static VMValue socketClose(int argCount, VMValue *args) {
-    auto inst = std::get<std::shared_ptr<ObjInstance>>(args[-1]);
+    auto inst = args[-1].asInstance();
     if (inst->nativeData) {
         mbedtls_net_free(&((SocketData *)inst->nativeData)->fd);
         inst->nativeData = nullptr;
@@ -265,18 +265,18 @@ static VMValue socketClose(int argCount, VMValue *args) {
 
 void registerAll(VM *vm) {
     currentVM = vm;
-    auto http = std::make_shared<ObjClass>("Http");
-    http->statics["get"] = std::make_shared<ObjNative>("get", 1, httpGet);
-    http->statics["post"] = std::make_shared<ObjNative>("post", 2, httpPost);
+    auto http = new ObjClass("Http");
+    http->statics["get"] = new ObjNative("get", 1, httpGet);
+    http->statics["post"] = new ObjNative("post", 2, httpPost);
     vm->globals["Http"] = http;
 
-    auto sock = std::make_shared<ObjClass>("Socket");
-    sock->statics["connect"] = std::make_shared<ObjNative>("connect", 2, socketConnect);
-    sock->statics["listen"] = std::make_shared<ObjNative>("listen", 1, socketListen);
-    sock->methods["accept"] = std::make_shared<ObjNative>("accept", 0, socketAccept);
-    sock->methods["send"] = std::make_shared<ObjNative>("send", 1, socketSend);
-    sock->methods["recv"] = std::make_shared<ObjNative>("recv", -1, socketRecv);
-    sock->methods["close"] = std::make_shared<ObjNative>("close", 0, socketClose);
+    auto sock = new ObjClass("Socket");
+    sock->statics["connect"] = new ObjNative("connect", 2, socketConnect);
+    sock->statics["listen"] = new ObjNative("listen", 1, socketListen);
+    sock->methods["accept"] = new ObjNative("accept", 0, socketAccept);
+    sock->methods["send"] = new ObjNative("send", 1, socketSend);
+    sock->methods["recv"] = new ObjNative("recv", -1, socketRecv);
+    sock->methods["close"] = new ObjNative("close", 0, socketClose);
     vm->globals["Socket"] = sock;
 }
 

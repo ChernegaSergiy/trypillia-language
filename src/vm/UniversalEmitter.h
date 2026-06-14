@@ -106,6 +106,47 @@ public:
             getFloatReg(srcOffset), 0);
     }
 
+    void emitBitAnd(int targetOffset, int srcOffset) override {
+        sljit_emit_fop1(compiler, SLJIT_CONV_SW_FROM_F64, SLJIT_R0, 0, getFloatReg(targetOffset), 0);
+        sljit_emit_fop1(compiler, SLJIT_CONV_SW_FROM_F64, SLJIT_R1, 0, getFloatReg(srcOffset), 0);
+        sljit_emit_op2(compiler, SLJIT_AND, SLJIT_R0, 0, SLJIT_R0, 0, SLJIT_R1, 0);
+        sljit_emit_fop1(compiler, SLJIT_CONV_F64_FROM_SW, getFloatReg(targetOffset), 0, SLJIT_R0, 0);
+    }
+
+    void emitBitOr(int targetOffset, int srcOffset) override {
+        sljit_emit_fop1(compiler, SLJIT_CONV_SW_FROM_F64, SLJIT_R0, 0, getFloatReg(targetOffset), 0);
+        sljit_emit_fop1(compiler, SLJIT_CONV_SW_FROM_F64, SLJIT_R1, 0, getFloatReg(srcOffset), 0);
+        sljit_emit_op2(compiler, SLJIT_OR, SLJIT_R0, 0, SLJIT_R0, 0, SLJIT_R1, 0);
+        sljit_emit_fop1(compiler, SLJIT_CONV_F64_FROM_SW, getFloatReg(targetOffset), 0, SLJIT_R0, 0);
+    }
+
+    void emitBitXor(int targetOffset, int srcOffset) override {
+        sljit_emit_fop1(compiler, SLJIT_CONV_SW_FROM_F64, SLJIT_R0, 0, getFloatReg(targetOffset), 0);
+        sljit_emit_fop1(compiler, SLJIT_CONV_SW_FROM_F64, SLJIT_R1, 0, getFloatReg(srcOffset), 0);
+        sljit_emit_op2(compiler, SLJIT_XOR, SLJIT_R0, 0, SLJIT_R0, 0, SLJIT_R1, 0);
+        sljit_emit_fop1(compiler, SLJIT_CONV_F64_FROM_SW, getFloatReg(targetOffset), 0, SLJIT_R0, 0);
+    }
+
+    void emitBitNot(int targetOffset) override {
+        sljit_emit_fop1(compiler, SLJIT_CONV_SW_FROM_F64, SLJIT_R0, 0, getFloatReg(targetOffset), 0);
+        sljit_emit_op2(compiler, SLJIT_XOR, SLJIT_R0, 0, SLJIT_R0, 0, SLJIT_IMM, -1);
+        sljit_emit_fop1(compiler, SLJIT_CONV_F64_FROM_SW, getFloatReg(targetOffset), 0, SLJIT_R0, 0);
+    }
+
+    void emitBitShl(int targetOffset, int srcOffset) override {
+        sljit_emit_fop1(compiler, SLJIT_CONV_SW_FROM_F64, SLJIT_R0, 0, getFloatReg(targetOffset), 0);
+        sljit_emit_fop1(compiler, SLJIT_CONV_SW_FROM_F64, SLJIT_R1, 0, getFloatReg(srcOffset), 0);
+        sljit_emit_op2(compiler, SLJIT_SHL, SLJIT_R0, 0, SLJIT_R0, 0, SLJIT_R1, 0);
+        sljit_emit_fop1(compiler, SLJIT_CONV_F64_FROM_SW, getFloatReg(targetOffset), 0, SLJIT_R0, 0);
+    }
+
+    void emitBitShr(int targetOffset, int srcOffset) override {
+        sljit_emit_fop1(compiler, SLJIT_CONV_SW_FROM_F64, SLJIT_R0, 0, getFloatReg(targetOffset), 0);
+        sljit_emit_fop1(compiler, SLJIT_CONV_SW_FROM_F64, SLJIT_R1, 0, getFloatReg(srcOffset), 0);
+        sljit_emit_op2(compiler, SLJIT_ASHR, SLJIT_R0, 0, SLJIT_R0, 0, SLJIT_R1, 0);
+        sljit_emit_fop1(compiler, SLJIT_CONV_F64_FROM_SW, getFloatReg(targetOffset), 0, SLJIT_R0, 0);
+    }
+
     void emitCmpLt(int targetOffset, int srcOffset) override {
         struct sljit_jump* jumpLess = sljit_emit_fcmp(compiler, SLJIT_F_LESS, 
             getFloatReg(targetOffset), 0, 

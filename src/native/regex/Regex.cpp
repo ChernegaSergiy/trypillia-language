@@ -7,12 +7,12 @@ namespace RegexModule {
 thread_local VM *currentVM = nullptr;
 
 static VMValue regexTest(int argCount, VMValue *args) {
-    if (argCount != 2 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]) ||
-        !std::holds_alternative<std::shared_ptr<ObjString>>(args[1])) {
+    if (argCount != 2 || !args[0].isString() ||
+        !args[1].isString()) {
         return nullptr;
     }
-    std::string pattern = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
-    std::string text = std::get<std::shared_ptr<ObjString>>(args[1])->flatten();
+    std::string pattern = args[0].asString()->flatten();
+    std::string text = args[1].asString()->flatten();
 
     try {
         std::regex re(pattern);
@@ -23,12 +23,12 @@ static VMValue regexTest(int argCount, VMValue *args) {
 }
 
 static VMValue regexMatch(int argCount, VMValue *args) {
-    if (argCount != 2 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]) ||
-        !std::holds_alternative<std::shared_ptr<ObjString>>(args[1])) {
+    if (argCount != 2 || !args[0].isString() ||
+        !args[1].isString()) {
         return nullptr;
     }
-    std::string pattern = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
-    std::string text = std::get<std::shared_ptr<ObjString>>(args[1])->flatten();
+    std::string pattern = args[0].asString()->flatten();
+    std::string text = args[1].asString()->flatten();
 
     try {
         std::regex re(pattern);
@@ -38,7 +38,7 @@ static VMValue regexMatch(int argCount, VMValue *args) {
             for (size_t i = 0; i < match.size(); ++i) {
                 results.push_back(match.str(i));
             }
-            return std::make_shared<ObjList>(results);
+            return new ObjList(results);
         }
     } catch (const std::regex_error &) {
         return nullptr;
@@ -47,13 +47,13 @@ static VMValue regexMatch(int argCount, VMValue *args) {
 }
 
 static VMValue regexReplace(int argCount, VMValue *args) {
-    if (argCount != 3 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]) ||
-        !std::holds_alternative<std::shared_ptr<ObjString>>(args[1]) || !std::holds_alternative<std::shared_ptr<ObjString>>(args[2])) {
+    if (argCount != 3 || !args[0].isString() ||
+        !args[1].isString() || !args[2].isString()) {
         return nullptr;
     }
-    std::string pattern = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
-    std::string text = std::get<std::shared_ptr<ObjString>>(args[1])->flatten();
-    std::string replacement = std::get<std::shared_ptr<ObjString>>(args[2])->flatten();
+    std::string pattern = args[0].asString()->flatten();
+    std::string text = args[1].asString()->flatten();
+    std::string replacement = args[2].asString()->flatten();
 
     try {
         std::regex re(pattern);
@@ -65,11 +65,11 @@ static VMValue regexReplace(int argCount, VMValue *args) {
 
 void registerAll(VM *vm) {
     currentVM = vm;
-    auto regexClass = std::make_shared<ObjClass>("Regex");
+    auto regexClass = new ObjClass("Regex");
 
-    regexClass->statics["test"] = std::make_shared<ObjNative>("test", 2, regexTest);
-    regexClass->statics["match"] = std::make_shared<ObjNative>("match", 2, regexMatch);
-    regexClass->statics["replace"] = std::make_shared<ObjNative>("replace", 3, regexReplace);
+    regexClass->statics["test"] = new ObjNative("test", 2, regexTest);
+    regexClass->statics["match"] = new ObjNative("match", 2, regexMatch);
+    regexClass->statics["replace"] = new ObjNative("replace", 3, regexReplace);
 
     vm->globals["Regex"] = regexClass;
 }

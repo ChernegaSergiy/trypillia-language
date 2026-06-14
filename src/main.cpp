@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
         command = argv[1];
 
     std::string exePath = getExecutablePath(argv[0]);
-    std::shared_ptr<ObjFunction> function;
+    ObjFunction* function = nullptr;
 
     // 1. Check for embedded bytecode first (standalone executable)
     function = Serializer::loadEmbeddedBytecode(exePath);

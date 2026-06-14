@@ -18,18 +18,18 @@ static VMValue timeNow(int argCount, VMValue *args) {
 }
 
 static VMValue timeSleep(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<double>(args[0]))
+    if (argCount != 1 || !args[0].isNumber())
         return nullptr;
-    double ms = std::get<double>(args[0]);
+    double ms = args[0].asNumber();
     std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<long long>(ms)));
     return nullptr;
 }
 
 static VMValue timeFormat(int argCount, VMValue *args) {
-    if (argCount != 2 || !std::holds_alternative<double>(args[0]) || !std::holds_alternative<std::shared_ptr<ObjString>>(args[1]))
+    if (argCount != 2 || !args[0].isNumber() || !args[1].isString())
         return nullptr;
-    double timestamp = std::get<double>(args[0]);
-    std::string format = std::get<std::shared_ptr<ObjString>>(args[1])->flatten();
+    double timestamp = args[0].asNumber();
+    std::string format = args[1].asString()->flatten();
 
     std::time_t time = static_cast<std::time_t>(timestamp);
     std::tm *tm_info = std::localtime(&time);
@@ -41,11 +41,11 @@ static VMValue timeFormat(int argCount, VMValue *args) {
 
 void registerAll(VM *vm) {
     currentVM = vm;
-    auto timeClass = std::make_shared<ObjClass>("Time");
+    auto timeClass = new ObjClass("Time");
 
-    timeClass->statics["now"] = std::make_shared<ObjNative>("now", 0, timeNow);
-    timeClass->statics["sleep"] = std::make_shared<ObjNative>("sleep", 1, timeSleep);
-    timeClass->statics["format"] = std::make_shared<ObjNative>("format", 2, timeFormat);
+    timeClass->statics["now"] = new ObjNative("now", 0, timeNow);
+    timeClass->statics["sleep"] = new ObjNative("sleep", 1, timeSleep);
+    timeClass->statics["format"] = new ObjNative("format", 2, timeFormat);
 
     vm->globals["Time"] = timeClass;
 }

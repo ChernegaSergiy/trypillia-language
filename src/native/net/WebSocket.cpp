@@ -34,9 +34,9 @@ static void freeClient(void *data) {
 }
 
 static VMValue wsServerCreate(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<double>(args[0]))
+    if (argCount != 1 || !args[0].isNumber())
         return makeResultErr(currentVM, "Invalid port");
-    int port = (int)std::get<double>(args[0]);
+    int port = (int)args[0].asNumber();
 
     WSServerData *data = new WSServerData();
     mbedtls_net_init(&data->fd);
@@ -47,7 +47,7 @@ static VMValue wsServerCreate(int argCount, VMValue *args) {
     }
 
     auto inst =
-        std::make_shared<ObjInstance>(std::get<std::shared_ptr<ObjClass>>(currentVM->globals["WebSocketServer"]));
+        new ObjInstance(currentVM->globals["WebSocketServer"].asClass());
     inst->nativeData = data;
     inst->freeFn = freeServer;
     return makeResultOk(currentVM, inst);
@@ -63,7 +63,7 @@ static std::string extractHeader(const std::string &request, const std::string &
 }
 
 static VMValue wsServerAccept(int argCount, VMValue *args) {
-    auto inst = std::get<std::shared_ptr<ObjInstance>>(args[-1]);
+    auto inst = args[-1].asInstance();
     WSServerData *data = (WSServerData *)inst->nativeData;
 
     mbedtls_net_context client_fd;
@@ -89,27 +89,27 @@ static VMValue wsServerAccept(int argCount, VMValue *args) {
     }
 
     VMValue shaArg[1] = {wsKey + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"};
-    auto cryptoClass = std::get<std::shared_ptr<ObjClass>>(currentVM->globals["Crypto"]);
-    auto shaFn = std::get<std::shared_ptr<ObjNative>>(cryptoClass->statics["sha1Base64"]);
+    auto cryptoClass = currentVM->globals["Crypto"].asClass();
+    auto shaFn = cryptoClass->statics["sha1Base64"].asNative();
     VMValue res = shaFn->function(1, shaArg);
 
-    std::string acceptKey = std::get<std::shared_ptr<ObjString>>(std::get<std::shared_ptr<ObjInstance>>(res)->fields["value"])->flatten();
+    std::string acceptKey = res.asInstance()->fields["value"].asString()->flatten();
     std::string response =
         "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " +
         acceptKey + "\r\n\r\n";
     mbedtls_net_send(&client_fd, (const unsigned char *)response.c_str(), response.length());
 
     WSClientData *clientData = new WSClientData{client_fd};
-    auto wsInst = std::make_shared<ObjInstance>(std::get<std::shared_ptr<ObjClass>>(currentVM->globals["WebSocket"]));
+    auto wsInst = new ObjInstance(currentVM->globals["WebSocket"].asClass());
     wsInst->nativeData = clientData;
     wsInst->freeFn = freeClient;
     return makeResultOk(currentVM, wsInst);
 }
 
 static VMValue wsSend(int argCount, VMValue *args) {
-    auto inst = std::get<std::shared_ptr<ObjInstance>>(args[-1]);
+    auto inst = args[-1].asInstance();
     WSClientData *data = (WSClientData *)inst->nativeData;
-    std::string msg = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
+    std::string msg = args[0].asString()->flatten();
     std::vector<uint8_t> frame = {0x81};
     size_t len = msg.length();
 
@@ -130,7 +130,7 @@ static VMValue wsSend(int argCount, VMValue *args) {
 }
 
 static VMValue wsRecv(int argCount, VMValue *args) {
-    auto inst = std::get<std::shared_ptr<ObjInstance>>(args[-1]);
+    auto inst = args[-1].asInstance();
     WSClientData *data = (WSClientData *)inst->nativeData;
     uint8_t header[2];
     if (mbedtls_net_recv(&data->fd, header, 2) <= 0)
@@ -175,7 +175,7 @@ static VMValue wsRecv(int argCount, VMValue *args) {
 }
 
 static VMValue wsClose(int argCount, VMValue *args) {
-    auto inst = std::get<std::shared_ptr<ObjInstance>>(args[-1]);
+    auto inst = args[-1].asInstance();
     if (inst->nativeData) {
         uint8_t frame[] = {0x88, 0x00};
         mbedtls_net_send(&((WSClientData *)inst->nativeData)->fd, frame, 2);
@@ -187,15 +187,15 @@ static VMValue wsClose(int argCount, VMValue *args) {
 
 void registerAll(VM *vm) {
     currentVM = vm;
-    auto srv = std::make_shared<ObjClass>("WebSocketServer");
-    srv->statics["create"] = std::make_shared<ObjNative>("create", 1, wsServerCreate);
-    srv->methods["accept"] = std::make_shared<ObjNative>("accept", 0, wsServerAccept);
+    auto srv = new ObjClass("WebSocketServer");
+    srv->statics["create"] = new ObjNative("create", 1, wsServerCreate);
+    srv->methods["accept"] = new ObjNative("accept", 0, wsServerAccept);
     vm->globals["WebSocketServer"] = srv;
 
-    auto ws = std::make_shared<ObjClass>("WebSocket");
-    ws->methods["send"] = std::make_shared<ObjNative>("send", 1, wsSend);
-    ws->methods["recv"] = std::make_shared<ObjNative>("recv", 0, wsRecv);
-    ws->methods["close"] = std::make_shared<ObjNative>("close", 0, wsClose);
+    auto ws = new ObjClass("WebSocket");
+    ws->methods["send"] = new ObjNative("send", 1, wsSend);
+    ws->methods["recv"] = new ObjNative("recv", 0, wsRecv);
+    ws->methods["close"] = new ObjNative("close", 0, wsClose);
     vm->globals["WebSocket"] = ws;
 }
 

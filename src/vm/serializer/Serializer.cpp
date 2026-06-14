@@ -8,7 +8,7 @@ enum ValueType { VAL_NIL = 0, VAL_BOOL = 1, VAL_DOUBLE = 2, VAL_STRING = 3, VAL_
 
 // .tryc serialization removed in favor of standalone executables
 
-bool Serializer::buildStandalone(const std::shared_ptr<ObjFunction> &function, const std::string &trypilliaExePath,
+bool Serializer::buildStandalone(ObjFunction* function, const std::string &trypilliaExePath,
                                  const std::string &outputPath) {
     // 1. Copy the interpreter executable
     std::ifstream src(trypilliaExePath, std::ios::binary);
@@ -37,7 +37,7 @@ bool Serializer::buildStandalone(const std::shared_ptr<ObjFunction> &function, c
     return true;
 }
 
-std::shared_ptr<ObjFunction> Serializer::loadEmbeddedBytecode(const std::string &currentExePath) {
+ObjFunction* Serializer::loadEmbeddedBytecode(const std::string &currentExePath) {
     std::ifstream in(currentExePath, std::ios::binary);
     if (!in.is_open())
         return nullptr;
@@ -71,7 +71,7 @@ std::shared_ptr<ObjFunction> Serializer::loadEmbeddedBytecode(const std::string 
     return readFunction(in);
 }
 
-void Serializer::writeFunction(std::ofstream &out, const std::shared_ptr<ObjFunction> &function) {
+void Serializer::writeFunction(std::ofstream &out, ObjFunction* function) {
     writeString(out, function->name);
     out.write(reinterpret_cast<const char *>(&function->arity), sizeof(function->arity));
     out.write(reinterpret_cast<const char *>(&function->maxArity), sizeof(function->maxArity));
@@ -80,8 +80,8 @@ void Serializer::writeFunction(std::ofstream &out, const std::shared_ptr<ObjFunc
     writeChunk(out, function->chunk);
 }
 
-std::shared_ptr<ObjFunction> Serializer::readFunction(std::ifstream &in) {
-    auto function = std::make_shared<ObjFunction>();
+ObjFunction* Serializer::readFunction(std::ifstream &in) {
+    auto function = new ObjFunction();
     function->name = readString(in);
     in.read(reinterpret_cast<char *>(&function->arity), sizeof(function->arity));
     in.read(reinterpret_cast<char *>(&function->maxArity), sizeof(function->maxArity));
@@ -90,7 +90,7 @@ std::shared_ptr<ObjFunction> Serializer::readFunction(std::ifstream &in) {
     return function;
 }
 
-void Serializer::writeChunk(std::ofstream &out, const std::shared_ptr<Chunk> &chunk) {
+void Serializer::writeChunk(std::ofstream &out, Chunk* chunk) {
     uint32_t codeSize = static_cast<uint32_t>(chunk->code.size());
     out.write(reinterpret_cast<const char *>(&codeSize), sizeof(codeSize));
     if (codeSize > 0)
@@ -108,8 +108,8 @@ void Serializer::writeChunk(std::ofstream &out, const std::shared_ptr<Chunk> &ch
     }
 }
 
-std::shared_ptr<Chunk> Serializer::readChunk(std::ifstream &in) {
-    auto chunk = std::make_shared<Chunk>();
+Chunk* Serializer::readChunk(std::ifstream &in) {
+    auto chunk = new Chunk();
 
     uint32_t codeSize;
     in.read(reinterpret_cast<char *>(&codeSize), sizeof(codeSize));
@@ -135,27 +135,27 @@ std::shared_ptr<Chunk> Serializer::readChunk(std::ifstream &in) {
 }
 
 void Serializer::writeValue(std::ofstream &out, const VMValue &value) {
-    if (std::holds_alternative<std::nullptr_t>(value)) {
+    if (value.isNil()) {
         uint8_t type = VAL_NIL;
         out.write(reinterpret_cast<const char *>(&type), 1);
-    } else if (std::holds_alternative<bool>(value)) {
+    } else if (value.isBool()) {
         uint8_t type = VAL_BOOL;
         out.write(reinterpret_cast<const char *>(&type), 1);
-        bool b = std::get<bool>(value);
+        bool b = value.asBool();
         out.write(reinterpret_cast<const char *>(&b), sizeof(b));
-    } else if (std::holds_alternative<double>(value)) {
+    } else if (value.isNumber()) {
         uint8_t type = VAL_DOUBLE;
         out.write(reinterpret_cast<const char *>(&type), 1);
-        double d = std::get<double>(value);
+        double d = value.asNumber();
         out.write(reinterpret_cast<const char *>(&d), sizeof(d));
-    } else if (std::holds_alternative<std::shared_ptr<ObjString>>(value)) {
+    } else if (value.isString()) {
         uint8_t type = VAL_STRING;
         out.write(reinterpret_cast<const char *>(&type), 1);
-        writeString(out, std::get<std::shared_ptr<ObjString>>(value)->flatten());
-    } else if (std::holds_alternative<std::shared_ptr<ObjFunction>>(value)) {
+        writeString(out, value.asString()->flatten());
+    } else if (value.isFunction()) {
         uint8_t type = VAL_FUNCTION;
         out.write(reinterpret_cast<const char *>(&type), 1);
-        writeFunction(out, std::get<std::shared_ptr<ObjFunction>>(value));
+        writeFunction(out, value.asFunction());
     } else {
         // Unknown type, just write nil to avoid crashing (should not happen for constants)
         uint8_t type = VAL_NIL;

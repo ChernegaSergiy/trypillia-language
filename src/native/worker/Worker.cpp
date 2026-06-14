@@ -73,12 +73,12 @@ static void workerThreadEntry(std::string scriptPath, std::shared_ptr<WorkerChan
 }
 
 static VMValue workerCreate(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
+    if (argCount != 1 || !args[0].isString())
         return makeResultErr(currentVM, "Expected script path");
-    std::string path = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
+    std::string path = args[0].asString()->flatten();
 
-    auto klass = std::get<std::shared_ptr<ObjClass>>(currentVM->globals["Worker"]);
-    auto instance = std::make_shared<ObjInstance>(klass);
+    auto klass = currentVM->globals["Worker"].asClass();
+    auto instance = new ObjInstance(klass);
 
     WorkerData *data = new WorkerData();
     data->channel = std::make_shared<WorkerChannel>();
@@ -98,18 +98,18 @@ static VMValue workerCreate(int argCount, VMValue *args) {
 }
 
 static VMValue workerSend(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
+    if (argCount != 1 || !args[0].isString())
         return nullptr;
 
     VMValue receiver = args[-1];
-    auto instance = std::get<std::shared_ptr<ObjInstance>>(receiver);
+    auto instance = receiver.asInstance();
     WorkerData *data = static_cast<WorkerData *>(instance->nativeData);
 
     if (!data || !data->channel->isAlive)
         return makeResultErr(currentVM, "Worker is dead");
 
     std::lock_guard<std::mutex> lock(data->channel->mtwMutex);
-    data->channel->mainToWorker.push(std::get<std::shared_ptr<ObjString>>(args[0])->flatten());
+    data->channel->mainToWorker.push(args[0].asString()->flatten());
     data->channel->mtwCond.notify_one();
 
     return makeResultOk(currentVM, true);
@@ -120,7 +120,7 @@ static VMValue workerReceive(int argCount, VMValue *args) {
         return nullptr;
 
     VMValue receiver = args[-1];
-    auto instance = std::get<std::shared_ptr<ObjInstance>>(receiver);
+    auto instance = receiver.asInstance();
     WorkerData *data = static_cast<WorkerData *>(instance->nativeData);
 
     if (!data)
@@ -140,13 +140,13 @@ static VMValue workerReceive(int argCount, VMValue *args) {
 }
 
 static VMValue workerSelfSend(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
+    if (argCount != 1 || !args[0].isString())
         return nullptr;
     if (!currentWorkerChannel)
         return makeResultErr(currentVM, "Not in a worker thread");
 
     std::lock_guard<std::mutex> lock(currentWorkerChannel->wtmMutex);
-    currentWorkerChannel->workerToMain.push(std::get<std::shared_ptr<ObjString>>(args[0])->flatten());
+    currentWorkerChannel->workerToMain.push(args[0].asString()->flatten());
     currentWorkerChannel->wtmCond.notify_one();
 
     return makeResultOk(currentVM, true);
@@ -173,14 +173,14 @@ static VMValue workerSelfReceive(int argCount, VMValue *args) {
 
 void registerAll(VM *vm) {
     currentVM = vm;
-    auto workerClass = std::make_shared<ObjClass>("Worker");
+    auto workerClass = new ObjClass("Worker");
 
-    workerClass->statics["create"] = std::make_shared<ObjNative>("create", 1, workerCreate);
-    workerClass->methods["send"] = std::make_shared<ObjNative>("send", 1, workerSend);
-    workerClass->methods["receive"] = std::make_shared<ObjNative>("receive", 0, workerReceive);
+    workerClass->statics["create"] = new ObjNative("create", 1, workerCreate);
+    workerClass->methods["send"] = new ObjNative("send", 1, workerSend);
+    workerClass->methods["receive"] = new ObjNative("receive", 0, workerReceive);
 
-    workerClass->statics["selfSend"] = std::make_shared<ObjNative>("selfSend", 1, workerSelfSend);
-    workerClass->statics["selfReceive"] = std::make_shared<ObjNative>("selfReceive", 0, workerSelfReceive);
+    workerClass->statics["selfSend"] = new ObjNative("selfSend", 1, workerSelfSend);
+    workerClass->statics["selfReceive"] = new ObjNative("selfReceive", 0, workerSelfReceive);
 
     vm->globals["Worker"] = workerClass;
 }

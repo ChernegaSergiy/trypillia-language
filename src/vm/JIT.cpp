@@ -5,7 +5,7 @@
 #include "OpCode.h"
 #include "UniversalEmitter.h"
 
-JitFunc JITCompiler::compileMathFunction(std::shared_ptr<ObjFunction> function) {
+JitFunc JITCompiler::compileMathFunction(ObjFunction* function) {
     if (!function || !function->chunk) return nullptr;
 
     UniversalEmitter emitter;
@@ -66,9 +66,9 @@ JitFunc JITCompiler::compileMathFunction(std::shared_ptr<ObjFunction> function) 
             case static_cast<uint8_t>(OpCode::OP_GET_GLOBAL): {
                 uint8_t constantIdx = function->chunk->code[++i];
                 VMValue constant = function->chunk->constants[constantIdx];
-                if (!std::holds_alternative<std::shared_ptr<ObjString>>(constant)) return nullptr;
+                if (!constant.isString()) return nullptr;
                 if (sp >= 8) return nullptr;
-                stackGlobalNames[sp] = std::get<std::shared_ptr<ObjString>>(constant)->flatten();
+                stackGlobalNames[sp] = constant.asString()->flatten();
                 // We don't emit anything for the function object itself, we just track its name
                 sp++;
                 break;
@@ -97,8 +97,8 @@ JitFunc JITCompiler::compileMathFunction(std::shared_ptr<ObjFunction> function) 
             case static_cast<uint8_t>(OpCode::OP_CONSTANT): {
                 uint8_t idx = function->chunk->code[++i];
                 VMValue val = function->chunk->constants[idx];
-                if (std::holds_alternative<double>(val)) {
-                    double d = std::get<double>(val);
+                if (val.isNumber()) {
+                    double d = val.asNumber();
                     if (sp >= 8) return nullptr;
                     stackGlobalNames[sp] = "";
                     emitter.emitLoadConst(sp, d);
@@ -140,6 +140,47 @@ JitFunc JITCompiler::compileMathFunction(std::shared_ptr<ObjFunction> function) 
                 if (sp < 2) return nullptr;
                 emitter.emitCmpLt(sp - 2, sp - 1);
                 sp--;
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_BIT_AND): {
+                if (sp < 2) return nullptr;
+                emitter.emitBitAnd(sp - 2, sp - 1);
+                sp--;
+                stackGlobalNames[sp - 1] = "";
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_BIT_OR): {
+                if (sp < 2) return nullptr;
+                emitter.emitBitOr(sp - 2, sp - 1);
+                sp--;
+                stackGlobalNames[sp - 1] = "";
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_BIT_XOR): {
+                if (sp < 2) return nullptr;
+                emitter.emitBitXor(sp - 2, sp - 1);
+                sp--;
+                stackGlobalNames[sp - 1] = "";
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_BIT_SHIFT_LEFT): {
+                if (sp < 2) return nullptr;
+                emitter.emitBitShl(sp - 2, sp - 1);
+                sp--;
+                stackGlobalNames[sp - 1] = "";
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_BIT_SHIFT_RIGHT): {
+                if (sp < 2) return nullptr;
+                emitter.emitBitShr(sp - 2, sp - 1);
+                sp--;
+                stackGlobalNames[sp - 1] = "";
+                break;
+            }
+            case static_cast<uint8_t>(OpCode::OP_BIT_NOT): {
+                if (sp < 1) return nullptr;
+                emitter.emitBitNot(sp - 1);
+                stackGlobalNames[sp - 1] = "";
                 break;
             }
             case static_cast<uint8_t>(OpCode::OP_GREATER): {

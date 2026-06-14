@@ -586,7 +586,7 @@ class CompilerVisitor : public ASTVisitor {
         endScope();
     }
     void visit(LambdaExpr *node) override {
-        auto func = std::make_shared<ObjFunction>();
+        auto func = new ObjFunction();
         func->name = "lambda";
         func->maxArity = static_cast<int>(node->params.size());
         func->arity = func->maxArity;
@@ -594,9 +594,9 @@ class CompilerVisitor : public ASTVisitor {
             if (it->defaultValue) func->arity--;
             else break;
         }
-        func->chunk = std::make_shared<Chunk>();
+        func->chunk = new Chunk();
         func->filename = compiler_filename;
-        CompilerVisitor funcCompiler(func->chunk.get(), compiler_filename, globalSymbols, this);
+        CompilerVisitor funcCompiler(func->chunk, compiler_filename, globalSymbols, this);
         funcCompiler.beginScope();
         for (const auto &param : node->params)
             funcCompiler.locals.push_back({param.name, 1, false});
@@ -725,7 +725,7 @@ class CompilerVisitor : public ASTVisitor {
     }
 
     void visit(FunctionNode *node) override {
-        auto func = std::make_shared<ObjFunction>();
+        auto func = new ObjFunction();
         std::string actualName = node->name;
         if (!currentNamespace.empty() && node->name != "init" && enclosing == nullptr) {
             actualName = currentNamespace + "." + actualName;
@@ -737,10 +737,10 @@ class CompilerVisitor : public ASTVisitor {
             if (it->defaultValue) func->arity--;
             else break;
         }
-        func->chunk = std::make_shared<Chunk>();
+        func->chunk = new Chunk();
         func->filename = compiler_filename;
 
-        CompilerVisitor funcCompiler(func->chunk.get(), compiler_filename, globalSymbols, this);
+        CompilerVisitor funcCompiler(func->chunk, compiler_filename, globalSymbols, this);
 
         funcCompiler.beginScope();
         for (const auto &param : node->params) {
@@ -778,7 +778,7 @@ class CompilerVisitor : public ASTVisitor {
     }
 
     void compileMethod(FunctionNode *node, ClassNode *classNode = nullptr) {
-        auto func = std::make_shared<ObjFunction>();
+        auto func = new ObjFunction();
         func->name = node->name;
         func->maxArity = static_cast<int>(node->params.size());
         func->arity = func->maxArity;
@@ -786,12 +786,12 @@ class CompilerVisitor : public ASTVisitor {
             if (it->defaultValue) func->arity--;
             else break;
         }
-        func->chunk = std::make_shared<Chunk>();
+        func->chunk = new Chunk();
         func->filename = compiler_filename;
         func->accessModifier = getVMAccessModifier(node->accessModifier);
         func->enclosingClassName = currentClassName;
 
-        CompilerVisitor funcCompiler(func->chunk.get(), compiler_filename, globalSymbols, this);
+        CompilerVisitor funcCompiler(func->chunk, compiler_filename, globalSymbols, this);
 
         funcCompiler.currentClassName = currentClassName;
         funcCompiler.currentParentName = currentParentName;
@@ -1030,17 +1030,17 @@ class CompilerVisitor : public ASTVisitor {
     }
 };
 
-std::shared_ptr<ObjFunction> Compiler::compile(ASTNode *ast, SymbolTable *globals) {
+ObjFunction* Compiler::compile(ASTNode *ast, SymbolTable *globals) {
     if (!ast) {
         return nullptr;
     }
 
-    auto script = std::make_shared<ObjFunction>();
+    auto script = new ObjFunction();
     script->name = "<script>";
-    script->chunk = std::make_shared<Chunk>();
+    script->chunk = new Chunk();
     script->filename = currentFilename;
 
-    CompilerVisitor visitor(script->chunk.get(), currentFilename, globals);
+    CompilerVisitor visitor(script->chunk, currentFilename, globals);
     ast->accept(&visitor);
 
     visitor.emitBytes(static_cast<uint8_t>(OpCode::OP_NIL), static_cast<uint8_t>(OpCode::OP_RETURN));

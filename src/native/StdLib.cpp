@@ -55,21 +55,21 @@ void registerSymbols(SymbolTable *scope) {
 }
 
 VMValue makeResultOk(VM *vm, VMValue value) {
-    auto klass = std::get<std::shared_ptr<ObjClass>>(vm->globals["Result"]);
-    auto instance = std::make_shared<ObjInstance>(klass);
+    auto klass = vm->globals["Result"].asClass();
+    auto instance = new ObjInstance(klass);
     instance->fields["value"] = value;
     instance->fields["isOk"] = true;
     return instance;
 }
 
 VMValue makeResultErr(VM *vm, const std::string &message, double code) {
-    auto errClass = std::get<std::shared_ptr<ObjClass>>(vm->globals["Error"]);
-    auto errInst = std::make_shared<ObjInstance>(errClass);
-    errInst->fields["message"] = message;
+    auto errClass = vm->globals["Error"].asClass();
+    auto errInst = new ObjInstance(errClass);
+    errInst->fields["message"] = VMValue(message);
     errInst->fields["code"] = code;
 
-    auto resClass = std::get<std::shared_ptr<ObjClass>>(vm->globals["Result"]);
-    auto resInst = std::make_shared<ObjInstance>(resClass);
+    auto resClass = vm->globals["Result"].asClass();
+    auto resInst = new ObjInstance(resClass);
     resInst->fields["error"] = errInst;
     resInst->fields["isOk"] = false;
     return resInst;

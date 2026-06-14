@@ -22,9 +22,9 @@ std::vector<std::string> commandLineArgs;
 thread_local VM *currentVM = nullptr;
 
 static VMValue osGetEnv(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
+    if (argCount != 1 || !args[0].isString())
         return nullptr;
-    const char *val = std::getenv(std::get<std::shared_ptr<ObjString>>(args[0])->flatten().c_str());
+    const char *val = std::getenv(args[0].asString()->flatten().c_str());
     return val ? makeResultOk(currentVM, std::string(val)) : makeResultErr(currentVM, "Not found");
 }
 
@@ -37,9 +37,9 @@ static VMValue osCwd(int argCount, VMValue *args) {
 }
 
 static VMValue osExec(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
+    if (argCount != 1 || !args[0].isString())
         return nullptr;
-    std::string cmd = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
+    std::string cmd = args[0].asString()->flatten();
     std::string result;
     std::array<char, 128> buffer;
 
@@ -55,7 +55,7 @@ static VMValue osExec(int argCount, VMValue *args) {
 }
 
 static VMValue osExit(int argCount, VMValue *args) {
-    int code = (argCount == 1 && std::holds_alternative<double>(args[0])) ? (int)std::get<double>(args[0]) : 0;
+    int code = (argCount == 1 && args[0].isNumber()) ? (int)args[0].asNumber() : 0;
     std::exit(code);
     return nullptr;
 }
@@ -64,17 +64,17 @@ static VMValue osArgs(int argCount, VMValue *args) {
     std::vector<VMValue> list;
     for (const auto &a : commandLineArgs)
         list.push_back(a);
-    return std::make_shared<ObjList>(list);
+    return new ObjList(list);
 }
 
 void registerAll(VM *vm) {
     currentVM = vm;
-    auto cls = std::make_shared<ObjClass>("OS");
-    cls->statics["getEnv"] = std::make_shared<ObjNative>("getEnv", 1, osGetEnv);
-    cls->statics["cwd"] = std::make_shared<ObjNative>("cwd", 0, osCwd);
-    cls->statics["exec"] = std::make_shared<ObjNative>("exec", 1, osExec);
-    cls->statics["exit"] = std::make_shared<ObjNative>("exit", -1, osExit);
-    cls->statics["args"] = std::make_shared<ObjNative>("args", 0, osArgs);
+    auto cls = new ObjClass("OS");
+    cls->statics["getEnv"] = new ObjNative("getEnv", 1, osGetEnv);
+    cls->statics["cwd"] = new ObjNative("cwd", 0, osCwd);
+    cls->statics["exec"] = new ObjNative("exec", 1, osExec);
+    cls->statics["exit"] = new ObjNative("exit", -1, osExit);
+    cls->statics["args"] = new ObjNative("args", 0, osArgs);
     vm->globals["OS"] = cls;
 }
 

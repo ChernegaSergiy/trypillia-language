@@ -111,9 +111,9 @@ static std::string sha1_raw(const std::string &input) {
 }
 
 static VMValue cryptoSha1(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
+    if (argCount != 1 || !args[0].isString())
         return nullptr;
-    std::string input = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
+    std::string input = args[0].asString()->flatten();
     std::string raw = sha1_raw(input);
 
     std::stringstream hexStream;
@@ -124,27 +124,27 @@ static VMValue cryptoSha1(int argCount, VMValue *args) {
 }
 
 static VMValue cryptoSha1Base64(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
+    if (argCount != 1 || !args[0].isString())
         return nullptr;
-    std::string input = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
+    std::string input = args[0].asString()->flatten();
     std::string raw = sha1_raw(input);
     return makeResultOk(currentVM, base64_encode(raw));
 }
 
 static VMValue cryptoBase64Encode(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
+    if (argCount != 1 || !args[0].isString())
         return nullptr;
-    std::string input = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
+    std::string input = args[0].asString()->flatten();
     return makeResultOk(currentVM, base64_encode(input));
 }
 
 void registerAll(VM *vm) {
     currentVM = vm;
-    auto cryptoClass = std::make_shared<ObjClass>("Crypto");
+    auto cryptoClass = new ObjClass("Crypto");
 
-    cryptoClass->statics["sha1"] = std::make_shared<ObjNative>("sha1", 1, cryptoSha1);
-    cryptoClass->statics["sha1Base64"] = std::make_shared<ObjNative>("sha1Base64", 1, cryptoSha1Base64);
-    cryptoClass->statics["base64Encode"] = std::make_shared<ObjNative>("base64Encode", 1, cryptoBase64Encode);
+    cryptoClass->statics["sha1"] = new ObjNative("sha1", 1, cryptoSha1);
+    cryptoClass->statics["sha1Base64"] = new ObjNative("sha1Base64", 1, cryptoSha1Base64);
+    cryptoClass->statics["base64Encode"] = new ObjNative("base64Encode", 1, cryptoBase64Encode);
 
     vm->globals["Crypto"] = cryptoClass;
 }

@@ -9,32 +9,32 @@ namespace Core {
 thread_local VM *currentVM = nullptr;
 
 static std::string stringify(const VMValue& val, bool inContainer = false) {
-    if (std::holds_alternative<double>(val)) {
-        std::string s = std::to_string(std::get<double>(val));
+    if (val.isNumber()) {
+        std::string s = std::to_string(val.asNumber());
         s.erase(s.find_last_not_of('0') + 1, std::string::npos);
         if (s.back() == '.') s.pop_back();
         if (s.empty()) return "0";
         return s;
-    } else if (std::holds_alternative<std::shared_ptr<ObjString>>(val)) {
+    } else if (val.isString()) {
         if (inContainer) {
-            return "\"" + std::get<std::shared_ptr<ObjString>>(val)->flatten() + "\"";
+            return "\"" + val.asString()->flatten() + "\"";
         } else {
-            return std::get<std::shared_ptr<ObjString>>(val)->flatten();
+            return val.asString()->flatten();
         }
-    } else if (std::holds_alternative<bool>(val)) {
-        return std::get<bool>(val) ? "true" : "false";
-    } else if (std::holds_alternative<std::shared_ptr<ObjList>>(val)) {
+    } else if (val.isBool()) {
+        return val.asBool() ? "true" : "false";
+    } else if (val.isList()) {
         std::string s = "[";
-        auto list = std::get<std::shared_ptr<ObjList>>(val);
+        auto list = val.asList();
         for (size_t i = 0; i < list->elements.size(); ++i) {
             s += stringify(list->elements[i], true);
             if (i < list->elements.size() - 1) s += ", ";
         }
         s += "]";
         return s;
-    } else if (std::holds_alternative<std::shared_ptr<ObjMap>>(val)) {
+    } else if (val.isMap()) {
         std::string s = "{";
-        auto map = std::get<std::shared_ptr<ObjMap>>(val);
+        auto map = val.asMap();
         size_t i = 0;
         for (auto const& [k, v] : map->values) {
             s += stringify(k, true) + ": " + stringify(v, true);
@@ -43,18 +43,18 @@ static std::string stringify(const VMValue& val, bool inContainer = false) {
         }
         s += "}";
         return s;
-    } else if (std::holds_alternative<std::shared_ptr<ObjClass>>(val)) {
-        return "<class " + std::get<std::shared_ptr<ObjClass>>(val)->name + ">";
-    } else if (std::holds_alternative<std::shared_ptr<ObjInstance>>(val)) {
-        return "<instance of " + std::get<std::shared_ptr<ObjInstance>>(val)->klass->name + ">";
-    } else if (std::holds_alternative<std::shared_ptr<ObjBoundMethod>>(val)) {
-        auto boundMethod = std::get<std::shared_ptr<ObjBoundMethod>>(val)->method;
-        if (std::holds_alternative<std::shared_ptr<ObjFunction>>(boundMethod)) {
-            return "<bound method " + std::get<std::shared_ptr<ObjFunction>>(boundMethod)->name + ">";
+    } else if (val.isClass()) {
+        return "<class " + val.asClass()->name + ">";
+    } else if (val.isInstance()) {
+        return "<instance of " + val.asInstance()->klass->name + ">";
+    } else if (val.isBoundMethod()) {
+        auto boundMethod = val.asBoundMethod()->method;
+        if (boundMethod.isFunction()) {
+            return "<bound method " + boundMethod.asFunction()->name + ">";
         } else {
-            return "<bound method " + std::get<std::shared_ptr<ObjNative>>(boundMethod)->name + ">";
+            return "<bound method " + boundMethod.asNative()->name + ">";
         }
-    } else if (std::holds_alternative<std::nullptr_t>(val)) {
+    } else if (val.isNil()) {
         return "nil";
     }
     return "unknown";
@@ -71,8 +71,8 @@ static VMValue printNative(int argCount, VMValue *args) {
 }
 
 static VMValue inputNative(int argCount, VMValue *args) {
-    if (argCount == 1 && std::holds_alternative<std::shared_ptr<ObjString>>(args[0])) {
-        std::cout << std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
+    if (argCount == 1 && args[0].isString()) {
+        std::cout << args[0].asString()->flatten();
     }
     std::string line;
     std::getline(std::cin, line);
@@ -82,9 +82,9 @@ static VMValue inputNative(int argCount, VMValue *args) {
 // --- Error ---
 static VMValue errorInit(int argCount, VMValue *args) {
     VMValue receiver = args[-1];
-    if (!std::holds_alternative<std::shared_ptr<ObjInstance>>(receiver))
+    if (!receiver.isInstance())
         return nullptr;
-    auto instance = std::get<std::shared_ptr<ObjInstance>>(receiver);
+    auto instance = receiver.asInstance();
 
     instance->fields["message"] = argCount > 0 ? args[0] : VMValue(std::string("Unknown Error"));
     instance->fields["code"] = argCount > 1 ? args[1] : VMValue(0.0);
@@ -95,8 +95,8 @@ static VMValue errorInit(int argCount, VMValue *args) {
 static VMValue resultOk(int argCount, VMValue *args) {
     if (argCount != 1)
         return nullptr;
-    auto klass = std::get<std::shared_ptr<ObjClass>>(currentVM->globals["Result"]);
-    auto instance = std::make_shared<ObjInstance>(klass);
+    auto klass = currentVM->globals["Result"].asClass();
+    auto instance = new ObjInstance(klass);
     instance->fields["value"] = args[0];
     instance->fields["isOk"] = true;
     return instance;
@@ -105,8 +105,8 @@ static VMValue resultOk(int argCount, VMValue *args) {
 static VMValue resultErr(int argCount, VMValue *args) {
     if (argCount != 1)
         return nullptr;
-    auto klass = std::get<std::shared_ptr<ObjClass>>(currentVM->globals["Result"]);
-    auto instance = std::make_shared<ObjInstance>(klass);
+    auto klass = currentVM->globals["Result"].asClass();
+    auto instance = new ObjInstance(klass);
     instance->fields["error"] = args[0];
     instance->fields["isOk"] = false;
     return instance;
@@ -114,20 +114,20 @@ static VMValue resultErr(int argCount, VMValue *args) {
 
 static VMValue resultIsOk(int argCount, VMValue *args) {
     VMValue receiver = args[-1];
-    auto instance = std::get<std::shared_ptr<ObjInstance>>(receiver);
+    auto instance = receiver.asInstance();
     return instance->fields["isOk"];
 }
 
 static VMValue resultIsErr(int argCount, VMValue *args) {
     VMValue receiver = args[-1];
-    auto instance = std::get<std::shared_ptr<ObjInstance>>(receiver);
-    return !std::get<bool>(instance->fields["isOk"]);
+    auto instance = receiver.asInstance();
+    return !instance->fields["isOk"].asBool();
 }
 
 static VMValue resultUnwrap(int argCount, VMValue *args) {
     VMValue receiver = args[-1];
-    auto instance = std::get<std::shared_ptr<ObjInstance>>(receiver);
-    if (!std::get<bool>(instance->fields["isOk"])) {
+    auto instance = receiver.asInstance();
+    if (!instance->fields["isOk"].asBool()) {
         std::cerr << "Called unwrap() on an Err value!" << std::endl;
         exit(1); // Panic
     }
@@ -136,8 +136,8 @@ static VMValue resultUnwrap(int argCount, VMValue *args) {
 
 static VMValue resultUnwrapErr(int argCount, VMValue *args) {
     VMValue receiver = args[-1];
-    auto instance = std::get<std::shared_ptr<ObjInstance>>(receiver);
-    if (std::get<bool>(instance->fields["isOk"])) {
+    auto instance = receiver.asInstance();
+    if (instance->fields["isOk"].asBool()) {
         std::cerr << "Called unwrapErr() on an Ok value!" << std::endl;
         exit(1); // Panic
     }
@@ -147,43 +147,31 @@ static VMValue resultUnwrapErr(int argCount, VMValue *args) {
 // --- WeakRef ---
 static VMValue weakRefInit(int argCount, VMValue *args) {
     VMValue receiver = args[-1];
-    if (!std::holds_alternative<std::shared_ptr<ObjInstance>>(receiver))
+    if (!receiver.isInstance())
         return nullptr;
-    auto instance = std::get<std::shared_ptr<ObjInstance>>(receiver);
+    auto instance = receiver.asInstance();
 
     if (argCount != 1) return nullptr;
 
-    auto weakObj = std::make_shared<ObjWeakRef>();
+    auto weakObj = new ObjWeakRef();
     VMValue val = args[0];
 
-    if (std::holds_alternative<std::shared_ptr<ObjString>>(val)) {
-        weakObj->weakRef = std::weak_ptr<ObjString>(std::get<std::shared_ptr<ObjString>>(val));
-    } else if (std::holds_alternative<std::shared_ptr<ObjList>>(val)) {
-        weakObj->weakRef = std::weak_ptr<ObjList>(std::get<std::shared_ptr<ObjList>>(val));
-    } else if (std::holds_alternative<std::shared_ptr<ObjMap>>(val)) {
-        weakObj->weakRef = std::weak_ptr<ObjMap>(std::get<std::shared_ptr<ObjMap>>(val));
-    } else if (std::holds_alternative<std::shared_ptr<ObjInstance>>(val)) {
-        weakObj->weakRef = std::weak_ptr<ObjInstance>(std::get<std::shared_ptr<ObjInstance>>(val));
-    } else if (std::holds_alternative<std::shared_ptr<ObjClosure>>(val)) {
-        weakObj->weakRef = std::weak_ptr<ObjClosure>(std::get<std::shared_ptr<ObjClosure>>(val));
-    } else if (std::holds_alternative<std::shared_ptr<ObjFunction>>(val)) {
-        weakObj->weakRef = std::weak_ptr<ObjFunction>(std::get<std::shared_ptr<ObjFunction>>(val));
-    } else if (std::holds_alternative<std::shared_ptr<ObjClass>>(val)) {
-        weakObj->weakRef = std::weak_ptr<ObjClass>(std::get<std::shared_ptr<ObjClass>>(val));
+    if (val.isObj()) {
+        weakObj->weakRef = val.asObj();
     }
 
-    instance->fields["_ref"] = weakObj;
+    instance->fields["_ref"] = VMValue(weakObj);
     return nullptr;
 }
 
 static VMValue weakRefLock(int argCount, VMValue *args) {
     VMValue receiver = args[-1];
-    auto instance = std::get<std::shared_ptr<ObjInstance>>(receiver);
+    auto instance = receiver.asInstance();
     if (instance->fields.find("_ref") == instance->fields.end()) return nullptr;
     
     auto ref = instance->fields["_ref"];
-    if (std::holds_alternative<std::shared_ptr<ObjWeakRef>>(ref)) {
-        return std::get<std::shared_ptr<ObjWeakRef>>(ref)->lock();
+    if (ref.isWeakRef()) {
+        return ref.asWeakRef()->lock();
     }
     return nullptr;
 }
@@ -193,22 +181,22 @@ void registerAll(VM *vm) {
     vm->defineNative("print", -1, printNative);
     vm->defineNative("input", -1, inputNative);
 
-    auto errorClass = std::make_shared<ObjClass>("Error");
-    errorClass->methods["init"] = std::make_shared<ObjNative>("init", -1, errorInit);
+    auto errorClass = new ObjClass("Error");
+    errorClass->methods["init"] = new ObjNative("init", -1, errorInit);
     vm->globals["Error"] = errorClass;
 
-    auto resultClass = std::make_shared<ObjClass>("Result");
-    resultClass->statics["ok"] = std::make_shared<ObjNative>("ok", 1, resultOk);
-    resultClass->statics["err"] = std::make_shared<ObjNative>("err", 1, resultErr);
-    resultClass->methods["isOk"] = std::make_shared<ObjNative>("isOk", 0, resultIsOk);
-    resultClass->methods["isErr"] = std::make_shared<ObjNative>("isErr", 0, resultIsErr);
-    resultClass->methods["unwrap"] = std::make_shared<ObjNative>("unwrap", 0, resultUnwrap);
-    resultClass->methods["unwrapErr"] = std::make_shared<ObjNative>("unwrapErr", 0, resultUnwrapErr);
+    auto resultClass = new ObjClass("Result");
+    resultClass->statics["ok"] = new ObjNative("ok", 1, resultOk);
+    resultClass->statics["err"] = new ObjNative("err", 1, resultErr);
+    resultClass->methods["isOk"] = new ObjNative("isOk", 0, resultIsOk);
+    resultClass->methods["isErr"] = new ObjNative("isErr", 0, resultIsErr);
+    resultClass->methods["unwrap"] = new ObjNative("unwrap", 0, resultUnwrap);
+    resultClass->methods["unwrapErr"] = new ObjNative("unwrapErr", 0, resultUnwrapErr);
     vm->globals["Result"] = resultClass;
 
-    auto weakRefClass = std::make_shared<ObjClass>("WeakRef");
-    weakRefClass->methods["init"] = std::make_shared<ObjNative>("init", 1, weakRefInit);
-    weakRefClass->methods["lock"] = std::make_shared<ObjNative>("lock", 0, weakRefLock);
+    auto weakRefClass = new ObjClass("WeakRef");
+    weakRefClass->methods["init"] = new ObjNative("init", 1, weakRefInit);
+    weakRefClass->methods["lock"] = new ObjNative("lock", 0, weakRefLock);
     vm->globals["WeakRef"] = weakRefClass;
 }
 

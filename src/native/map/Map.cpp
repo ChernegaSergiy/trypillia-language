@@ -6,38 +6,38 @@ namespace MapModule {
 thread_local VM *currentVM = nullptr;
 
 static VMValue mapKeys(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjMap>>(args[0]))
+    if (argCount != 1 || !args[0].isMap())
         return nullptr;
-    auto map = std::get<std::shared_ptr<ObjMap>>(args[0]);
+    auto map = args[0].asMap();
     std::vector<VMValue> keys;
     for (const auto &pair : map->values) {
         keys.push_back(pair.first);
     }
-    return std::make_shared<ObjList>(keys);
+    return new ObjList(keys);
 }
 
 static VMValue mapValues(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjMap>>(args[0]))
+    if (argCount != 1 || !args[0].isMap())
         return nullptr;
-    auto map = std::get<std::shared_ptr<ObjMap>>(args[0]);
+    auto map = args[0].asMap();
     std::vector<VMValue> values;
     for (const auto &pair : map->values) {
         values.push_back(pair.second);
     }
-    return std::make_shared<ObjList>(values);
+    return new ObjList(values);
 }
 
 static VMValue mapHas(int argCount, VMValue *args) {
-    if (argCount != 2 || !std::holds_alternative<std::shared_ptr<ObjMap>>(args[0]))
+    if (argCount != 2 || !args[0].isMap())
         return nullptr;
-    auto map = std::get<std::shared_ptr<ObjMap>>(args[0]);
+    auto map = args[0].asMap();
     return map->values.count(args[1]) > 0;
 }
 
 static VMValue mapRemove(int argCount, VMValue *args) {
-    if (argCount != 2 || !std::holds_alternative<std::shared_ptr<ObjMap>>(args[0]))
+    if (argCount != 2 || !args[0].isMap())
         return nullptr;
-    auto map = std::get<std::shared_ptr<ObjMap>>(args[0]);
+    auto map = args[0].asMap();
     if (map->values.count(args[1]) > 0) {
         VMValue val = map->values[args[1]];
         map->values.erase(args[1]);
@@ -47,22 +47,22 @@ static VMValue mapRemove(int argCount, VMValue *args) {
 }
 
 static VMValue mapSet(int argCount, VMValue *args) {
-    if (argCount != 3 || !std::holds_alternative<std::shared_ptr<ObjMap>>(args[0]))
+    if (argCount != 3 || !args[0].isMap())
         return nullptr;
-    auto map = std::get<std::shared_ptr<ObjMap>>(args[0]);
+    auto map = args[0].asMap();
     map->values[args[1]] = args[2];
     return args[2];
 }
 
 void registerAll(VM *vm) {
     currentVM = vm;
-    auto mapClass = std::make_shared<ObjClass>("Map");
+    auto mapClass = new ObjClass("Map");
 
-    mapClass->statics["keys"] = std::make_shared<ObjNative>("keys", 1, mapKeys);
-    mapClass->statics["values"] = std::make_shared<ObjNative>("values", 1, mapValues);
-    mapClass->statics["has"] = std::make_shared<ObjNative>("has", 2, mapHas);
-    mapClass->statics["remove"] = std::make_shared<ObjNative>("remove", 2, mapRemove);
-    mapClass->statics["set"] = std::make_shared<ObjNative>("set", 3, mapSet);
+    mapClass->statics["keys"] = new ObjNative("keys", 1, mapKeys);
+    mapClass->statics["values"] = new ObjNative("values", 1, mapValues);
+    mapClass->statics["has"] = new ObjNative("has", 2, mapHas);
+    mapClass->statics["remove"] = new ObjNative("remove", 2, mapRemove);
+    mapClass->statics["set"] = new ObjNative("set", 3, mapSet);
 
     vm->globals["Map"] = mapClass;
 }

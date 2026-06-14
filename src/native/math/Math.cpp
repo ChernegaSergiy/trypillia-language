@@ -6,15 +6,15 @@ namespace StdLib {
 namespace Math {
 
 static VMValue mathSin(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<double>(args[0]))
+    if (argCount != 1 || !args[0].isNumber())
         return nullptr;
-    return std::sin(std::get<double>(args[0]));
+    return std::sin(args[0].asNumber());
 }
 
 static VMValue mathCos(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<double>(args[0]))
+    if (argCount != 1 || !args[0].isNumber())
         return nullptr;
-    return std::cos(std::get<double>(args[0]));
+    return std::cos(args[0].asNumber());
 }
 
 static VMValue mathRandom(int argCount, VMValue *args) {
@@ -22,10 +22,10 @@ static VMValue mathRandom(int argCount, VMValue *args) {
 }
 
 void registerAll(VM *vm) {
-    auto mathClass = std::make_shared<ObjClass>("Math");
-    mathClass->statics["sin"] = std::make_shared<ObjNative>("sin", 1, mathSin);
-    mathClass->statics["cos"] = std::make_shared<ObjNative>("cos", 1, mathCos);
-    mathClass->statics["random"] = std::make_shared<ObjNative>("random", 0, mathRandom);
+    auto mathClass = new ObjClass("Math");
+    mathClass->statics["sin"] = new ObjNative("sin", 1, mathSin);
+    mathClass->statics["cos"] = new ObjNative("cos", 1, mathCos);
+    mathClass->statics["random"] = new ObjNative("random", 0, mathRandom);
     mathClass->statics["PI"] = 3.14159265358979323846;
     vm->globals["Math"] = mathClass;
 }

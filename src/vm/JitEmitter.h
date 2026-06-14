@@ -25,6 +25,14 @@ public:
     virtual void emitMul(int targetOffset, int srcOffset) = 0;
     virtual void emitDiv(int targetOffset, int srcOffset) = 0;
 
+    // Bitwise operations
+    virtual void emitBitAnd(int targetOffset, int srcOffset) = 0;
+    virtual void emitBitOr(int targetOffset, int srcOffset) = 0;
+    virtual void emitBitXor(int targetOffset, int srcOffset) = 0;
+    virtual void emitBitNot(int targetOffset) = 0;
+    virtual void emitBitShl(int targetOffset, int srcOffset) = 0;
+    virtual void emitBitShr(int targetOffset, int srcOffset) = 0;
+
     // Comparisons (write result as 1.0 (true) or 0.0 (false))
     virtual void emitCmpEq(int targetOffset, int srcOffset) = 0;
     virtual void emitCmpNe(int targetOffset, int srcOffset) = 0;

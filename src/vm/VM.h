@@ -10,7 +10,7 @@
 enum class InterpretResult { INTERPRET_OK, INTERPRET_COMPILE_ERROR, INTERPRET_RUNTIME_ERROR };
 
 struct CallFrame {
-    std::shared_ptr<ObjClosure> closure;
+    ObjClosure* closure;
     uint8_t *ip;
     int stackStart;
 };
@@ -20,14 +20,14 @@ class VM {
     std::vector<CallFrame> frames;
     std::vector<VMValue> stack;
     std::unordered_map<std::string, VMValue> globals_private_removed;
-    std::shared_ptr<ObjUpvalue> openUpvalues;
+    ObjUpvalue* openUpvalues;
 
     void resetStack();
     void push(VMValue value);
     VMValue pop();
     VMValue peek(int distance);
 
-    std::shared_ptr<ObjUpvalue> captureUpvalue(VMValue *local);
+    ObjUpvalue* captureUpvalue(VMValue *local);
     void closeUpvalues(VMValue *last);
 
     InterpretResult runtimeError(const std::string &message);
@@ -44,7 +44,7 @@ class VM {
     JITCompiler jit;
     std::unordered_map<void*, JitFunc> compiledFuncs;
 
-    InterpretResult interpret(std::shared_ptr<ObjFunction> function);
+    InterpretResult interpret(ObjFunction* function);
 };
 
 #endif // TRYPILLIA_VM_H

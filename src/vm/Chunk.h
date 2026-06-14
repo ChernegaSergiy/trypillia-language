@@ -6,8 +6,8 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
-#include <variant>
 #include <vector>
+#include "Value.h"
 enum class VMAccessModifier { PUBLIC, PRIVATE, PROTECTED };
 
 class Chunk;
@@ -23,15 +23,15 @@ struct ObjInstance;
 struct ObjBoundMethod;
 struct ObjWeakRef;
 
-struct ObjString {
+struct ObjString : public Obj {
     mutable std::string flatData;
-    mutable std::shared_ptr<ObjString> left;
-    mutable std::shared_ptr<ObjString> right;
+    mutable ObjString* left;
+    mutable ObjString* right;
     size_t length;
     mutable bool isFlat;
 
-    ObjString(std::string s) : flatData(std::move(s)), left(nullptr), right(nullptr), length(flatData.length()), isFlat(true) {}
-    ObjString(std::shared_ptr<ObjString> l, std::shared_ptr<ObjString> r) : left(l), right(r), length(l->length + r->length), isFlat(false) {}
+    ObjString(std::string s) : Obj(ObjType::OBJ_STRING), flatData(std::move(s)), left(nullptr), right(nullptr), length(flatData.length()), isFlat(true) {}
+    ObjString(ObjString* l, ObjString* r) : Obj(ObjType::OBJ_STRING), left(l), right(r), length(l->length + r->length), isFlat(false) {}
 
     std::string flatten() const {
         if (isFlat) return flatData;
@@ -49,12 +49,14 @@ struct ObjString {
             if (current->isFlat) {
                 result += current->flatData;
             } else {
-                if (current->right) stack.push_back(current->right.get());
-                if (current->left) stack.push_back(current->left.get());
+                if (current->right) stack.push_back(current->right);
+                if (current->left) stack.push_back(current->left);
             }
         }
 
         flatData = std::move(result);
+        if (left) left->release();
+        if (right) right->release();
         left = nullptr;
         right = nullptr;
         isFlat = true;
@@ -62,59 +64,25 @@ struct ObjString {
     }
 
     ~ObjString() {
-        if (!left && !right) return;
-
-        std::vector<std::shared_ptr<ObjString>> stack;
-        if (left) stack.push_back(std::move(left));
-        if (right) stack.push_back(std::move(right));
-
-        while (!stack.empty()) {
-            auto current = std::move(stack.back());
-            stack.pop_back();
-
-            if (current->left) {
-                if (current->left.use_count() == 1) stack.push_back(std::move(current->left));
-                else current->left.reset();
-            }
-            if (current->right) {
-                if (current->right.use_count() == 1) stack.push_back(std::move(current->right));
-                else current->right.reset();
-            }
-        }
+        if (left) left->release();
+        if (right) right->release();
     }
 };
 
-struct VMValue : public std::variant<std::nullptr_t, bool, double, std::shared_ptr<ObjString>, std::shared_ptr<ObjFunction>, std::shared_ptr<ObjClosure>,
-                 std::shared_ptr<ObjNative>, std::shared_ptr<ObjList>, std::shared_ptr<ObjMap>,
-                 std::shared_ptr<ObjClass>, std::shared_ptr<ObjInstance>, std::shared_ptr<ObjBoundMethod>, std::shared_ptr<ObjWeakRef>> {
-    using variant::variant;
-
-    VMValue() : variant() {}
-    VMValue(const std::string& s) : variant(std::make_shared<ObjString>(s)) {}
-    VMValue(const char* s) : variant(std::make_shared<ObjString>(std::string(s))) {}
-
-    bool operator==(const VMValue& other) const {
-        if (this->index() != other.index()) return false;
-        if (std::holds_alternative<std::shared_ptr<ObjString>>(*this)) {
-            return std::get<std::shared_ptr<ObjString>>(*this)->flatten() == std::get<std::shared_ptr<ObjString>>(other)->flatten();
-        }
-        return static_cast<const variant&>(*this) == static_cast<const variant&>(other);
-    }
-};
 
 using NativeFn = VMValue (*)(int argCount, VMValue *args);
 
 struct VMValueHash {
     std::size_t operator()(const VMValue &v) const {
-        if (std::holds_alternative<double>(v))
-            return std::hash<double>{}(std::get<double>(v));
-        if (std::holds_alternative<std::shared_ptr<ObjString>>(v))
-            return std::hash<std::string>{}(std::get<std::shared_ptr<ObjString>>(v)->flatten());
-        if (std::holds_alternative<bool>(v))
-            return std::hash<bool>{}(std::get<bool>(v));
-        if (std::holds_alternative<std::nullptr_t>(v))
+        if (v.isNumber())
+            return std::hash<double>{}(v.asNumber());
+        if (v.isString())
+            return std::hash<std::string>{}(v.asString()->flatten());
+        if (v.isBool())
+            return std::hash<bool>{}(v.asBool());
+        if (v.isNil())
             return 0;
-        return 0;
+        return std::hash<uint64_t>{}(v.getRaw());
     }
 };
 
@@ -124,26 +92,26 @@ struct VMValueEqual {
     }
 };
 
-struct ObjClass {
+struct ObjClass : public Obj {
     std::string name;
     std::unordered_map<std::string, VMValue> methods;
-    std::shared_ptr<ObjClass> superclass;
+    ObjClass* superclass;
     bool isAbstract = false;
     std::unordered_map<std::string, VMValue> statics;
     std::unordered_map<std::string, VMAccessModifier> fieldModifiers;
-    ObjClass(std::string name) : name(name), superclass(nullptr) {
+    ObjClass(std::string name) : Obj(ObjType::OBJ_CLASS), name(name), superclass(nullptr) {
     }
 };
 
-struct ObjInstance {
-    std::shared_ptr<ObjClass> klass;
+struct ObjInstance : public Obj {
+    ObjClass* klass;
     std::unordered_map<std::string, VMValue> fields;
 
     // Native resource binding
     void *nativeData = nullptr;
     void (*freeFn)(void *) = nullptr;
 
-    ObjInstance(std::shared_ptr<ObjClass> k) : klass(k) {
+    ObjInstance(ObjClass* k) : Obj(ObjType::OBJ_INSTANCE), klass(k) {
     }
 
     ~ObjInstance() {
@@ -154,77 +122,48 @@ struct ObjInstance {
     }
 };
 
-struct ObjBoundMethod {
+struct ObjBoundMethod : public Obj {
     VMValue receiver;
     VMValue method;
-    ObjBoundMethod(VMValue r, VMValue m) : receiver(r), method(m) {
+    ObjBoundMethod(VMValue r, VMValue m) : Obj(ObjType::OBJ_BOUND_METHOD), receiver(r), method(m) {
     }
 };
 
-struct ObjWeakRef {
-    std::variant<std::monostate, 
-                 std::weak_ptr<ObjString>, 
-                 std::weak_ptr<ObjFunction>, 
-                 std::weak_ptr<ObjClosure>,
-                 std::weak_ptr<ObjNative>, 
-                 std::weak_ptr<ObjList>, 
-                 std::weak_ptr<ObjMap>,
-                 std::weak_ptr<ObjClass>, 
-                 std::weak_ptr<ObjInstance>, 
-                 std::weak_ptr<ObjBoundMethod>> weakRef;
-
-    ObjWeakRef() : weakRef(std::monostate{}) {}
-
+struct ObjWeakRef : public Obj {
+    Obj* weakRef;
+    ObjWeakRef() : Obj(ObjType::OBJ_WEAK_REF), weakRef(nullptr) {}
     VMValue lock() const {
-        if (std::holds_alternative<std::weak_ptr<ObjString>>(weakRef)) {
-            if (auto p = std::get<std::weak_ptr<ObjString>>(weakRef).lock()) return p;
-        } else if (std::holds_alternative<std::weak_ptr<ObjFunction>>(weakRef)) {
-            if (auto p = std::get<std::weak_ptr<ObjFunction>>(weakRef).lock()) return p;
-        } else if (std::holds_alternative<std::weak_ptr<ObjClosure>>(weakRef)) {
-            if (auto p = std::get<std::weak_ptr<ObjClosure>>(weakRef).lock()) return p;
-        } else if (std::holds_alternative<std::weak_ptr<ObjNative>>(weakRef)) {
-            if (auto p = std::get<std::weak_ptr<ObjNative>>(weakRef).lock()) return p;
-        } else if (std::holds_alternative<std::weak_ptr<ObjList>>(weakRef)) {
-            if (auto p = std::get<std::weak_ptr<ObjList>>(weakRef).lock()) return p;
-        } else if (std::holds_alternative<std::weak_ptr<ObjMap>>(weakRef)) {
-            if (auto p = std::get<std::weak_ptr<ObjMap>>(weakRef).lock()) return p;
-        } else if (std::holds_alternative<std::weak_ptr<ObjClass>>(weakRef)) {
-            if (auto p = std::get<std::weak_ptr<ObjClass>>(weakRef).lock()) return p;
-        } else if (std::holds_alternative<std::weak_ptr<ObjInstance>>(weakRef)) {
-            if (auto p = std::get<std::weak_ptr<ObjInstance>>(weakRef).lock()) return p;
-        } else if (std::holds_alternative<std::weak_ptr<ObjBoundMethod>>(weakRef)) {
-            if (auto p = std::get<std::weak_ptr<ObjBoundMethod>>(weakRef).lock()) return p;
-        }
-        return nullptr;
+        return weakRef ? VMValue(weakRef) : VMValue(nullptr);
     }
 };
 
-struct ObjList {
+struct ObjList : public Obj {
     std::vector<VMValue> elements;
-    ObjList(const std::vector<VMValue> &e) : elements(e) {
+    ObjList(const std::vector<VMValue> &e) : Obj(ObjType::OBJ_LIST), elements(e) {
     }
 };
 
-struct ObjMap {
+struct ObjMap : public Obj {
     std::unordered_map<VMValue, VMValue, VMValueHash, VMValueEqual> values;
+    ObjMap() : Obj(ObjType::OBJ_MAP) {}
 };
 
-struct ObjNative {
+struct ObjNative : public Obj {
     std::string name;
     int arity;
     NativeFn function;
     bool isAbstract = false;
     VMAccessModifier accessModifier = VMAccessModifier::PUBLIC;
 
-    ObjNative(std::string n, int a, NativeFn f) : name(n), arity(a), function(f) {
+    ObjNative(std::string n, int a, NativeFn f) : Obj(ObjType::OBJ_NATIVE), name(n), arity(a), function(f) {
     }
 };
 
-struct ObjFunction {
+struct ObjFunction : public Obj {
     std::string name;
     int arity;
     int maxArity;
-    std::shared_ptr<Chunk> chunk;
+    Chunk* chunk;
     bool isAbstract = false;
     std::unordered_map<std::string, VMValue> statics;
     VMAccessModifier accessModifier = VMAccessModifier::PUBLIC;
@@ -233,24 +172,24 @@ struct ObjFunction {
     int upvalueCount = 0;
     int callCount = 0;
 
-    ObjFunction() : arity(0), maxArity(0), upvalueCount(0), callCount(0) {
+    ObjFunction() : Obj(ObjType::OBJ_FUNCTION), arity(0), maxArity(0), upvalueCount(0), callCount(0) {
     }
 };
 
-struct ObjUpvalue {
+struct ObjUpvalue : public Obj {
     VMValue *location;
     VMValue closed;
-    std::shared_ptr<ObjUpvalue> next;
+    ObjUpvalue* next;
 
-    ObjUpvalue(VMValue *slot) : location(slot), closed(nullptr), next(nullptr) {
+    ObjUpvalue(VMValue *slot) : Obj(ObjType::OBJ_UPVALUE), location(slot), closed(nullptr), next(nullptr) {
     }
 };
 
-struct ObjClosure {
-    std::shared_ptr<ObjFunction> function;
-    std::vector<std::shared_ptr<ObjUpvalue>> upvalues;
+struct ObjClosure : public Obj {
+    ObjFunction* function;
+    std::vector<ObjUpvalue*> upvalues;
 
-    ObjClosure(std::shared_ptr<ObjFunction> f) : function(f) {
+    ObjClosure(ObjFunction* f) : Obj(ObjType::OBJ_CLOSURE), function(f) {
     }
 };
 
@@ -273,8 +212,7 @@ class Chunk {
 
     int addConstant(VMValue value) {
         // Simple deduplication to avoid exceeding 255 constants
-        if (std::holds_alternative<std::shared_ptr<ObjString>>(value) || std::holds_alternative<double>(value) ||
-            std::holds_alternative<bool>(value)) {
+        if (value.isString() || value.isNumber() || value.isBool()) {
             for (size_t i = 0; i < constants.size(); i++) {
                 if (constants[i] == value) {
                     return static_cast<int>(i);

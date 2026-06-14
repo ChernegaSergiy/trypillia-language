@@ -19,12 +19,12 @@ static void freeFile(void *nativeData) {
 }
 
 static VMValue fileOpen(int argCount, VMValue *args) {
-    if (argCount < 1 || argCount > 2 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
+    if (argCount < 1 || argCount > 2 || !args[0].isString())
         return nullptr;
-    std::string path = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
+    std::string path = args[0].asString()->flatten();
     std::string mode = "r";
-    if (argCount == 2 && std::holds_alternative<std::shared_ptr<ObjString>>(args[1])) {
-        mode = std::get<std::shared_ptr<ObjString>>(args[1])->flatten();
+    if (argCount == 2 && args[1].isString()) {
+        mode = args[1].asString()->flatten();
     }
 
     std::ios_base::openmode fmode = std::ios_base::in;
@@ -41,8 +41,8 @@ static VMValue fileOpen(int argCount, VMValue *args) {
         return makeResultErr(currentVM, "Failed to open file: " + path);
     }
 
-    auto fileClass = std::get<std::shared_ptr<ObjClass>>(currentVM->globals["File"]);
-    auto instance = std::make_shared<ObjInstance>(fileClass);
+    auto fileClass = currentVM->globals["File"].asClass();
+    auto instance = new ObjInstance(fileClass);
     instance->nativeData = file;
     instance->freeFn = freeFile;
 
@@ -54,10 +54,10 @@ static VMValue fileRead(int argCount, VMValue *args) {
         return nullptr;
     // The implicit "this" receiver is at args[-1] because the VM pushes receiver before args
     VMValue receiver = args[-1];
-    if (!std::holds_alternative<std::shared_ptr<ObjInstance>>(receiver))
+    if (!receiver.isInstance())
         return nullptr;
 
-    auto instance = std::get<std::shared_ptr<ObjInstance>>(receiver);
+    auto instance = receiver.asInstance();
     std::fstream *file = static_cast<std::fstream *>(instance->nativeData);
     if (!file || !file->is_open())
         return makeResultErr(currentVM, "File is not open");
@@ -68,18 +68,18 @@ static VMValue fileRead(int argCount, VMValue *args) {
 }
 
 static VMValue fileWrite(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
+    if (argCount != 1 || !args[0].isString())
         return false;
     VMValue receiver = args[-1];
-    if (!std::holds_alternative<std::shared_ptr<ObjInstance>>(receiver))
+    if (!receiver.isInstance())
         return false;
 
-    auto instance = std::get<std::shared_ptr<ObjInstance>>(receiver);
+    auto instance = receiver.asInstance();
     std::fstream *file = static_cast<std::fstream *>(instance->nativeData);
     if (!file || !file->is_open())
         return makeResultErr(currentVM, "File is not open");
 
-    std::string content = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
+    std::string content = args[0].asString()->flatten();
     *file << content;
     return makeResultOk(currentVM, true);
 }
@@ -88,10 +88,10 @@ static VMValue fileClose(int argCount, VMValue *args) {
     if (argCount != 0)
         return false;
     VMValue receiver = args[-1];
-    if (!std::holds_alternative<std::shared_ptr<ObjInstance>>(receiver))
+    if (!receiver.isInstance())
         return false;
 
-    auto instance = std::get<std::shared_ptr<ObjInstance>>(receiver);
+    auto instance = receiver.asInstance();
     std::fstream *file = static_cast<std::fstream *>(instance->nativeData);
     if (file && file->is_open()) {
         file->close();
@@ -100,16 +100,16 @@ static VMValue fileClose(int argCount, VMValue *args) {
 }
 
 static VMValue fileExists(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
+    if (argCount != 1 || !args[0].isString())
         return false;
-    std::string path = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
+    std::string path = args[0].asString()->flatten();
     return std::filesystem::exists(path);
 }
 
 static VMValue fileRemove(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjString>>(args[0]))
+    if (argCount != 1 || !args[0].isString())
         return false;
-    std::string path = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
+    std::string path = args[0].asString()->flatten();
     if (std::filesystem::exists(path)) {
         return std::filesystem::remove(path);
     }
@@ -118,14 +118,14 @@ static VMValue fileRemove(int argCount, VMValue *args) {
 
 void registerAll(VM *vm) {
     currentVM = vm;
-    auto fileClass = std::make_shared<ObjClass>("File");
-    fileClass->statics["open"] = std::make_shared<ObjNative>("open", -1, fileOpen);
-    fileClass->statics["exists"] = std::make_shared<ObjNative>("exists", 1, fileExists);
-    fileClass->statics["remove"] = std::make_shared<ObjNative>("remove", 1, fileRemove);
+    auto fileClass = new ObjClass("File");
+    fileClass->statics["open"] = new ObjNative("open", -1, fileOpen);
+    fileClass->statics["exists"] = new ObjNative("exists", 1, fileExists);
+    fileClass->statics["remove"] = new ObjNative("remove", 1, fileRemove);
 
-    fileClass->methods["read"] = std::make_shared<ObjNative>("read", 0, fileRead);
-    fileClass->methods["write"] = std::make_shared<ObjNative>("write", 1, fileWrite);
-    fileClass->methods["close"] = std::make_shared<ObjNative>("close", 0, fileClose);
+    fileClass->methods["read"] = new ObjNative("read", 0, fileRead);
+    fileClass->methods["write"] = new ObjNative("write", 1, fileWrite);
+    fileClass->methods["close"] = new ObjNative("close", 0, fileClose);
 
     vm->globals["File"] = fileClass;
 }

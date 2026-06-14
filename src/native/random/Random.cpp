@@ -17,10 +17,10 @@ static std::mt19937 &getEngine() {
 }
 
 static VMValue randomInt(int argCount, VMValue *args) {
-    if (argCount != 2 || !std::holds_alternative<double>(args[0]) || !std::holds_alternative<double>(args[1]))
+    if (argCount != 2 || !args[0].isNumber() || !args[1].isNumber())
         return nullptr;
-    int min = static_cast<int>(std::get<double>(args[0]));
-    int max = static_cast<int>(std::get<double>(args[1]));
+    int min = static_cast<int>(args[0].asNumber());
+    int max = static_cast<int>(args[1].asNumber());
 
     if (min > max) {
         int temp = min;
@@ -33,10 +33,10 @@ static VMValue randomInt(int argCount, VMValue *args) {
 }
 
 static VMValue randomFloat(int argCount, VMValue *args) {
-    if (argCount != 2 || !std::holds_alternative<double>(args[0]) || !std::holds_alternative<double>(args[1]))
+    if (argCount != 2 || !args[0].isNumber() || !args[1].isNumber())
         return nullptr;
-    double min = std::get<double>(args[0]);
-    double max = std::get<double>(args[1]);
+    double min = args[0].asNumber();
+    double max = args[1].asNumber();
 
     if (min > max) {
         double temp = min;
@@ -49,9 +49,9 @@ static VMValue randomFloat(int argCount, VMValue *args) {
 }
 
 static VMValue randomChoice(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjList>>(args[0]))
+    if (argCount != 1 || !args[0].isList())
         return nullptr;
-    auto list = std::get<std::shared_ptr<ObjList>>(args[0]);
+    auto list = args[0].asList();
 
     if (list->elements.empty())
         return nullptr;
@@ -87,12 +87,12 @@ static VMValue randomUuid(int argCount, VMValue *args) {
 
 void registerAll(VM *vm) {
     currentVM = vm;
-    auto randomClass = std::make_shared<ObjClass>("Random");
+    auto randomClass = new ObjClass("Random");
 
-    randomClass->statics["int"] = std::make_shared<ObjNative>("int", 2, randomInt);
-    randomClass->statics["float"] = std::make_shared<ObjNative>("float", 2, randomFloat);
-    randomClass->statics["choice"] = std::make_shared<ObjNative>("choice", 1, randomChoice);
-    randomClass->statics["uuid"] = std::make_shared<ObjNative>("uuid", 0, randomUuid);
+    randomClass->statics["int"] = new ObjNative("int", 2, randomInt);
+    randomClass->statics["float"] = new ObjNative("float", 2, randomFloat);
+    randomClass->statics["choice"] = new ObjNative("choice", 1, randomChoice);
+    randomClass->statics["uuid"] = new ObjNative("uuid", 0, randomUuid);
 
     vm->globals["Random"] = randomClass;
 }

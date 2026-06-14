@@ -8,23 +8,23 @@ namespace ListModule {
 thread_local VM *currentVM = nullptr;
 
 static VMValue listLength(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjList>>(args[0]))
+    if (argCount != 1 || !args[0].isList())
         return nullptr;
-    return (double)std::get<std::shared_ptr<ObjList>>(args[0])->elements.size();
+    return (double)args[0].asList()->elements.size();
 }
 
 static VMValue listPush(int argCount, VMValue *args) {
-    if (argCount != 2 || !std::holds_alternative<std::shared_ptr<ObjList>>(args[0]))
+    if (argCount != 2 || !args[0].isList())
         return nullptr;
-    auto list = std::get<std::shared_ptr<ObjList>>(args[0]);
+    auto list = args[0].asList();
     list->elements.push_back(args[1]);
     return args[0];
 }
 
 static VMValue listPop(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjList>>(args[0]))
+    if (argCount != 1 || !args[0].isList())
         return nullptr;
-    auto list = std::get<std::shared_ptr<ObjList>>(args[0]);
+    auto list = args[0].asList();
     if (list->elements.empty())
         return nullptr;
     VMValue last = list->elements.back();
@@ -33,11 +33,11 @@ static VMValue listPop(int argCount, VMValue *args) {
 }
 
 static VMValue listInsert(int argCount, VMValue *args) {
-    if (argCount != 3 || !std::holds_alternative<std::shared_ptr<ObjList>>(args[0]) ||
-        !std::holds_alternative<double>(args[1]))
+    if (argCount != 3 || !args[0].isList() ||
+        !args[1].isNumber())
         return nullptr;
-    auto list = std::get<std::shared_ptr<ObjList>>(args[0]);
-    int index = std::get<double>(args[1]);
+    auto list = args[0].asList();
+    int index = args[1].asNumber();
     if (index < 0 || index > list->elements.size())
         return nullptr;
 
@@ -46,11 +46,11 @@ static VMValue listInsert(int argCount, VMValue *args) {
 }
 
 static VMValue listRemove(int argCount, VMValue *args) {
-    if (argCount != 2 || !std::holds_alternative<std::shared_ptr<ObjList>>(args[0]) ||
-        !std::holds_alternative<double>(args[1]))
+    if (argCount != 2 || !args[0].isList() ||
+        !args[1].isNumber())
         return nullptr;
-    auto list = std::get<std::shared_ptr<ObjList>>(args[0]);
-    int index = std::get<double>(args[1]);
+    auto list = args[0].asList();
+    int index = args[1].asNumber();
     if (index < 0 || index >= list->elements.size())
         return nullptr;
 
@@ -60,26 +60,26 @@ static VMValue listRemove(int argCount, VMValue *args) {
 }
 
 static VMValue listReverse(int argCount, VMValue *args) {
-    if (argCount != 1 || !std::holds_alternative<std::shared_ptr<ObjList>>(args[0]))
+    if (argCount != 1 || !args[0].isList())
         return nullptr;
-    auto list = std::get<std::shared_ptr<ObjList>>(args[0]);
+    auto list = args[0].asList();
     std::reverse(list->elements.begin(), list->elements.end());
     return args[0];
 }
 
 static VMValue listJoin(int argCount, VMValue *args) {
-    if (argCount != 2 || !std::holds_alternative<std::shared_ptr<ObjList>>(args[0]) ||
-        !std::holds_alternative<std::shared_ptr<ObjString>>(args[1]))
+    if (argCount != 2 || !args[0].isList() ||
+        !args[1].isString())
         return nullptr;
-    auto list = std::get<std::shared_ptr<ObjList>>(args[0]);
-    std::string delim = std::get<std::shared_ptr<ObjString>>(args[1])->flatten();
+    auto list = args[0].asList();
+    std::string delim = args[1].asString()->flatten();
 
     std::string result = "";
     for (size_t i = 0; i < list->elements.size(); i++) {
-        if (std::holds_alternative<std::shared_ptr<ObjString>>(list->elements[i])) {
-            result += std::get<std::shared_ptr<ObjString>>(list->elements[i])->flatten();
-        } else if (std::holds_alternative<double>(list->elements[i])) {
-            result += std::to_string(std::get<double>(list->elements[i])); // Basic cast
+        if (list->elements[i].isString()) {
+            result += list->elements[i].asString()->flatten();
+        } else if (list->elements[i].isNumber()) {
+            result += std::to_string(list->elements[i].asNumber()); // Basic cast
         }
         // More types can be converted...
 
@@ -91,9 +91,9 @@ static VMValue listJoin(int argCount, VMValue *args) {
 }
 
 static VMValue listMap(int argCount, VMValue *args) {
-    if (argCount != 2 || !std::holds_alternative<std::shared_ptr<ObjList>>(args[0]))
+    if (argCount != 2 || !args[0].isList())
         return nullptr;
-    auto list = std::get<std::shared_ptr<ObjList>>(args[0]);
+    auto list = args[0].asList();
     VMValue closure = args[1];
 
     std::vector<VMValue> result;
@@ -104,13 +104,13 @@ static VMValue listMap(int argCount, VMValue *args) {
         VMValue res = currentVM->callClosure(closure, 1, &arg);
         result.push_back(res);
     }
-    return std::make_shared<ObjList>(result);
+    return new ObjList(result);
 }
 
 static VMValue listFilter(int argCount, VMValue *args) {
-    if (argCount != 2 || !std::holds_alternative<std::shared_ptr<ObjList>>(args[0]))
+    if (argCount != 2 || !args[0].isList())
         return nullptr;
-    auto list = std::get<std::shared_ptr<ObjList>>(args[0]);
+    auto list = args[0].asList();
     VMValue closure = args[1];
 
     std::vector<VMValue> result;
@@ -119,22 +119,22 @@ static VMValue listFilter(int argCount, VMValue *args) {
         VMValue arg = list->elements[i];
         VMValue res = currentVM->callClosure(closure, 1, &arg);
         bool isTruthy = false;
-        if (std::holds_alternative<bool>(res)) {
-            isTruthy = std::get<bool>(res);
-        } else if (!std::holds_alternative<std::nullptr_t>(res)) {
+        if (res.isBool()) {
+            isTruthy = res.asBool();
+        } else if (!res.isNil()) {
             isTruthy = true;
         }
         if (isTruthy) {
             result.push_back(arg);
         }
     }
-    return std::make_shared<ObjList>(result);
+    return new ObjList(result);
 }
 
 static VMValue listForEach(int argCount, VMValue *args) {
-    if (argCount != 2 || !std::holds_alternative<std::shared_ptr<ObjList>>(args[0]))
+    if (argCount != 2 || !args[0].isList())
         return nullptr;
-    auto list = std::get<std::shared_ptr<ObjList>>(args[0]);
+    auto list = args[0].asList();
     VMValue closure = args[1];
 
     for (size_t i = 0; i < list->elements.size(); i++) {
@@ -146,18 +146,18 @@ static VMValue listForEach(int argCount, VMValue *args) {
 
 void registerAll(VM *vm) {
     currentVM = vm;
-    auto listClass = std::make_shared<ObjClass>("List");
+    auto listClass = new ObjClass("List");
 
-    listClass->statics["length"] = std::make_shared<ObjNative>("length", 1, listLength);
-    listClass->statics["push"] = std::make_shared<ObjNative>("push", 2, listPush);
-    listClass->statics["pop"] = std::make_shared<ObjNative>("pop", 1, listPop);
-    listClass->statics["insert"] = std::make_shared<ObjNative>("insert", 3, listInsert);
-    listClass->statics["remove"] = std::make_shared<ObjNative>("remove", 2, listRemove);
-    listClass->statics["reverse"] = std::make_shared<ObjNative>("reverse", 1, listReverse);
-    listClass->statics["join"] = std::make_shared<ObjNative>("join", 2, listJoin);
-    listClass->statics["map"] = std::make_shared<ObjNative>("map", 2, listMap);
-    listClass->statics["filter"] = std::make_shared<ObjNative>("filter", 2, listFilter);
-    listClass->statics["forEach"] = std::make_shared<ObjNative>("forEach", 2, listForEach);
+    listClass->statics["length"] = new ObjNative("length", 1, listLength);
+    listClass->statics["push"] = new ObjNative("push", 2, listPush);
+    listClass->statics["pop"] = new ObjNative("pop", 1, listPop);
+    listClass->statics["insert"] = new ObjNative("insert", 3, listInsert);
+    listClass->statics["remove"] = new ObjNative("remove", 2, listRemove);
+    listClass->statics["reverse"] = new ObjNative("reverse", 1, listReverse);
+    listClass->statics["join"] = new ObjNative("join", 2, listJoin);
+    listClass->statics["map"] = new ObjNative("map", 2, listMap);
+    listClass->statics["filter"] = new ObjNative("filter", 2, listFilter);
+    listClass->statics["forEach"] = new ObjNative("forEach", 2, listForEach);
 
     vm->globals["List"] = listClass;
 }

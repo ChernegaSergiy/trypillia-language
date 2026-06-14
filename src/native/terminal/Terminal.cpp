@@ -78,15 +78,15 @@ static VMValue terminalReadChar(int argCount, VMValue *args) {
 }
 
 static VMValue terminalWrite(int argCount, VMValue *args) {
-    if (argCount == 1 && std::holds_alternative<std::shared_ptr<ObjString>>(args[0])) {
-        std::cout << std::get<std::shared_ptr<ObjString>>(args[0])->flatten() << std::flush;
+    if (argCount == 1 && args[0].isString()) {
+        std::cout << args[0].asString()->flatten() << std::flush;
     }
     return nullptr;
 }
 
 static VMValue terminalColor(int argCount, VMValue *args) {
-    if (argCount == 1 && std::holds_alternative<std::shared_ptr<ObjString>>(args[0])) {
-        std::string color = std::get<std::shared_ptr<ObjString>>(args[0])->flatten();
+    if (argCount == 1 && args[0].isString()) {
+        std::string color = args[0].asString()->flatten();
         std::string code = "";
         if (color == "black") code = "\033[30m";
         else if (color == "red") code = "\033[31m";
@@ -116,16 +116,16 @@ static VMValue terminalClear(int argCount, VMValue *args) {
 }
 
 static VMValue terminalSetCursor(int argCount, VMValue *args) {
-    if (argCount == 2 && std::holds_alternative<double>(args[0]) && std::holds_alternative<double>(args[1])) {
-        int x = static_cast<int>(std::get<double>(args[0]));
-        int y = static_cast<int>(std::get<double>(args[1]));
+    if (argCount == 2 && args[0].isNumber() && args[1].isNumber()) {
+        int x = static_cast<int>(args[0].asNumber());
+        int y = static_cast<int>(args[1].asNumber());
         std::cout << "\033[" << y << ";" << x << "H" << std::flush;
     }
     return nullptr;
 }
 
 static VMValue terminalGetCursor(int argCount, VMValue *args) {
-    auto list = std::make_shared<ObjList>(std::vector<VMValue>{});
+    auto list = new ObjList(std::vector<VMValue>{});
 #ifdef _WIN32
     CONSOLE_SCREEN_BUFFER_INFO csbi;
     if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) {
@@ -164,19 +164,19 @@ static VMValue terminalGetCursor(int argCount, VMValue *args) {
 
 void registerAll(VM *vm) {
     currentVM = vm;
-    auto cls = std::make_shared<ObjClass>("Terminal");
-    cls->statics["enableRawMode"] = std::make_shared<ObjNative>("enableRawMode", 0, terminalEnableRawMode);
-    cls->statics["disableRawMode"] = std::make_shared<ObjNative>("disableRawMode", 0, [](int, VMValue *) {
+    auto cls = new ObjClass("Terminal");
+    cls->statics["enableRawMode"] = new ObjNative("enableRawMode", 0, terminalEnableRawMode);
+    cls->statics["disableRawMode"] = new ObjNative("disableRawMode", 0, [](int, VMValue *) {
         restore();
         return (VMValue) nullptr;
     });
-    cls->statics["readChar"] = std::make_shared<ObjNative>("readChar", 0, terminalReadChar);
-    cls->statics["write"] = std::make_shared<ObjNative>("write", 1, terminalWrite);
-    cls->statics["color"] = std::make_shared<ObjNative>("color", 1, terminalColor);
-    cls->statics["reset"] = std::make_shared<ObjNative>("reset", 0, terminalReset);
-    cls->statics["clear"] = std::make_shared<ObjNative>("clear", 0, terminalClear);
-    cls->statics["setCursor"] = std::make_shared<ObjNative>("setCursor", 2, terminalSetCursor);
-    cls->statics["getCursor"] = std::make_shared<ObjNative>("getCursor", 0, terminalGetCursor);
+    cls->statics["readChar"] = new ObjNative("readChar", 0, terminalReadChar);
+    cls->statics["write"] = new ObjNative("write", 1, terminalWrite);
+    cls->statics["color"] = new ObjNative("color", 1, terminalColor);
+    cls->statics["reset"] = new ObjNative("reset", 0, terminalReset);
+    cls->statics["clear"] = new ObjNative("clear", 0, terminalClear);
+    cls->statics["setCursor"] = new ObjNative("setCursor", 2, terminalSetCursor);
+    cls->statics["getCursor"] = new ObjNative("getCursor", 0, terminalGetCursor);
     vm->globals["Terminal"] = cls;
 }
 
