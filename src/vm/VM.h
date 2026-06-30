@@ -3,6 +3,8 @@
 
 #include "Chunk.h"
 #include "JIT.h"
+#include <csignal>
+#include <csetjmp>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -16,6 +18,9 @@ struct CallFrame {
 };
 
 #define STACK_MAX 8192
+static constexpr size_t STACK_BYTES = STACK_MAX * sizeof(VMValue);
+static constexpr size_t GUARD_SIZE = 4096;
+
 class VM;
 extern thread_local VM *currentVM;
 
@@ -25,7 +30,7 @@ class VM {
     Obj *objects = nullptr;
     size_t bytesAllocated = 0;
     size_t nextGC = 1024 * 1024;
-    VMValue stack[STACK_MAX];
+    VMValue *stack;
     VMValue *stackTop;
     std::unordered_map<std::string, VMValue> globals;
     ObjUpvalue *openUpvalues;
