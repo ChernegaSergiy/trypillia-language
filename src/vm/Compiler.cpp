@@ -673,9 +673,13 @@ class CompilerVisitor : public ASTVisitor {
     }
     void visit(PostfixExpr *node) override {
         int arg = resolveLocal(node->name.lexeme);
+        int upArg = -1;
         if (arg != -1) {
             emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), static_cast<uint8_t>(arg));
             emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), static_cast<uint8_t>(arg));
+        } else if ((upArg = resolveUpvalue(node->name.lexeme)) != -1) {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_UPVALUE), static_cast<uint8_t>(upArg));
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_UPVALUE), static_cast<uint8_t>(upArg));
         } else {
             emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL),
                       static_cast<uint8_t>(chunk->addConstant(resolveName(node->name.lexeme))));
@@ -693,6 +697,8 @@ class CompilerVisitor : public ASTVisitor {
 
         if (arg != -1) {
             emitBytes(static_cast<uint8_t>(OpCode::OP_SET_LOCAL), static_cast<uint8_t>(arg));
+        } else if (upArg != -1) {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_SET_UPVALUE), static_cast<uint8_t>(upArg));
         } else {
             emitBytes(static_cast<uint8_t>(OpCode::OP_SET_GLOBAL),
                       static_cast<uint8_t>(chunk->addConstant(resolveName(node->name.lexeme))));
