@@ -807,6 +807,9 @@ bool VM::executeCall(uint8_t argCount) {
             if (nativeJitFunc) {
                 compiledFuncs[funcPtr] = nativeJitFunc;
                 funcPtr->jitAddr = (void *)nativeJitFunc;
+                std::cerr << "JIT compiled " << function->name << " at call #" << funcPtr->callCount << std::endl;
+            } else {
+                std::cerr << "JIT ABORTED for " << function->name << " at call #" << funcPtr->callCount << std::endl;
             }
         } else {
             funcPtr->callCount++;
@@ -822,7 +825,7 @@ bool VM::executeCall(uint8_t argCount) {
             }
 
             jitClosure = closure;
-            double result = nativeJitFunc(this, jitArgs.data(), argCount, 0.0);
+            double result = nativeJitFunc(this, jitArgs.data(), argCount, argCount > 0 ? jitArgs[1] : 0.0);
             jitClosure = nullptr;
             stackTop -= argCount + 1;
             push(result);
