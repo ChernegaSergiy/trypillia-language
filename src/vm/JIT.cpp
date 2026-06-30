@@ -83,6 +83,71 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction *function) {
     if (maxLocal + 1 > 256)
         return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
 
+    {
+        std::set<uint8_t> supported;
+        for (auto op : {
+                 static_cast<uint8_t>(OpCode::OP_NOP),
+                 static_cast<uint8_t>(OpCode::OP_POP),
+                 static_cast<uint8_t>(OpCode::OP_GET_LOCAL),
+                 static_cast<uint8_t>(OpCode::OP_SET_LOCAL),
+                 static_cast<uint8_t>(OpCode::OP_GET_GLOBAL),
+                 static_cast<uint8_t>(OpCode::OP_CONSTANT),
+                 static_cast<uint8_t>(OpCode::OP_CONSTANT_WIDE),
+                 static_cast<uint8_t>(OpCode::OP_ADD),
+                 static_cast<uint8_t>(OpCode::OP_SUBTRACT),
+                 static_cast<uint8_t>(OpCode::OP_MULTIPLY),
+                 static_cast<uint8_t>(OpCode::OP_DIVIDE),
+                 static_cast<uint8_t>(OpCode::OP_MOD),
+                 static_cast<uint8_t>(OpCode::OP_NEGATE),
+                 static_cast<uint8_t>(OpCode::OP_NOT),
+                 static_cast<uint8_t>(OpCode::OP_EQUAL),
+                 static_cast<uint8_t>(OpCode::OP_NOT_EQUAL),
+                 static_cast<uint8_t>(OpCode::OP_GREATER),
+                 static_cast<uint8_t>(OpCode::OP_GREATER_EQUAL),
+                 static_cast<uint8_t>(OpCode::OP_LESS),
+                 static_cast<uint8_t>(OpCode::OP_LESS_EQUAL),
+                 static_cast<uint8_t>(OpCode::OP_JUMP),
+                 static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE),
+                 static_cast<uint8_t>(OpCode::OP_LOOP),
+                 static_cast<uint8_t>(OpCode::OP_RETURN),
+                 static_cast<uint8_t>(OpCode::OP_CALL),
+                 static_cast<uint8_t>(OpCode::OP_NIL),
+                 static_cast<uint8_t>(OpCode::OP_TRUE),
+                 static_cast<uint8_t>(OpCode::OP_FALSE),
+                 static_cast<uint8_t>(OpCode::OP_DUP),
+                 static_cast<uint8_t>(OpCode::OP_BIT_AND),
+                 static_cast<uint8_t>(OpCode::OP_BIT_OR),
+                 static_cast<uint8_t>(OpCode::OP_BIT_XOR),
+                 static_cast<uint8_t>(OpCode::OP_BIT_NOT),
+                 static_cast<uint8_t>(OpCode::OP_BIT_SHIFT_LEFT),
+                 static_cast<uint8_t>(OpCode::OP_BIT_SHIFT_RIGHT),
+             })
+            supported.insert(static_cast<uint8_t>(op));
+        for (size_t i = 0; i < function->chunk->code.size();) {
+            uint8_t op = function->chunk->code[i];
+            if (!supported.count(op)) {
+                return nullptr;
+            }
+            if (op == static_cast<uint8_t>(OpCode::OP_NOP)) {
+                i += 1;
+            } else if (op == static_cast<uint8_t>(OpCode::OP_JUMP) ||
+                       op == static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE)) {
+                i += 3;
+            } else if (op == static_cast<uint8_t>(OpCode::OP_LOOP)) {
+                i += 3;
+            } else if (op == static_cast<uint8_t>(OpCode::OP_GET_LOCAL) ||
+                       op == static_cast<uint8_t>(OpCode::OP_SET_LOCAL)) {
+                i += 2;
+            } else if (op == static_cast<uint8_t>(OpCode::OP_CONSTANT_WIDE)) {
+                i += 3;
+            } else {
+                i += (op == static_cast<uint8_t>(OpCode::OP_CONSTANT) ||
+                      op == static_cast<uint8_t>(OpCode::OP_GET_GLOBAL) ||
+                      op == static_cast<uint8_t>(OpCode::OP_CALL)) ? 2 : 1;
+            }
+        }
+    }
+
     std::vector<int> capturedVec(capturedLocals.begin(), capturedLocals.end());
     emitter.setCapturedLocals(capturedVec);
     emitter.emitPrologue(maxLocal + 1);
@@ -396,6 +461,76 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction *function) {
             flushTos(sp);
             emitter.emitNegate(sp - 1);
             typeStack[sp - 1] = InferredType::NUMBER;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_MOD): {
+            if (sp < 2)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitMod(sp - 2, sp - 1);
+            typeStack[sp - 2] = InferredType::NUMBER;
+            sp--;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_NOT): {
+            if (sp < 1)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitNot(sp - 1);
+            typeStack[sp - 1] = InferredType::BOOL;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_BIT_AND): {
+            if (sp < 2)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitBitAnd(sp - 2, sp - 1);
+            typeStack[sp - 2] = InferredType::NUMBER;
+            sp--;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_BIT_OR): {
+            if (sp < 2)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitBitOr(sp - 2, sp - 1);
+            typeStack[sp - 2] = InferredType::NUMBER;
+            sp--;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_BIT_XOR): {
+            if (sp < 2)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitBitXor(sp - 2, sp - 1);
+            typeStack[sp - 2] = InferredType::NUMBER;
+            sp--;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_BIT_NOT): {
+            if (sp < 1)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitBitNot(sp - 1);
+            typeStack[sp - 1] = InferredType::NUMBER;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_BIT_SHIFT_LEFT): {
+            if (sp < 2)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitBitShl(sp - 2, sp - 1);
+            typeStack[sp - 2] = InferredType::NUMBER;
+            sp--;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_BIT_SHIFT_RIGHT): {
+            if (sp < 2)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitBitShr(sp - 2, sp - 1);
+            typeStack[sp - 2] = InferredType::NUMBER;
+            sp--;
             break;
         }
         case static_cast<uint8_t>(OpCode::OP_NIL):
