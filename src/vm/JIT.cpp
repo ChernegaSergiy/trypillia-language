@@ -193,6 +193,24 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction *function) {
             sp++;
             break;
         }
+        case static_cast<uint8_t>(OpCode::OP_CONSTANT_WIDE): {
+            uint16_t idx = static_cast<uint16_t>((function->chunk->code[i + 1] << 8) | function->chunk->code[i + 2]);
+            i += 2;
+            VMValue val = function->chunk->constants[idx];
+            flushTos(sp);
+            double raw;
+            memcpy(&raw, &val, sizeof(double));
+            if (sp >= 256)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            emitter.emitLoadConstToFR0(raw);
+            tosInFR0 = true;
+            if (val.isNumber())
+                typeStack[sp] = InferredType::NUMBER;
+            else
+                typeStack[sp] = InferredType::UNKNOWN;
+            sp++;
+            break;
+        }
         case static_cast<uint8_t>(OpCode::OP_ADD): {
             if (sp < 2)
                 return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
