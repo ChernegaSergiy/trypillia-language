@@ -41,6 +41,7 @@ class UniversalEmitter : public JitEmitter {
     std::map<size_t, struct sljit_label *> labels;
     std::map<size_t, std::vector<struct sljit_jump *>> unresolvedJumps;
     std::vector<char *> ownedStrings;
+    std::vector<VMValue **> ownedCells;
     std::set<std::string> stringPool;
 
     const char *cacheString(const std::string &s) {
@@ -62,6 +63,8 @@ class UniversalEmitter : public JitEmitter {
             sljit_free_compiler(compiler);
         for (char *s : ownedStrings)
             free(s);
+        for (VMValue **cell : ownedCells)
+            delete cell;
     }
 
     void setCapturedLocals(const std::vector<int> &slots) override {
@@ -468,7 +471,7 @@ class UniversalEmitter : public JitEmitter {
     void emitGetGlobal(const std::string &name, int targetOffset) override {
         // Allocate a persistent "cell" for this global variable
         VMValue **cell = new VMValue *(nullptr);
-        // We need to keep track of these to free them later, or just let them leak for now for speed
+        ownedCells.push_back(cell);
 
         // 1. Load the value from the cell
         sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_IMM, (sljit_sw)cell);
