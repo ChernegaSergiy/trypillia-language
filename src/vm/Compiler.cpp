@@ -465,6 +465,7 @@ class CompilerVisitor : public ASTVisitor {
     }
     void visit(BreakStmt *node) override {
         if (loops.empty()) {
+            ErrorHandling::reportError("Cannot break outside a loop.");
             return;
         }
         int depth = loops.back().scopeDepth;
@@ -475,6 +476,7 @@ class CompilerVisitor : public ASTVisitor {
     }
     void visit(ContinueStmt *node) override {
         if (loops.empty()) {
+            ErrorHandling::reportError("Cannot continue outside a loop.");
             return;
         }
         int depth = loops.back().scopeDepth;
