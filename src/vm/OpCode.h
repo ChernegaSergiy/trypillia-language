@@ -5,6 +5,7 @@
 
 enum class OpCode : uint8_t {
     OP_CONSTANT,
+    OP_CONSTANT_WIDE,
     OP_NOP,
     OP_NIL,
     OP_TRUE,
