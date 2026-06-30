@@ -681,7 +681,7 @@ class CompilerVisitor : public ASTVisitor {
                       static_cast<uint8_t>(chunk->addConstant(resolveName(node->name.lexeme))));
         }
 
-        emitBytes(static_cast<uint8_t>(OpCode::OP_CONSTANT), static_cast<uint8_t>(chunk->addConstant(1.0)));
+        emitConstantIndex(chunk->addConstant(1.0));
 
         if (node->op.type == TokenType::PLUS_PLUS) {
             emitByte(static_cast<uint8_t>(OpCode::OP_ADD));
