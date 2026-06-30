@@ -345,6 +345,14 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction *function) {
             typeStack[calleeSp] = InferredType::UNKNOWN;
             break;
         }
+        case static_cast<uint8_t>(OpCode::OP_NEGATE): {
+            if (sp < 1)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitNegate(sp - 1);
+            typeStack[sp - 1] = InferredType::NUMBER;
+            break;
+        }
         case static_cast<uint8_t>(OpCode::OP_NIL):
             flushTos(sp);
             emitter.emitLoadConst(sp, 0.0);
