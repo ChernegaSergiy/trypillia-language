@@ -534,8 +534,9 @@ class CompilerVisitor : public ASTVisitor {
             patchJump(continueJump);
         emitBytes(static_cast<uint8_t>(OpCode::OP_GET_LOCAL), static_cast<uint8_t>(indexLocal));
         emitBytes(static_cast<uint8_t>(OpCode::OP_CONSTANT), static_cast<uint8_t>(chunk->addConstant(1.0)));
-        emitBytes(static_cast<uint8_t>(OpCode::OP_ADD), static_cast<uint8_t>(OpCode::OP_SET_LOCAL));
-        emitBytes(static_cast<uint8_t>(indexLocal), static_cast<uint8_t>(OpCode::OP_POP));
+        emitByte(static_cast<uint8_t>(OpCode::OP_ADD));
+        emitBytes(static_cast<uint8_t>(OpCode::OP_SET_LOCAL), static_cast<uint8_t>(indexLocal));
+        emitByte(static_cast<uint8_t>(OpCode::OP_POP));
         emitLoop(loopStart);
         patchJump(exitJump);
         emitByte(static_cast<uint8_t>(OpCode::OP_POP));
