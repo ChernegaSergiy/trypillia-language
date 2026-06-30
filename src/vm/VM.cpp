@@ -5,9 +5,13 @@
 #include <unistd.h>
 #include <csignal>
 #include <csetjmp>
+#include <mutex>
 
 thread_local VM *currentVM = nullptr;
-static thread_local sigjmp_buf *stackOverflowJmpBuf = nullptr;
+struct JmpBufHolder {
+    sigjmp_buf buf;
+};
+static thread_local JmpBufHolder *stackOverflowJmpBuf = nullptr;
 static std::once_flag guardHandlerFlag;
 
 extern "C" void stackGuardHandler(int sig, siginfo_t *info, void *ctx) {
@@ -20,7 +24,7 @@ extern "C" void stackGuardHandler(int sig, siginfo_t *info, void *ctx) {
         void *fault = info->si_addr;
         if (fault >= (void *)guardStart && fault < (void *)guardEnd) {
             if (stackOverflowJmpBuf) {
-                siglongjmp(*stackOverflowJmpBuf, 1);
+                siglongjmp(stackOverflowJmpBuf->buf, 1);
             }
         }
     }
@@ -158,9 +162,9 @@ InterpretResult VM::runtimeError(const std::string &message) {
 InterpretResult VM::run(int targetFrameDepth) {
     CallFrame *frame = &frames.back();
 
-    sigjmp_buf jmpbuf;
-    stackOverflowJmpBuf = &jmpbuf;
-    if (sigsetjmp(&jmpbuf, 1) != 0) {
+    JmpBufHolder holder;
+    stackOverflowJmpBuf = &holder;
+    if (sigsetjmp(holder.buf, 1) != 0) {
         stackOverflowJmpBuf = nullptr;
         return runtimeError("Stack overflow.");
     }
