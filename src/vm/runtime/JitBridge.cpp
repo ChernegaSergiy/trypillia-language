@@ -201,7 +201,7 @@ extern "C" double jit_call_helper(void *vm_ptr, double callee_val, double *args,
             if (vm->compiledFuncs.count(function)) {
                 JitFunc nativeJitFunc = vm->compiledFuncs[function];
                 vm->jitClosure = closure;
-                result = nativeJitFunc(vm, args, argCount, 0.0);
+                result = nativeJitFunc(vm, args, argCount, argCount > 0 ? args[1] : 0.0);
                 vm->jitClosure = savedJitClosure;
             } else {
                 std::vector<VMValue> vmArgs(argCount);
