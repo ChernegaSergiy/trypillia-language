@@ -1,7 +1,43 @@
 #include "VM.h"
 #include "runtime/GC.h"
 
+#include <sys/mman.h>
+#include <unistd.h>
+#include <csignal>
+#include <csetjmp>
+
 thread_local VM *currentVM = nullptr;
+static thread_local sigjmp_buf *stackOverflowJmpBuf = nullptr;
+static std::once_flag guardHandlerFlag;
+
+extern "C" void stackGuardHandler(int sig, siginfo_t *info, void *ctx) {
+    (void)sig;
+    (void)ctx;
+    VM *vm = currentVM;
+    if (vm) {
+        char *guardStart = (char *)vm->stack + STACK_BYTES;
+        char *guardEnd = guardStart + GUARD_SIZE;
+        void *fault = info->si_addr;
+        if (fault >= (void *)guardStart && fault < (void *)guardEnd) {
+            if (stackOverflowJmpBuf) {
+                siglongjmp(*stackOverflowJmpBuf, 1);
+            }
+        }
+    }
+    signal(sig, SIG_DFL);
+    raise(sig);
+}
+
+static void installGuardHandler() {
+    std::call_once(guardHandlerFlag, []() {
+        struct sigaction sa;
+        sa.sa_flags = SA_SIGINFO | SA_ONSTACK;
+        sa.sa_sigaction = stackGuardHandler;
+        sigemptyset(&sa.sa_mask);
+        sigaction(SIGSEGV, &sa, nullptr);
+    });
+}
+
 #include "runtime/ObjectRuntime.h"
 #include <cmath>
 #include <iostream>
@@ -10,11 +46,42 @@ thread_local VM *currentVM = nullptr;
 #include "../native/StdLib.h"
 
 VM::VM() {
+    installGuardHandler();
+
+    // Allocate alternate signal stack for this thread
+    stack_t sigstk;
+    sigstk.ss_sp = mmap(nullptr, SIGSTKSZ, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    sigstk.ss_size = SIGSTKSZ;
+    sigstk.ss_flags = 0;
+    sigaltstack(&sigstk, nullptr);
+
+    // Allocate VM stack with guard page at the end
+    size_t allocSize = STACK_BYTES + GUARD_SIZE;
+    void *mem = mmap(nullptr, allocSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (mem == MAP_FAILED) {
+        stack = new VMValue[STACK_MAX]();
+        stackIsMMap = false;
+        std::cerr << "Warning: mmap failed, stack without guard page" << std::endl;
+    } else {
+        stack = (VMValue *)mem;
+        mprotect((char *)mem + STACK_BYTES, GUARD_SIZE, PROT_NONE);
+        stackIsMMap = true;
+    }
+    stackTop = stack;
+
     currentVM = this;
     StdLib::registerAll(this);
 }
 
 VM::~VM() {
+    if (stack) {
+        if (stackIsMMap) {
+            munmap(stack, STACK_BYTES + GUARD_SIZE);
+        } else {
+            delete[] stack;
+        }
+        stack = nullptr;
+    }
 }
 
 void VM::resetStack() {
@@ -90,6 +157,13 @@ InterpretResult VM::runtimeError(const std::string &message) {
 
 InterpretResult VM::run(int targetFrameDepth) {
     CallFrame *frame = &frames.back();
+
+    sigjmp_buf jmpbuf;
+    stackOverflowJmpBuf = &jmpbuf;
+    if (sigsetjmp(&jmpbuf, 1) != 0) {
+        stackOverflowJmpBuf = nullptr;
+        return runtimeError("Stack overflow.");
+    }
 
     for (;;) {
         uint8_t instruction;

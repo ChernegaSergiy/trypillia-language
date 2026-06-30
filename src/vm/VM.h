@@ -32,6 +32,7 @@ class VM {
     size_t nextGC = 1024 * 1024;
     VMValue *stack;
     VMValue *stackTop;
+    bool stackIsMMap = false;
     std::unordered_map<std::string, VMValue> globals;
     ObjUpvalue *openUpvalues;
 
