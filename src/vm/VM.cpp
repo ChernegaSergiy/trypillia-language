@@ -892,6 +892,7 @@ bool VM::executeCall(uint8_t argCount) {
                 funcPtr->jitAddr = (void *)nativeJitFunc;
                 std::cerr << "JIT compiled " << function->name << " at call #" << funcPtr->callCount << std::endl;
             } else {
+                compiledFuncs[funcPtr] = nullptr;
                 std::cerr << "JIT ABORTED for " << function->name << " at call #" << funcPtr->callCount << std::endl;
             }
         } else {
