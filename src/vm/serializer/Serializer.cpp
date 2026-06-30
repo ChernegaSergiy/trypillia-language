@@ -157,7 +157,7 @@ void Serializer::writeValue(std::ofstream &out, const VMValue &value) {
         out.write(reinterpret_cast<const char *>(&type), 1);
         writeFunction(out, value.asFunction());
     } else {
-        // Unknown type, just write nil to avoid crashing (should not happen for constants)
+        std::cerr << "Warning: Serializer encountered unsupported constant type, writing nil instead." << std::endl;
         uint8_t type = VAL_NIL;
         out.write(reinterpret_cast<const char *>(&type), 1);
     }
