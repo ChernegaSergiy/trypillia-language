@@ -824,12 +824,27 @@ bool VM::executeCall(uint8_t argCount) {
                 jitArgs[i] = raw;
             }
 
-            jitClosure = closure;
-            double result = nativeJitFunc(this, jitArgs.data(), argCount, argCount > 0 ? jitArgs[1] : 0.0);
-            jitClosure = nullptr;
-            stackTop -= argCount + 1;
-            push(result);
-            return true; // Skip standard frame push!
+            // Guard: JIT assumes all values are numbers; fall back to
+            // interpreter if any argument is not a number
+            bool allNumbers = true;
+            for (int i = 1; i <= argCount; i++) {
+                VMValue val;
+                memcpy(&val, &jitArgs[i], sizeof(double));
+                if (!val.isNumber()) {
+                    allNumbers = false;
+                    break;
+                }
+            }
+
+            if (allNumbers) {
+                jitClosure = closure;
+                double result = nativeJitFunc(this, jitArgs.data(), argCount, argCount > 0 ? jitArgs[1] : 0.0);
+                jitClosure = nullptr;
+                stackTop -= argCount + 1;
+                push(result);
+                return true; // Skip standard frame push!
+            }
+            // Fall through to interpreter if not all numbers
         }
         CallFrame newFrame;
         newFrame.closure = closure;
