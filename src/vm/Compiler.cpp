@@ -521,7 +521,7 @@ class CompilerVisitor : public ASTVisitor {
         node->iterable->accept(this);
         locals.push_back({"<iterable>", scopeDepth});
         int iterableLocal = static_cast<int>(locals.size()) - 1;
-        emitBytes(static_cast<uint8_t>(OpCode::OP_CONSTANT), static_cast<uint8_t>(chunk->addConstant(0.0)));
+        emitConstantIndex(chunk->addConstant(0.0));
         locals.push_back({"<index>", scopeDepth});
         int indexLocal = static_cast<int>(locals.size()) - 1;
         int loopStart = static_cast<int>(chunk->code.size());
