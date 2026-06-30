@@ -455,55 +455,12 @@ class UniversalEmitter : public JitEmitter {
     }
 
     void emitCallDynamic(int targetOffset, int calleeOffset, int argCount) override {
-        // 1. Get callee into FR0 and its raw bits into R0
-        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR0, 0, SLJIT_MEM1(SLJIT_S1), calleeOffset * sizeof(double));
-        // Use a temporary stack slot at the end of our virtual stack for bit conversion
-        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), JIT_SCRATCH_SLOT * sizeof(double), SLJIT_FR0, 0);
-        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_MEM1(SLJIT_S1), JIT_SCRATCH_SLOT * sizeof(double));
-
-        // 2. Check if it is an object (bits 0xFFFF000000000000 range)
-        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R1, 0, SLJIT_IMM, (sljit_sw)(SIGN_BIT | QNAN));
-        sljit_emit_op2(compiler, SLJIT_AND, SLJIT_R2, 0, SLJIT_R0, 0, SLJIT_R1, 0);
-        struct sljit_jump *not_obj = sljit_emit_cmp(compiler, SLJIT_NOT_EQUAL, SLJIT_R2, 0, SLJIT_R1, 0);
-
-        // 3. Get Obj* pointer
-        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R1, 0, SLJIT_IMM, (sljit_sw) ~(SIGN_BIT | QNAN));
-        sljit_emit_op2(compiler, SLJIT_AND, SLJIT_R0, 0, SLJIT_R0, 0, SLJIT_R1, 0);
-
-        // 4. Check if it is a closure
-        sljit_emit_op1(compiler, SLJIT_MOV_S32, SLJIT_R2, 0, SLJIT_MEM1(SLJIT_R0), OBJ_TYPE_OFFSET);
-        struct sljit_jump *not_closure = sljit_emit_cmp(compiler, SLJIT_NOT_EQUAL, SLJIT_R2, 0, SLJIT_IMM, OBJ_TYPE_CLOSURE_INT);
-
-        // 5. Get ObjFunction*, then jitAddr
-        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R2, 0, SLJIT_MEM1(SLJIT_R0), OBJ_CLOSURE_FUNCTION_OFFSET);
-        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R3, 0, SLJIT_MEM1(SLJIT_R2), OBJ_FUNCTION_JITADDR_OFFSET);
-        struct sljit_jump *no_jit = sljit_emit_cmp(compiler, SLJIT_EQUAL, SLJIT_R3, 0, SLJIT_IMM, 0);
-
-        // --- FAST PATH: Direct JIT Call ---
-        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_S0, 0); // vm_ptr
-        sljit_emit_op2(compiler, SLJIT_ADD, SLJIT_R1, 0, SLJIT_S1, 0, SLJIT_IMM,
-                       calleeOffset * sizeof(double));                         // args_ptr
-        sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R2, 0, SLJIT_IMM, argCount); // argCount
-        // Load first arg into FR0
-        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR0, 0, SLJIT_MEM1(SLJIT_R1), JIT_FIRST_ARG_SLOT * sizeof(double));
-
-        sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS4(F64, W, P, W, F64), SLJIT_R3, 0);
-        sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_FR0, 0);
-        struct sljit_jump *fast_path_end = sljit_emit_jump(compiler, SLJIT_JUMP);
-
-        // --- SLOW PATH: C++ Helper ---
-        sljit_set_label(not_obj, sljit_emit_label(compiler));
-        sljit_set_label(not_closure, sljit_emit_label(compiler));
-        sljit_set_label(no_jit, sljit_emit_label(compiler));
-
         sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R0, 0, SLJIT_S0, 0);
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_FR0, 0, SLJIT_MEM1(SLJIT_S1), calleeOffset * sizeof(double));
         sljit_emit_op2(compiler, SLJIT_ADD, SLJIT_R1, 0, SLJIT_S1, 0, SLJIT_IMM, calleeOffset * sizeof(double));
         sljit_emit_op1(compiler, SLJIT_MOV, SLJIT_R2, 0, SLJIT_IMM, argCount);
         sljit_emit_icall(compiler, SLJIT_CALL, SLJIT_ARGS4(F64, W, F64, P, W), SLJIT_IMM, (sljit_sw)jit_call_helper);
         sljit_emit_fop1(compiler, SLJIT_MOV_F64, SLJIT_MEM1(SLJIT_S1), targetOffset * sizeof(double), SLJIT_FR0, 0);
-
-        sljit_set_label(fast_path_end, sljit_emit_label(compiler));
     }
 
     std::vector<VMValue *> globalCaches;
