@@ -101,6 +101,11 @@ InterpretResult VM::run(int targetFrameDepth) {
             push(constant);
             break;
         }
+        case static_cast<uint8_t>(OpCode::OP_CONSTANT_WIDE): {
+            uint16_t idx = READ_SHORT();
+            push(frame->closure->function->chunk->constants[idx]);
+            break;
+        }
         case static_cast<uint8_t>(OpCode::OP_TRUE): {
             push(true);
             break;
