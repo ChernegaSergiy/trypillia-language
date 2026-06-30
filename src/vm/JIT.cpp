@@ -83,71 +83,6 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction *function) {
     if (maxLocal + 1 > 256)
         return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
 
-    {
-        std::set<uint8_t> supported;
-        for (auto op : {
-                 static_cast<uint8_t>(OpCode::OP_NOP),
-                 static_cast<uint8_t>(OpCode::OP_POP),
-                 static_cast<uint8_t>(OpCode::OP_GET_LOCAL),
-                 static_cast<uint8_t>(OpCode::OP_SET_LOCAL),
-                 static_cast<uint8_t>(OpCode::OP_GET_GLOBAL),
-                 static_cast<uint8_t>(OpCode::OP_CONSTANT),
-                 static_cast<uint8_t>(OpCode::OP_CONSTANT_WIDE),
-                 static_cast<uint8_t>(OpCode::OP_ADD),
-                 static_cast<uint8_t>(OpCode::OP_SUBTRACT),
-                 static_cast<uint8_t>(OpCode::OP_MULTIPLY),
-                 static_cast<uint8_t>(OpCode::OP_DIVIDE),
-                 static_cast<uint8_t>(OpCode::OP_MOD),
-                 static_cast<uint8_t>(OpCode::OP_NEGATE),
-                 static_cast<uint8_t>(OpCode::OP_NOT),
-                 static_cast<uint8_t>(OpCode::OP_EQUAL),
-                 static_cast<uint8_t>(OpCode::OP_NOT_EQUAL),
-                 static_cast<uint8_t>(OpCode::OP_GREATER),
-                 static_cast<uint8_t>(OpCode::OP_GREATER_EQUAL),
-                 static_cast<uint8_t>(OpCode::OP_LESS),
-                 static_cast<uint8_t>(OpCode::OP_LESS_EQUAL),
-                 static_cast<uint8_t>(OpCode::OP_JUMP),
-                 static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE),
-                 static_cast<uint8_t>(OpCode::OP_LOOP),
-                 static_cast<uint8_t>(OpCode::OP_RETURN),
-                 static_cast<uint8_t>(OpCode::OP_CALL),
-                 static_cast<uint8_t>(OpCode::OP_NIL),
-                 static_cast<uint8_t>(OpCode::OP_TRUE),
-                 static_cast<uint8_t>(OpCode::OP_FALSE),
-                 static_cast<uint8_t>(OpCode::OP_DUP),
-                 static_cast<uint8_t>(OpCode::OP_BIT_AND),
-                 static_cast<uint8_t>(OpCode::OP_BIT_OR),
-                 static_cast<uint8_t>(OpCode::OP_BIT_XOR),
-                 static_cast<uint8_t>(OpCode::OP_BIT_NOT),
-                 static_cast<uint8_t>(OpCode::OP_BIT_SHIFT_LEFT),
-                 static_cast<uint8_t>(OpCode::OP_BIT_SHIFT_RIGHT),
-             })
-            supported.insert(static_cast<uint8_t>(op));
-        for (size_t i = 0; i < function->chunk->code.size();) {
-            uint8_t op = function->chunk->code[i];
-            if (!supported.count(op)) {
-                return nullptr;
-            }
-            if (op == static_cast<uint8_t>(OpCode::OP_NOP)) {
-                i += 1;
-            } else if (op == static_cast<uint8_t>(OpCode::OP_JUMP) ||
-                       op == static_cast<uint8_t>(OpCode::OP_JUMP_IF_FALSE)) {
-                i += 3;
-            } else if (op == static_cast<uint8_t>(OpCode::OP_LOOP)) {
-                i += 3;
-            } else if (op == static_cast<uint8_t>(OpCode::OP_GET_LOCAL) ||
-                       op == static_cast<uint8_t>(OpCode::OP_SET_LOCAL)) {
-                i += 2;
-            } else if (op == static_cast<uint8_t>(OpCode::OP_CONSTANT_WIDE)) {
-                i += 3;
-            } else {
-                i += (op == static_cast<uint8_t>(OpCode::OP_CONSTANT) ||
-                      op == static_cast<uint8_t>(OpCode::OP_GET_GLOBAL) ||
-                      op == static_cast<uint8_t>(OpCode::OP_CALL)) ? 2 : 1;
-            }
-        }
-    }
-
     std::vector<int> capturedVec(capturedLocals.begin(), capturedLocals.end());
     emitter.setCapturedLocals(capturedVec);
     emitter.emitPrologue(maxLocal + 1);
@@ -557,6 +492,223 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction *function) {
             typeStack[sp] = typeStack[sp - 1];
             sp++;
             break;
+        case static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL): {
+            uint8_t constIdx = function->chunk->code[++i];
+            VMValue constant = function->chunk->constants[constIdx];
+            const std::string &name = constant.asString()->flatten();
+            flushTos(sp);
+            emitter.emitSetGlobal(name, sp - 1);
+            sp--;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_SET_GLOBAL): {
+            uint8_t constIdx = function->chunk->code[++i];
+            VMValue constant = function->chunk->constants[constIdx];
+            const std::string &name = constant.asString()->flatten();
+            flushTos(sp);
+            emitter.emitSetGlobal(name, sp - 1);
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_GET_UPVALUE): {
+            uint8_t slot = function->chunk->code[++i];
+            if (sp >= 256)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitGetUpvalue(sp, slot);
+            typeStack[sp] = InferredType::UNKNOWN;
+            sp++;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_SET_UPVALUE): {
+            uint8_t slot = function->chunk->code[++i];
+            if (sp == 0)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitSetUpvalue(slot, sp - 1);
+            sp--;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_CLOSE_UPVALUE): {
+            if (sp == 0)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitCloseUpvalue(sp - 1);
+            sp--;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_CLOSURE): {
+            uint8_t constIdx = function->chunk->code[++i];
+            VMValue constant = function->chunk->constants[constIdx];
+            int upvalueCount = constant.asFunction()->upvalueCount;
+            const uint8_t *upvalueBytes = &function->chunk->code[i + 1];
+            double funcRaw;
+            memcpy(&funcRaw, &constant, sizeof(double));
+            flushTos(sp);
+            emitter.emitCreateClosure(sp, funcRaw, upvalueBytes, upvalueCount);
+            i += 2 * upvalueCount;
+            typeStack[sp] = InferredType::CLOSURE;
+            sp++;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_BUILD_LIST): {
+            uint8_t count = function->chunk->code[++i];
+            if (sp < count)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitBuildList(sp - count, count);
+            sp = sp - count + 1;
+            typeStack[sp - 1] = InferredType::OBJECT;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_BUILD_MAP): {
+            uint8_t count = function->chunk->code[++i];
+            if (sp < 2 * count)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitBuildMap(sp - 2 * count, count);
+            sp = sp - 2 * count + 1;
+            typeStack[sp - 1] = InferredType::OBJECT;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_INDEX_GET): {
+            if (sp < 2)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitIndexGet(sp - 2, sp - 2, sp - 1);
+            typeStack[sp - 2] = InferredType::UNKNOWN;
+            sp--;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_INDEX_SET): {
+            if (sp < 3)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitIndexSet(sp - 3, sp - 2, sp - 1);
+            sp -= 3;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_CLASS): {
+            uint8_t constIdx = function->chunk->code[++i];
+            VMValue constant = function->chunk->constants[constIdx];
+            const std::string &name = constant.asString()->flatten();
+            flushTos(sp);
+            emitter.emitCreateClass(sp, name);
+            typeStack[sp] = InferredType::OBJECT;
+            sp++;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_ABSTRACT_CLASS): {
+            uint8_t constIdx = function->chunk->code[++i];
+            VMValue constant = function->chunk->constants[constIdx];
+            const std::string &name = constant.asString()->flatten();
+            flushTos(sp);
+            emitter.emitCreateAbstractClass(sp, name);
+            typeStack[sp] = InferredType::OBJECT;
+            sp++;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_INHERIT): {
+            if (sp < 2)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitInherit(sp - 2);
+            sp -= 2;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_MIXIN): {
+            if (sp < 2)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitMixin(sp - 2);
+            sp -= 2;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_GET_SUPER): {
+            uint8_t constIdx = function->chunk->code[++i];
+            VMValue constant = function->chunk->constants[constIdx];
+            const std::string &name = constant.asString()->flatten();
+            if (sp < 2)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitGetSuper(sp - 2, name);
+            typeStack[sp - 2] = InferredType::UNKNOWN;
+            sp--;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_PROPERTY_GET): {
+            uint8_t constIdx = function->chunk->code[++i];
+            VMValue constant = function->chunk->constants[constIdx];
+            const std::string &name = constant.asString()->flatten();
+            if (sp < 1)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitPropertyGet(sp - 1, name);
+            typeStack[sp - 1] = InferredType::UNKNOWN;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_PROPERTY_SET): {
+            uint8_t constIdx = function->chunk->code[++i];
+            VMValue constant = function->chunk->constants[constIdx];
+            const std::string &name = constant.asString()->flatten();
+            if (sp < 2)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitPropertySet(sp - 2, name);
+            sp--;
+            typeStack[sp - 1] = InferredType::UNKNOWN;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_METHOD): {
+            uint8_t constIdx = function->chunk->code[++i];
+            VMValue constant = function->chunk->constants[constIdx];
+            const std::string &name = constant.asString()->flatten();
+            if (sp < 2)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitBindMethod(sp - 2, name, false);
+            sp--;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_ABSTRACT_METHOD): {
+            uint8_t constIdx = function->chunk->code[++i];
+            VMValue constant = function->chunk->constants[constIdx];
+            const std::string &name = constant.asString()->flatten();
+            if (sp < 2)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitBindMethod(sp - 2, name, true);
+            sp--;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_STATIC_METHOD): {
+            uint8_t constIdx = function->chunk->code[++i];
+            VMValue constant = function->chunk->constants[constIdx];
+            const std::string &name = constant.asString()->flatten();
+            if (sp < 2)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitBindStaticMethod(sp - 2, name);
+            sp--;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_FIELD_MODIFIER): {
+            uint8_t constIdx = function->chunk->code[++i];
+            uint8_t modifier = function->chunk->code[++i];
+            VMValue constant = function->chunk->constants[constIdx];
+            const std::string &name = constant.asString()->flatten();
+            flushTos(sp);
+            emitter.emitFieldModifier(sp - 1, name, modifier);
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_ITER_HAS_NEXT): {
+            if (sp < 2)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitIterHasNext(sp - 1);
+            typeStack[sp - 2] = InferredType::BOOL;
+            sp--;
+            break;
+        }
         default:
             flushTos(sp);
             return (printf("JIT Abort at line %d opcode %d\n", __LINE__, op), nullptr);
