@@ -267,11 +267,56 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction *function) {
             sp--;
             break;
         }
+        case static_cast<uint8_t>(OpCode::OP_EQUAL): {
+            if (sp < 2)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitCmpEq(sp - 2, sp - 1);
+            typeStack[sp - 2] = InferredType::BOOL;
+            sp--;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_NOT_EQUAL): {
+            if (sp < 2)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitCmpNe(sp - 2, sp - 1);
+            typeStack[sp - 2] = InferredType::BOOL;
+            sp--;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_GREATER): {
+            if (sp < 2)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitCmpGt(sp - 2, sp - 1);
+            typeStack[sp - 2] = InferredType::BOOL;
+            sp--;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_GREATER_EQUAL): {
+            if (sp < 2)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitCmpGe(sp - 2, sp - 1);
+            typeStack[sp - 2] = InferredType::BOOL;
+            sp--;
+            break;
+        }
         case static_cast<uint8_t>(OpCode::OP_LESS): {
             if (sp < 2)
                 return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
             flushTos(sp);
             emitter.emitCmpLt(sp - 2, sp - 1);
+            typeStack[sp - 2] = InferredType::BOOL;
+            sp--;
+            break;
+        }
+        case static_cast<uint8_t>(OpCode::OP_LESS_EQUAL): {
+            if (sp < 2)
+                return (printf("JIT Abort at line %d\n", __LINE__), nullptr);
+            flushTos(sp);
+            emitter.emitCmpLe(sp - 2, sp - 1);
             typeStack[sp - 2] = InferredType::BOOL;
             sp--;
             break;
