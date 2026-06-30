@@ -17,8 +17,6 @@ VMValue::VMValue(const char *s) {
     val = SIGN_BIT | QNAN | (uint64_t)(uintptr_t)obj;
 }
 
-extern thread_local VM *currentVM;
-
 Obj::Obj(ObjType type) : type(type), isMarked(false), nextObj(nullptr) {
     if (currentVM) {
         this->nextObj = currentVM->objects;

@@ -15,7 +15,6 @@
 namespace StdLib {
 namespace WorkerModule {
 
-thread_local VM *currentVM = nullptr;
 
 struct WorkerChannel {
     std::queue<std::string> mainToWorker;

@@ -17,7 +17,8 @@
 namespace StdLib {
 namespace TerminalModule {
 
-thread_local VM *currentVM = nullptr;
+
+
 #ifdef _WIN32
 static DWORD orig_in, orig_out;
 #else

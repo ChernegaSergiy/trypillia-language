@@ -3,7 +3,6 @@
 namespace StdLib {
 namespace MapModule {
 
-thread_local VM *currentVM = nullptr;
 
 static VMValue mapKeys(int argCount, VMValue *args) {
     if (argCount != 1 || !args[0].isMap())

@@ -6,7 +6,6 @@
 namespace StdLib {
 namespace StringModule {
 
-thread_local VM *currentVM = nullptr;
 
 static VMValue stringLength(int argCount, VMValue *args) {
     if (argCount != 1 || !args[0].isString())

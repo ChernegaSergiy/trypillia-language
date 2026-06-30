@@ -14,7 +14,6 @@
 namespace StdLib {
 namespace Net {
 
-thread_local VM *currentVM = nullptr;
 
 static bool parseUrl(const std::string &url, std::string &host, int &port, std::string &path) {
     size_t pos = 0;

@@ -8,7 +8,6 @@
 namespace StdLib {
 namespace TimeModule {
 
-thread_local VM *currentVM = nullptr;
 
 static VMValue timeNow(int argCount, VMValue *args) {
     auto now = std::chrono::system_clock::now();

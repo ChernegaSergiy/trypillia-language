@@ -10,7 +10,6 @@
 namespace StdLib {
 namespace WebSocketModule {
 
-thread_local VM *currentVM = nullptr;
 
 struct WSServerData {
     mbedtls_net_context fd;

@@ -5,7 +5,6 @@
 namespace StdLib {
 namespace ListModule {
 
-thread_local VM *currentVM = nullptr;
 
 static VMValue listLength(int argCount, VMValue *args) {
     if (argCount != 1 || !args[0].isList())
