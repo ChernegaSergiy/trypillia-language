@@ -9,7 +9,6 @@
 namespace StdLib {
 namespace CryptoModule {
 
-
 // --- Base64 Implementation ---
 static const std::string base64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                                         "abcdefghijklmnopqrstuvwxyz"

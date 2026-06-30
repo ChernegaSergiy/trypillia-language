@@ -15,7 +15,6 @@
 namespace StdLib {
 namespace WorkerModule {
 
-
 struct WorkerChannel {
     std::queue<std::string> mainToWorker;
     std::mutex mtwMutex;

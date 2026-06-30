@@ -10,7 +10,6 @@
 namespace StdLib {
 namespace WebSocketModule {
 
-
 struct WSServerData {
     mbedtls_net_context fd;
 };

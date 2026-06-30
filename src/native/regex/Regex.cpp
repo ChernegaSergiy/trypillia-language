@@ -4,7 +4,6 @@
 namespace StdLib {
 namespace RegexModule {
 
-
 static VMValue regexTest(int argCount, VMValue *args) {
     if (argCount != 2 || !args[0].isString() || !args[1].isString()) {
         return nullptr;

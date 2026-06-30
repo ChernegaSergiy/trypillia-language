@@ -7,7 +7,6 @@
 namespace StdLib {
 namespace RandomModule {
 
-
 // Use a thread-local random engine for thread safety and performance
 static std::mt19937 &getEngine() {
     static thread_local std::random_device rd;

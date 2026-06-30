@@ -3,7 +3,6 @@
 namespace StdLib {
 namespace MapModule {
 
-
 static VMValue mapKeys(int argCount, VMValue *args) {
     if (argCount != 1 || !args[0].isMap())
         return nullptr;

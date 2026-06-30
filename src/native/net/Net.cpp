@@ -14,7 +14,6 @@
 namespace StdLib {
 namespace Net {
 
-
 static bool parseUrl(const std::string &url, std::string &host, int &port, std::string &path) {
     size_t pos = 0;
     if (url.find("http://") == 0) {

@@ -8,7 +8,6 @@
 namespace StdLib {
 namespace TimeModule {
 
-
 static VMValue timeNow(int argCount, VMValue *args) {
     auto now = std::chrono::system_clock::now();
     auto duration = now.time_since_epoch();

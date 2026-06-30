@@ -5,7 +5,6 @@
 namespace StdLib {
 namespace ListModule {
 
-
 static VMValue listLength(int argCount, VMValue *args) {
     if (argCount != 1 || !args[0].isList())
         return nullptr;

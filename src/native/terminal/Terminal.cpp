@@ -17,8 +17,6 @@
 namespace StdLib {
 namespace TerminalModule {
 
-
-
 #ifdef _WIN32
 static DWORD orig_in, orig_out;
 #else

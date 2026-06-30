@@ -6,7 +6,6 @@
 namespace StdLib {
 namespace StringModule {
 
-
 static VMValue stringLength(int argCount, VMValue *args) {
     if (argCount != 1 || !args[0].isString())
         return nullptr;
