@@ -45,6 +45,8 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction *function) {
             if (slot > maxLocal)
                 maxLocal = slot;
             i += 2;
+        } else if (op == static_cast<uint8_t>(OpCode::OP_CONSTANT_WIDE)) {
+            i += 3;
         } else if (op == static_cast<uint8_t>(OpCode::OP_CONSTANT) ||
                    op == static_cast<uint8_t>(OpCode::OP_GET_GLOBAL) ||
                    op == static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL) ||
