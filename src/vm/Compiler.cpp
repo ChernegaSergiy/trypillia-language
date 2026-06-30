@@ -784,6 +784,14 @@ class CompilerVisitor : public ASTVisitor {
         emitBytes(static_cast<uint8_t>(OpCode::OP_DEFINE_GLOBAL), static_cast<uint8_t>(chunk->addConstant(actualName)));
     }
     void visit(FieldDeclNode *node) override {
+        if (!currentClassName.empty()) {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_GET_GLOBAL),
+                      static_cast<uint8_t>(chunk->addConstant(resolveName(currentClassName))));
+            emitBytes(static_cast<uint8_t>(OpCode::OP_FIELD_MODIFIER),
+                      static_cast<uint8_t>(chunk->addConstant(node->name)));
+            emitByte(static_cast<uint8_t>(getVMAccessModifier(node->accessModifier)));
+            emitByte(static_cast<uint8_t>(OpCode::OP_POP));
+        }
     }
     VMAccessModifier getVMAccessModifier(AccessModifier am) {
         if (am == AccessModifier::PRIVATE) {
