@@ -396,6 +396,8 @@ InterpretResult VM::run(int targetFrameDepth) {
             VMValue a = pop();
             if (a.isNumber()) {
                 push(-a.asNumber());
+            } else {
+                return runtimeError("Operand must be a number.");
             }
             break;
         }
