@@ -108,7 +108,13 @@ JitFunc JITCompiler::compileMathFunction(ObjFunction *function) {
 
     for (size_t i = 0; i < function->chunk->code.size(); ++i) {
         if (expectedSp.count(i)) {
-            flushTos(sp);
+            // Flush ToS only if sp matches the expected state (legitimate fall-through).
+            // If sp differs, the value in FR0 came from unreachable code processed
+            // after an unconditional jump — just discard it.
+            if (tosInFR0 && sp == expectedSp[i]) {
+                emitter.emitMove(sp - 1, -1);
+            }
+            tosInFR0 = false;
             sp = expectedSp[i];
             typeStack = expectedStackTypes[i];
         }
