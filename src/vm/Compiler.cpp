@@ -167,8 +167,18 @@ class CompilerVisitor : public ASTVisitor {
         emitByte(byte2);
     }
 
+    void emitConstantIndex(int index) {
+        if (index <= 255) {
+            emitBytes(static_cast<uint8_t>(OpCode::OP_CONSTANT), static_cast<uint8_t>(index));
+        } else {
+            emitByte(static_cast<uint8_t>(OpCode::OP_CONSTANT_WIDE));
+            emitByte(static_cast<uint8_t>((index >> 8) & 0xff));
+            emitByte(static_cast<uint8_t>(index & 0xff));
+        }
+    }
+
     void emitConstant(VMValue value) {
-        emitBytes(static_cast<uint8_t>(OpCode::OP_CONSTANT), static_cast<uint8_t>(chunk->addConstant(value)));
+        emitConstantIndex(chunk->addConstant(value));
     }
 
     int emitJump(uint8_t instruction) {
