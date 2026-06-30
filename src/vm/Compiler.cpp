@@ -1032,12 +1032,21 @@ class CompilerVisitor : public ASTVisitor {
             std::string old_fname = compiler_filename;
             std::string old_namespace = currentNamespace;
             std::map<std::string, std::string> old_useAliases = useAliases;
+            int old_scopeDepth = scopeDepth;
+            size_t old_localsSize = locals.size();
+            size_t old_upvaluesSize = upvalues.size();
+            size_t old_loopsSize = loops.size();
             compiler_filename = path;
+            scopeDepth = 0;
             ast->accept(this);
             delete ast;
             compiler_filename = old_fname;
             currentNamespace = old_namespace;
             useAliases = old_useAliases;
+            scopeDepth = old_scopeDepth;
+            locals.resize(old_localsSize);
+            upvalues.resize(old_upvaluesSize);
+            loops.resize(old_loopsSize);
         }
     }
 
