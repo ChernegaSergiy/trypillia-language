@@ -184,6 +184,13 @@ class VMValue {
         return (ObjUpvalue *)asObj();
     }
 
+    bool isPromise() const {
+        return isObj() && asObj()->type == ObjType::OBJ_PROMISE;
+    }
+    ObjPromise *asPromise() const {
+        return (ObjPromise *)asObj();
+    }
+
     uint64_t getRaw() const {
         return val;
     }
