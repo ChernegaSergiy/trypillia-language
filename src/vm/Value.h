@@ -18,6 +18,7 @@ struct ObjInstance;
 struct ObjBoundMethod;
 struct ObjWeakRef;
 struct ObjUpvalue;
+struct ObjPromise;
 
 enum class ObjType {
     OBJ_STRING,
@@ -30,7 +31,8 @@ enum class ObjType {
     OBJ_INSTANCE,
     OBJ_BOUND_METHOD,
     OBJ_WEAK_REF,
-    OBJ_UPVALUE
+    OBJ_UPVALUE,
+    OBJ_PROMISE
 };
 
 struct Obj {
