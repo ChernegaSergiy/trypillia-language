@@ -4,43 +4,6 @@
 namespace StdLib {
 namespace PromiseModule {
 
-static void scheduleResolve(VM *vm, ObjPromise *promise, VMValue value, ObjPromise *nextPromise,
-                            ObjClosure *onFulfilled, ObjClosure *onRejected) {
-    if (onFulfilled) {
-        ObjFunction *func = new ObjFunction();
-        func->arity = 0;
-        func->maxArity = 0;
-        func->name = "promise_microtask";
-        ObjClosure *closure = new ObjClosure(func);
-
-        auto *callerFrame = &vm->frames.back();
-        auto savedIp = callerFrame->ip;
-        auto savedStack = vm->stackTop;
-
-        vm->push(VMValue(onFulfilled));
-        vm->push(value);
-        vm->callClosure(VMValue(onFulfilled), 1, vm->stackTop - 1);
-
-        if (vm->stackTop > savedStack) {
-            VMValue result = vm->pop();
-            vm->push(result);
-            if (nextPromise) {
-                nextPromise->value = result;
-                nextPromise->resolved = true;
-                for (size_t i = 0; i < nextPromise->thenHandlers.size(); i += 3) {
-                    auto hOnFulfilled = nextPromise->thenHandlers[i];
-                    auto hNextPromise = nextPromise->thenHandlers[i + 2];
-                    scheduleResolve(vm, nextPromise, result,
-                                    hNextPromise.isPromise() ? hNextPromise.asPromise() : nullptr,
-                                    hOnFulfilled.isClosure() ? hOnFulfilled.asClosure() : nullptr,
-                                    nullptr);
-                }
-                nextPromise->thenHandlers.clear();
-            }
-        }
-    }
-}
-
 static VMValue resolveNative(int argCount, VMValue *args) {
     if (argCount < 1) return nullptr;
     VM *vm = currentVM;
@@ -55,13 +18,12 @@ static VMValue resolveNative(int argCount, VMValue *args) {
     auto handlers = std::move(promise->thenHandlers);
     promise->thenHandlers.clear();
     for (size_t i = 0; i < handlers.size(); i += 3) {
-        auto hOnFulfilled = handlers[i];
-        auto hOnRejected = handlers[i + 1];
-        auto hNextPromise = handlers[i + 2];
-        scheduleResolve(vm, promise, promise->value,
-                        hNextPromise.isPromise() ? hNextPromise.asPromise() : nullptr,
-                        hOnFulfilled.isClosure() ? hOnFulfilled.asClosure() : nullptr,
-                        hOnRejected.isClosure() ? hOnRejected.asClosure() : nullptr);
+        VM::PromiseMicrotask pm;
+        pm.onFulfilled = handlers[i];
+        pm.onRejected = handlers[i + 1];
+        pm.targetPromise = handlers[i + 2].isPromise() ? handlers[i + 2].asPromise() : nullptr;
+        pm.inputValue = promise->value;
+        vm->promiseMicrotasks.push_back(pm);
     }
 
     return nullptr;
@@ -84,9 +46,12 @@ static VMValue rejectNative(int argCount, VMValue *args) {
         auto hOnRejected = handlers[i + 1];
         auto hNextPromise = handlers[i + 2];
         if (hOnRejected.isClosure() && hNextPromise.isPromise()) {
-            scheduleResolve(vm, promise, promise->value,
-                            hNextPromise.asPromise(),
-                            nullptr, hOnRejected.asClosure());
+            VM::PromiseMicrotask pm;
+            pm.onFulfilled = VMValue(nullptr);
+            pm.onRejected = hOnRejected;
+            pm.targetPromise = hNextPromise.asPromise();
+            pm.inputValue = promise->value;
+            vm->promiseMicrotasks.push_back(pm);
         }
     }
 
@@ -107,10 +72,12 @@ static VMValue thenNative(int argCount, VMValue *args) {
     auto *newPromise = new ObjPromise();
 
     if (promise->resolved) {
-        if (argCount > off && args[off].isClosure()) {
-            scheduleResolve(vm, promise, promise->value, newPromise,
-                            args[off].asClosure(), nullptr);
-        }
+        VM::PromiseMicrotask pm;
+        pm.onFulfilled = argCount > off && args[off].isClosure() ? args[off] : VMValue(nullptr);
+        pm.onRejected = argCount > off + 1 && args[off + 1].isClosure() ? args[off + 1] : VMValue(nullptr);
+        pm.targetPromise = newPromise;
+        pm.inputValue = promise->value;
+        vm->promiseMicrotasks.push_back(pm);
         return VMValue(newPromise);
     }
 
