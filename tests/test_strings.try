@@ -1,48 +1,40 @@
-fn testStringLiteral() {
-    if ("hello" != "hello") print("FAIL: string literal");
-    if ("hello" == "world") print("FAIL: string literal eq wrong");
-}
+describe("strings", fn() {
+    it("string literal", fn() {
+        assertEq("hello", "hello");
+        assertNeq("hello", "world");
+    });
 
-fn testStringConcat() {
-    if ("foo" + "bar" != "foobar") print("FAIL: foo+bar != foobar");
-    if ("" + "a" != "a") print("FAIL: empty + a");
-    if ("a" + "" != "a") print("FAIL: a + empty");
-    if ("" + "" != "") print("FAIL: empty + empty");
-    if ("he" + "llo" != "hello") print("FAIL: he+llo != hello");
-}
+    it("string concat", fn() {
+        assertEq("foo" + "bar", "foobar");
+        assertEq("" + "a", "a");
+        assertEq("a" + "", "a");
+        assertEq("" + "", "");
+        assertEq("he" + "llo", "hello");
+    });
 
-fn testStringLength() {
-    if ("hello".length() != 5) print("FAIL: hello length != 5");
-    if ("".length() != 0) print("FAIL: empty length != 0");
-    if ("abc".length() != 3) print("FAIL: abc length != 3");
-}
+    it("string length", fn() {
+        assertEq("hello".length(), 5);
+        assertEq("".length(), 0);
+        assertEq("abc".length(), 3);
+    });
 
-fn testStringIndex() {
-    if ("hello"[0] != "h") print("FAIL: hello[0] != h");
-    if ("hello"[1] != "e") print("FAIL: hello[1] != e");
-    if ("hello"[4] != "o") print("FAIL: hello[4] != o");
-    if ("abc"[2] != "c") print("FAIL: abc[2] != c");
-}
+    it("string index", fn() {
+        assertEq("hello"[0], "h");
+        assertEq("hello"[1], "e");
+        assertEq("hello"[4], "o");
+        assertEq("abc"[2], "c");
+    });
 
-fn testStringComparison() {
-    if ("abc" == "xyz") print("FAIL: abc == xyz");
-    if ("abc" != "abc") print("FAIL: abc != abc");
-    if ("hello" == "Hello") print("FAIL: hello == Hello");
-}
+    it("string comparison", fn() {
+        assertNeq("abc", "xyz");
+        assertEq("abc", "abc");
+        assertNeq("hello", "Hello");
+    });
 
-fn testStringMixed() {
-    let s = "Hello, " + "World!";
-    if (s.length() != 13) print("FAIL: Hello World length");
-    if (s[0] != "H") print("FAIL: Hello World[0]");
-    if (s[12] != "!") print("FAIL: Hello World[12]");
-}
-
-testStringLiteral();
-testStringConcat();
-testStringLength();
-testStringIndex();
-testStringComparison();
-testStringMixed();
-
-print("Strings OK");
-print("ALL TESTS PASSED");
+    it("string mixed", fn() {
+        let s = "Hello, " + "World!";
+        assertEq(s.length(), 13);
+        assertEq(s[0], "H");
+        assertEq(s[12], "!");
+    });
+});

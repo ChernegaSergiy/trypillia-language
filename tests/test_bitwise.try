@@ -1,66 +1,48 @@
-fn testAnd() {
-    if ((1 & 3) != 1) print("FAIL: 1 & 3 != 1");
-    if ((0 & 5) != 0) print("FAIL: 0 & 5 != 0");
-    if ((7 & 3) != 3) print("FAIL: 7 & 3 != 3");
-    if ((255 & 15) != 15) print("FAIL: 255 & 15 != 15");
-}
+describe("bitwise", fn() {
+    it("and", fn() {
+        assertEq(1 & 3, 1);
+        assertEq(0 & 5, 0);
+        assertEq(7 & 3, 3);
+        assertEq(255 & 15, 15);
+    });
 
-fn testOr() {
-    if ((1 | 2) != 3) print("FAIL: 1 | 2 != 3");
-    if ((0 | 5) != 5) print("FAIL: 0 | 5 != 5");
-    if ((8 | 4) != 12) print("FAIL: 8 | 4 != 12");
-    if ((1 | 1) != 1) print("FAIL: 1 | 1 != 1");
-}
+    it("or", fn() {
+        assertEq(1 | 2, 3);
+        assertEq(0 | 5, 5);
+        assertEq(8 | 4, 12);
+        assertEq(1 | 1, 1);
+    });
 
-fn testXor() {
-    if ((1 ^ 3) != 2) print("FAIL: 1 ^ 3 != 2");
-    if ((1 ^ 1) != 0) print("FAIL: 1 ^ 1 != 0");
-    if ((5 ^ 3) != 6) print("FAIL: 5 ^ 3 != 6");
-    if ((255 ^ 0) != 255) print("FAIL: 255 ^ 0 != 255");
-}
+    it("xor", fn() {
+        assertEq(1 ^ 3, 2);
+        assertEq(1 ^ 1, 0);
+        assertEq(5 ^ 3, 6);
+        assertEq(255 ^ 0, 255);
+    });
 
-fn testNot() {
-    if (~1 != -2) print("FAIL: ~1 != -2");
-    if (~0 != -1) print("FAIL: ~0 != -1");
-    if (~-1 != 0) print("FAIL: ~-1 != 0");
-    if (~255 != -256) print("FAIL: ~255 != -256");
-}
+    it("not", fn() {
+        assertEq(~1, -2);
+        assertEq(~0, -1);
+        assertEq(~-1, 0);
+        assertEq(~255, -256);
+    });
 
-fn testShiftLeft() {
-    if ((1 << 2) != 4) print("FAIL: 1 << 2 != 4");
-    if ((0 << 5) != 0) print("FAIL: 0 << 5 != 0");
-    if ((3 << 3) != 24) print("FAIL: 3 << 3 != 24");
-    if ((1 << 10) != 1024) print("FAIL: 1 << 10 != 1024");
-}
+    it("shift left", fn() {
+        assertEq(1 << 2, 4);
+        assertEq(0 << 5, 0);
+        assertEq(3 << 3, 24);
+        assertEq(1 << 10, 1024);
+    });
 
-fn testShiftRight() {
-    if ((8 >> 1) != 4) print("FAIL: 8 >> 1 != 4");
-    if ((16 >> 2) != 4) print("FAIL: 16 >> 2 != 4");
-    if ((1 >> 1) != 0) print("FAIL: 1 >> 1 != 0");
-    if ((1024 >> 10) != 1) print("FAIL: 1024 >> 10 != 1");
-}
+    it("shift right", fn() {
+        assertEq(8 >> 1, 4);
+        assertEq(16 >> 2, 4);
+        assertEq(1 >> 1, 0);
+        assertEq(1024 >> 10, 1);
+    });
 
-fn testCombined() {
-    // (1 & 3) | (2 << 1) = 1 | 4 = 5
-    let r = (1 & 3) | (2 << 1);
-    if (r != 5) print("FAIL: combined bitwise != 5", r);
-
-    // ~(0xFF ^ 0x0F) = ~(0xF0) = ~240 = -241
-    let r2 = ~(255 ^ 15);
-    if (r2 != -241) print("FAIL: combined bitwise 2 != -241", r2);
-}
-
-let i = 0;
-while (i < 60) {
-    testAnd();
-    testOr();
-    testXor();
-    testNot();
-    testShiftLeft();
-    testShiftRight();
-    testCombined();
-    i = i + 1;
-}
-print("Bitwise OK");
-
-print("ALL TESTS PASSED");
+    it("combined", fn() {
+        assertEq((1 & 3) | (2 << 1), 5);
+        assertEq(~(255 ^ 15), -241);
+    });
+});

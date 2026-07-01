@@ -1,78 +1,62 @@
-fn testBooleanValues() {
-    if (true != true) print("FAIL: true != true");
-    if (false != false) print("FAIL: false != false");
-    if (true == false) print("FAIL: true == false");
-    if (false == true) print("FAIL: false == true");
-}
+describe("booleans", fn() {
+    it("boolean values", fn() {
+        assertEq(true, true);
+        assertEq(false, false);
+        assertNeq(true, false);
+    });
 
-fn testNot() {
-    if (!true != false) print("FAIL: !true != false");
-    if (!false != true) print("FAIL: !false != true");
-    if (!!true != true) print("FAIL: !!true != true");
-    if (!!false != false) print("FAIL: !!false != false");
-}
+    it("logical not", fn() {
+        assertEq(!true, false);
+        assertEq(!false, true);
+        assertEq(!!true, true);
+        assertEq(!!false, false);
+    });
 
-fn testEquality() {
-    if (1 == 2) print("FAIL: 1 == 2");
-    if (1 != 1) print("FAIL: 1 != 1");
-    if ("a" == "b") print("FAIL: a == b");
-    if (nil == true) print("FAIL: nil == true");
+    it("equality", fn() {
+        assertNeq(1, 2);
+        assertEq(1, 1);
+        assertNeq("a", "b");
+        assertNeq(nil, true);
 
-    let x = 42;
-    if (x != 42) print("FAIL: x != 42");
-    if (x == 43) print("FAIL: x == 43");
-}
+        let x = 42;
+        assertEq(x, 42);
+        assertNeq(x, 43);
+    });
 
-fn testComparison() {
-    if (1 < 1) print("FAIL: 1 < 1");
-    if (2 < 1) print("FAIL: 2 < 1");
-    if (!(1 < 2)) print("FAIL: !(1 < 2)");
+    it("comparison", fn() {
+        assertEq(1 < 1, false);
+        assertEq(2 < 1, false);
+        assertEq(1 < 2, true);
 
-    if (1 > 1) print("FAIL: 1 > 1");
-    if (1 > 2) print("FAIL: 1 > 2");
-    if (!(2 > 1)) print("FAIL: !(2 > 1)");
+        assertEq(1 > 1, false);
+        assertEq(1 > 2, false);
+        assertEq(2 > 1, true);
 
-    if (2 <= 1) print("FAIL: 2 <= 1");
-    if (!(1 <= 1)) print("FAIL: !(1 <= 1)");
-    if (!(1 <= 2)) print("FAIL: !(1 <= 2)");
+        assertEq(2 <= 1, false);
+        assertEq(1 <= 1, true);
+        assertEq(1 <= 2, true);
 
-    if (1 >= 2) print("FAIL: 1 >= 2");
-    if (!(1 >= 1)) print("FAIL: !(1 >= 1)");
-    if (!(2 >= 1)) print("FAIL: !(2 >= 1)");
-}
+        assertEq(1 >= 2, false);
+        assertEq(1 >= 1, true);
+        assertEq(2 >= 1, true);
+    });
 
-fn testTruthiness() {
-    // Only nil and false are falsy
-    if (nil) print("FAIL: nil is truthy");
-    if (false) print("FAIL: false is truthy");
-    if (!true) print("FAIL: !true is truthy");
+    it("truthiness", fn() {
+        if (nil) assert(false);
+        if (false) assert(false);
+        if (!true) assert(false);
 
-    // Everything else is truthy
-    if (!0) print("FAIL: 0 is falsy");
-    if (!1) print("FAIL: 1 is falsy");
-    if (!"") print("FAIL: empty string is falsy");
-    if (![]) print("FAIL: empty list is falsy");
-    if (!{}) print("FAIL: empty map is falsy");
-}
+        assert(0);
+        assert(1);
+        assert("");
+        assert([]);
+        assert({});
+    });
 
-fn testTypeCoercion() {
-    // Equality across types
-    if (1 == true) print("FAIL: 1 == true");
-    if (0 == false) print("FAIL: 0 == false");
-    if ("" == false) print("FAIL: '' == false");
-    if (nil == false) print("FAIL: nil == false");
-}
-
-let i = 0;
-while (i < 60) {
-    testBooleanValues();
-    testNot();
-    testEquality();
-    testComparison();
-    testTruthiness();
-    testTypeCoercion();
-    i = i + 1;
-}
-print("Booleans OK");
-
-print("ALL TESTS PASSED");
+    it("type coercion", fn() {
+        assertNeq(1, true);
+        assertNeq(0, false);
+        assertNeq("", false);
+        assertNeq(nil, false);
+    });
+});

@@ -1,131 +1,124 @@
-fn testBasicClass() {
-    class Dog {
-        let name;
-        fn init(n) {
-            this.name = n;
+describe("classes", fn() {
+    it("basic class", fn() {
+        class Dog {
+            let name;
+            fn init(n) {
+                this.name = n;
+            }
+            fn bark() {
+                return this.name + " barks";
+            }
         }
-        fn bark() {
-            return this.name + " barks";
-        }
-    }
-    let d = Dog("rex");
-    if (d.name != "rex") print("FAIL: dog name");
-    if (d.bark() != "rex barks") print("FAIL: dog bark");
-}
+        let d = Dog("rex");
+        assertEq(d.name, "rex");
+        assertEq(d.bark(), "rex barks");
+    });
 
-fn testClassMethodChaining() {
-    class Counter {
-        let val;
-        fn init(v) {
-            this.val = v;
+    it("class method chaining", fn() {
+        class Counter {
+            let val;
+            fn init(v) {
+                this.val = v;
+            }
+            fn inc() {
+                this.val = this.val + 1;
+                return this.val;
+            }
+            fn get() {
+                return this.val;
+            }
         }
-        fn inc() {
-            this.val = this.val + 1;
-            return this.val;
-        }
-        fn get() {
-            return this.val;
-        }
-    }
-    let c = Counter(0);
-    if (c.get() != 0) print("FAIL: counter init");
-    if (c.inc() != 1) print("FAIL: counter inc 1");
-    if (c.inc() != 2) print("FAIL: counter inc 2");
-    if (c.get() != 2) print("FAIL: counter get 2");
-}
+        let c = Counter(0);
+        assertEq(c.get(), 0);
+        assertEq(c.inc(), 1);
+        assertEq(c.inc(), 2);
+        assertEq(c.get(), 2);
+    });
 
-fn testClassPropertySet() {
-    class Box {
-        let val;
-        fn init(v) {
-            this.val = v;
+    it("class property set", fn() {
+        class Box {
+            let val;
+            fn init(v) {
+                this.val = v;
+            }
         }
-    }
-    let b = Box(10);
-    b.val = 20;
-    if (b.val != 20) print("FAIL: box set");
-}
+        let b = Box(10);
+        b.val = 20;
+        assertEq(b.val, 20);
+    });
 
-fn testInheritance() {
-    class Animal {
-        let name;
-        fn init(n) {
-            this.name = n;
+    it("inheritance", fn() {
+        class Animal {
+            let name;
+            fn init(n) {
+                this.name = n;
+            }
+            fn speak() {
+                return this.name + " makes a sound";
+            }
         }
-        fn speak() {
-            return this.name + " makes a sound";
+        class Cat < Animal {
+            fn init(n) {
+                this.name = n;
+            }
+            fn speak() {
+                return this.name + " meows";
+            }
         }
-    }
-    class Cat < Animal {
-        fn init(n) {
-            this.name = n;
-        }
-        fn speak() {
-            return this.name + " meows";
-        }
-    }
-    let a = Animal("generic");
-    let c = Cat("whiskers");
-    if (a.speak() != "generic makes a sound") print("FAIL: animal speak");
-    if (c.speak() != "whiskers meows") print("FAIL: cat speak");
-}
+        let a = Animal("generic");
+        let c = Cat("whiskers");
+        assertEq(a.speak(), "generic makes a sound");
+        assertEq(c.speak(), "whiskers meows");
+    });
 
-fn testInheritedMethod() {
-    class Animal {
-        let name;
-        fn init(n) {
-            this.name = n;
+    it("inherited method", fn() {
+        class Animal {
+            let name;
+            fn init(n) {
+                this.name = n;
+            }
+            fn getName() {
+                return this.name;
+            }
         }
-        fn getName() {
-            return this.name;
+        class Dog < Animal {
+            fn init(n) {
+                this.name = n;
+            }
         }
-    }
-    class Dog < Animal {
-        fn init(n) {
-            this.name = n;
-        }
-    }
-    let d = Dog("buddy");
-    if (d.getName() != "buddy") print("FAIL: inherited method");
-}
+        let d = Dog("buddy");
+        assertEq(d.getName(), "buddy");
+    });
 
-fn testClassWithDefaultArity() {
-    class Empty {
-        fn init() {
+    it("class with default arity", fn() {
+        class Empty {
+            fn init() {
+            }
+            fn greet() {
+                return "hello";
+            }
         }
-        fn greet() {
-            return "hello";
+        let e = Empty();
+        assertEq(e.greet(), "hello");
+    });
+
+    it("class multiple instances", fn() {
+        class Point {
+            let x;
+            let y;
+            fn init(xv, yv) {
+                this.x = xv;
+                this.y = yv;
+            }
         }
-    }
-    let e = Empty();
-    if (e.greet() != "hello") print("FAIL: empty class");
-}
-
-fn testClassMultipleInstances() {
-    class Point {
-        let x;
-        let y;
-        fn init(xv, yv) {
-            this.x = xv;
-            this.y = yv;
-        }
-    }
-    let p1 = Point(1, 2);
-    let p2 = Point(3, 4);
-    if (p1.x != 1 || p1.y != 2) print("FAIL: p1");
-    if (p2.x != 3 || p2.y != 4) print("FAIL: p2");
-    p1.x = 10;
-    if (p1.x != 10) print("FAIL: p1 modified");
-    if (p2.x != 3) print("FAIL: p2 unchanged");
-}
-
-testBasicClass();
-testClassMethodChaining();
-testClassPropertySet();
-testInheritance();
-testInheritedMethod();
-testClassWithDefaultArity();
-testClassMultipleInstances();
-
-print("Classes OK");
-print("ALL TESTS PASSED");
+        let p1 = Point(1, 2);
+        let p2 = Point(3, 4);
+        assertEq(p1.x, 1);
+        assertEq(p1.y, 2);
+        assertEq(p2.x, 3);
+        assertEq(p2.y, 4);
+        p1.x = 10;
+        assertEq(p1.x, 10);
+        assertEq(p2.x, 3);
+    });
+});

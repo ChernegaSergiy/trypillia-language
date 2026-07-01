@@ -1,70 +1,61 @@
-fn testLetDecl() {
-    let x = 10;
-    if (x != 10) print("FAIL: let init");
-    x = 20;
-    if (x != 20) print("FAIL: let assign");
-}
+describe("variables", fn() {
+    it("let decl", fn() {
+        let x = 10;
+        assertEq(x, 10);
+        x = 20;
+        assertEq(x, 20);
+    });
 
-fn testMultipleDecl() {
-    let a = 1;
-    let b = 2;
-    let c = 3;
-    if (a + b + c != 6) print("FAIL: multiple decl");
-}
+    it("multiple decl", fn() {
+        let a = 1;
+        let b = 2;
+        let c = 3;
+        assertEq(a + b + c, 6);
+    });
 
-fn testCompoundAssign() {
-    let x = 10;
-    x = x + 5;
-    if (x != 15) print("FAIL: +=");
-    x = x - 3;
-    if (x != 12) print("FAIL: -=");
-    x = x * 2;
-    if (x != 24) print("FAIL: *=");
-    x = x / 4;
-    if (x != 6) print("FAIL: /=");
-}
+    it("compound assign", fn() {
+        let x = 10;
+        x = x + 5;
+        assertEq(x, 15);
+        x = x - 3;
+        assertEq(x, 12);
+        x = x * 2;
+        assertEq(x, 24);
+        x = x / 4;
+        assertEq(x, 6);
+    });
 
-fn testClosureCapture() {
-    let globalVar = 42;
-    fn getGlobal() {
-        return globalVar;
-    }
-    if (getGlobal() != 42) print("FAIL: global var in fn");
-}
+    it("closure capture", fn() {
+        let globalVar = 42;
+        fn getGlobal() {
+            return globalVar;
+        }
+        assertEq(getGlobal(), 42);
+    });
 
-fn testBlockScope() {
-    let x = 1;
-    {
-        let x = 2;
-        if (x != 2) print("FAIL: inner x");
-    }
-    if (x != 1) print("FAIL: outer x after scope");
-}
+    it("block scope", fn() {
+        let x = 1;
+        {
+            let x = 2;
+            assertEq(x, 2);
+        }
+        assertEq(x, 1);
+    });
 
-fn testSwap() {
-    let a = 1;
-    let b = 2;
-    let tmp = a;
-    a = b;
-    b = tmp;
-    if (a != 2) print("FAIL: swap a");
-    if (b != 1) print("FAIL: swap b");
-}
+    it("swap", fn() {
+        let a = 1;
+        let b = 2;
+        let tmp = a;
+        a = b;
+        b = tmp;
+        assertEq(a, 2);
+        assertEq(b, 1);
+    });
 
-fn testUninitialized() {
-    let x;
-    if (x != nil) print("FAIL: uninitialized");
-    x = 5;
-    if (x != 5) print("FAIL: after init");
-}
-
-testLetDecl();
-testMultipleDecl();
-testCompoundAssign();
-testClosureCapture();
-testBlockScope();
-testSwap();
-testUninitialized();
-
-print("Variables OK");
-print("ALL TESTS PASSED");
+    it("uninitialized", fn() {
+        let x;
+        assertEq(x, nil);
+        x = 5;
+        assertEq(x, 5);
+    });
+});

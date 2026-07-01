@@ -1,144 +1,129 @@
-fn testIfTrue() {
-    let x = 0;
-    if (true) {
-        x = 1;
-    }
-    if (x != 1) print("FAIL: if true");
-}
-
-fn testIfFalse() {
-    let x = 0;
-    if (false) {
-        x = 1;
-    }
-    if (x != 0) print("FAIL: if false");
-}
-
-fn testIfElse() {
-    let x = 0;
-    if (false) {
-        x = 1;
-    } else {
-        x = 2;
-    }
-    if (x != 2) print("FAIL: if else");
-}
-
-fn testIfElseIf() {
-    let x = 0;
-    if (x > 1) {
-        x = 1;
-    } else if (x >= 0) {
-        x = 2;
-    } else {
-        x = 3;
-    }
-    if (x != 2) print("FAIL: else if");
-}
-
-fn testNestedIf() {
-    let x = 0;
-    if (true) {
+describe("control", fn() {
+    it("if true", fn() {
+        let x = 0;
         if (true) {
             x = 1;
         }
-    }
-    if (x != 1) print("FAIL: nested if");
-}
+        assertEq(x, 1);
+    });
 
-fn testWhileLoop() {
-    let i = 0;
-    let sum = 0;
-    while (i < 5) {
-        sum = sum + i;
-        i = i + 1;
-    }
-    if (sum != 10) print("FAIL: while sum != 10");
-    if (i != 5) print("FAIL: while i != 5");
-}
-
-fn testWhileZeroIterations() {
-    let x = 1;
-    while (false) {
-        x = 2;
-    }
-    if (x != 1) print("FAIL: while zero iterations");
-}
-
-fn testForLoop() {
-    let sum = 0;
-    for (let i = 0; i < 5; i = i + 1) {
-        sum = sum + i;
-    }
-    if (sum != 10) print("FAIL: for sum != 10");
-}
-
-fn testForLoopEmpty() {
-    let count = 0;
-    for (let i = 0; i < 0; i = i + 1) {
-        count = count + 1;
-    }
-    if (count != 0) print("FAIL: for empty");
-}
-
-fn testBreak() {
-    let i = 0;
-    let sum = 0;
-    while (i < 10) {
-        if (i == 5) break;
-        sum = sum + i;
-        i = i + 1;
-    }
-    if (sum != 10) print("FAIL: break sum != 10");
-}
-
-fn testContinue() {
-    let i = 0;
-    let sum = 0;
-    while (i < 5) {
-        i = i + 1;
-        if (i == 3) continue;
-        sum = sum + i;
-    }
-    if (sum != 12) print("FAIL: continue sum != 12");
-}
-
-fn testNestedBreak() {
-    let i = 0;
-    let sum = 0;
-    while (i < 3) {
-        let j = 0;
-        while (j < 3) {
-            if (j == 1) break;
-            sum = sum + 1;
-            j = j + 1;
+    it("if false", fn() {
+        let x = 0;
+        if (false) {
+            x = 1;
         }
-        i = i + 1;
-    }
-    if (sum != 3) print("FAIL: nested break sum != 3");
-}
+        assertEq(x, 0);
+    });
 
-fn testDoWhileOnce() {
-    let x = 0;
-    do {
-        x = x + 1;
-    } while (false);
-    if (x != 1) print("FAIL: do-while once");
-}
+    it("if else", fn() {
+        let x = 0;
+        if (false) {
+            x = 1;
+        } else {
+            x = 2;
+        }
+        assertEq(x, 2);
+    });
 
-testIfTrue();
-testIfFalse();
-testIfElse();
-testIfElseIf();
-testNestedIf();
-testWhileLoop();
-testWhileZeroIterations();
-testForLoop();
-testForLoopEmpty();
-testBreak();
-testContinue();
-testNestedBreak();
-testDoWhileOnce();
+    it("if else if", fn() {
+        let x = 0;
+        if (x > 1) {
+            x = 1;
+        } else if (x >= 0) {
+            x = 2;
+        } else {
+            x = 3;
+        }
+        assertEq(x, 2);
+    });
 
-print("Control OK");
-print("ALL TESTS PASSED");
+    it("nested if", fn() {
+        let x = 0;
+        if (true) {
+            if (true) {
+                x = 1;
+            }
+        }
+        assertEq(x, 1);
+    });
+
+    it("while loop", fn() {
+        let i = 0;
+        let sum = 0;
+        while (i < 5) {
+            sum = sum + i;
+            i = i + 1;
+        }
+        assertEq(sum, 10);
+        assertEq(i, 5);
+    });
+
+    it("while zero iterations", fn() {
+        let x = 1;
+        while (false) {
+            x = 2;
+        }
+        assertEq(x, 1);
+    });
+
+    it("for loop", fn() {
+        let sum = 0;
+        for (let i = 0; i < 5; i = i + 1) {
+            sum = sum + i;
+        }
+        assertEq(sum, 10);
+    });
+
+    it("for loop empty", fn() {
+        let count = 0;
+        for (let i = 0; i < 0; i = i + 1) {
+            count = count + 1;
+        }
+        assertEq(count, 0);
+    });
+
+    it("break", fn() {
+        let i = 0;
+        let sum = 0;
+        while (i < 10) {
+            if (i == 5) break;
+            sum = sum + i;
+            i = i + 1;
+        }
+        assertEq(sum, 10);
+    });
+
+    it("continue", fn() {
+        let i = 0;
+        let sum = 0;
+        while (i < 5) {
+            i = i + 1;
+            if (i == 3) continue;
+            sum = sum + i;
+        }
+        assertEq(sum, 12);
+    });
+
+    it("nested break", fn() {
+        let i = 0;
+        let sum = 0;
+        while (i < 3) {
+            let j = 0;
+            while (j < 3) {
+                if (j == 1) break;
+                sum = sum + 1;
+                j = j + 1;
+            }
+            i = i + 1;
+        }
+        assertEq(sum, 3);
+    });
+
+    it("do while once", fn() {
+        let x = 0;
+        do {
+            x = x + 1;
+        } while (false);
+        assertEq(x, 1);
+    });
+});

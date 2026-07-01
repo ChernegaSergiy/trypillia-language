@@ -1,67 +1,58 @@
-fn testMapLiteral() {
-    let map = {"a": 1, "b": 2, "c": 3};
-    if (map["a"] != 1) print("FAIL: map[a] != 1");
-    if (map["b"] != 2) print("FAIL: map[b] != 2");
-    if (map["c"] != 3) print("FAIL: map[c] != 3");
-}
+describe("maps", fn() {
+    it("map literal", fn() {
+        let map = {"a": 1, "b": 2, "c": 3};
+        assertEq(map["a"], 1);
+        assertEq(map["b"], 2);
+        assertEq(map["c"], 3);
+    });
 
-fn testMapLength() {
-    let empty = {};
-    let map = {"a": 1, "b": 2};
-    if (empty.keys().length() != 0) print("FAIL: empty map keys");
-    if (map.keys().length() != 2) print("FAIL: map keys length");
-}
+    it("map length", fn() {
+        let empty = {};
+        let map = {"a": 1, "b": 2};
+        assertEq(empty.keys().length(), 0);
+        assertEq(map.keys().length(), 2);
+    });
 
-fn testMapSet() {
-    let map = {"a": 1};
-    map["b"] = 2;
-    map["a"] = 10;
-    if (map["a"] != 10) print("FAIL: map[a] after set");
-    if (map["b"] != 2) print("FAIL: map[b] after set");
-}
+    it("map set", fn() {
+        let map = {"a": 1};
+        map["b"] = 2;
+        map["a"] = 10;
+        assertEq(map["a"], 10);
+        assertEq(map["b"], 2);
+    });
 
-fn testMapMissingKey() {
-    let map = {"a": 1};
-    if (map["x"] != nil) print("FAIL: missing key should be nil");
-}
+    it("map missing key", fn() {
+        let map = {"a": 1};
+        assertEq(map["x"], nil);
+    });
 
-fn testMapKeys() {
-    let map = {"x": 10, "y": 20};
-    let keys = map.keys();
-    // Check that both keys exist (order not guaranteed)
-    let foundX = false;
-    let foundY = false;
-    let i = 0;
-    while (i < keys.length()) {
-        if (keys[i] == "x") foundX = true;
-        if (keys[i] == "y") foundY = true;
-        i = i + 1;
-    }
-    if (!foundX) print("FAIL: keys missing x");
-    if (!foundY) print("FAIL: keys missing y");
-}
+    it("map keys", fn() {
+        let map = {"x": 10, "y": 20};
+        let keys = map.keys();
+        let foundX = false;
+        let foundY = false;
+        let i = 0;
+        while (i < keys.length()) {
+            if (keys[i] == "x") foundX = true;
+            if (keys[i] == "y") foundY = true;
+            i = i + 1;
+        }
+        assert(foundX);
+        assert(foundY);
+    });
 
-fn testMapValues() {
-    let map = {"x": 10, "y": 20};
-    let vals = map.values();
-    let found10 = false;
-    let found20 = false;
-    let i = 0;
-    while (i < vals.length()) {
-        if (vals[i] == 10) found10 = true;
-        if (vals[i] == 20) found20 = true;
-        i = i + 1;
-    }
-    if (!found10) print("FAIL: values missing 10");
-    if (!found20) print("FAIL: values missing 20");
-}
-
-testMapLiteral();
-testMapLength();
-testMapSet();
-testMapMissingKey();
-testMapKeys();
-testMapValues();
-
-print("Maps OK");
-print("ALL TESTS PASSED");
+    it("map values", fn() {
+        let map = {"x": 10, "y": 20};
+        let vals = map.values();
+        let found10 = false;
+        let found20 = false;
+        let i = 0;
+        while (i < vals.length()) {
+            if (vals[i] == 10) found10 = true;
+            if (vals[i] == 20) found20 = true;
+            i = i + 1;
+        }
+        assert(found10);
+        assert(found20);
+    });
+});

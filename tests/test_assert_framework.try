@@ -1,38 +1,30 @@
-fn testAssertPasses() {
-    assert(1 == 1);
-}
-
-fn testAssertEqWithNumbers() {
-    assertEq(2 + 2, 4);
-}
-
-fn testAssertEqWithStrings() {
-    assertEq("hello" + " world", "hello world");
-}
-
-fn testAssertEqWithBool() {
-    assertEq(5 > 3, true);
-}
-
-fn testAssertNeqPasses() {
-    assertNeq(1, 2);
-    assertNeq("a", "b");
-    assertNeq(true, false);
-}
-
-fn testAssertThrowsPasses() {
-    assertThrows(fn () {
-        let list = [1];
-        let x = list[100];
+describe("assert framework", fn() {
+    it("assert passes", fn() {
+        assert(1 == 1);
     });
-}
 
-testAssertPasses();
-testAssertEqWithNumbers();
-testAssertEqWithStrings();
-testAssertEqWithBool();
-testAssertNeqPasses();
-testAssertThrowsPasses();
+    it("assertEq with numbers", fn() {
+        assertEq(2 + 2, 4);
+    });
 
-print("Assert framework OK");
-print("ALL TESTS PASSED");
+    it("assertEq with strings", fn() {
+        assertEq("hello" + " world", "hello world");
+    });
+
+    it("assertEq with bool", fn() {
+        assertEq(5 > 3, true);
+    });
+
+    it("assertNeq passes", fn() {
+        assertNeq(1, 2);
+        assertNeq("a", "b");
+        assertNeq(true, false);
+    });
+
+    it("assertThrows passes", fn() {
+        assertThrows(fn () {
+            let list = [1];
+            let x = list[100];
+        });
+    });
+});

@@ -1,73 +1,64 @@
-fn testSimpleFunction() {
-    fn add(a, b) {
-        return a + b;
-    }
-    if (add(3, 4) != 7) print("FAIL: add(3,4) != 7");
-    if (add(-1, 1) != 0) print("FAIL: add(-1,1) != 0");
-}
-
-fn testMultipleReturns() {
-    fn identity(x) {
-        return x;
-    }
-    if (identity(42) != 42) print("FAIL: identity(42)");
-    if (identity("hi") != "hi") print("FAIL: identity(hi)");
-    if (identity(true) != true) print("FAIL: identity(true)");
-    if (identity(nil) != nil) print("FAIL: identity(nil)");
-}
-
-fn testEarlyReturn() {
-    fn findFirst(arr, target) {
-        let i = 0;
-        while (i < arr.length()) {
-            if (arr[i] == target) return i;
-            i = i + 1;
+describe("functions", fn() {
+    it("simple function", fn() {
+        fn add(a, b) {
+            return a + b;
         }
-        return -1;
-    }
-    let arr = [10, 20, 30, 40, 50];
-    if (findFirst(arr, 30) != 2) print("FAIL: find 30");
-    if (findFirst(arr, 99) != -1) print("FAIL: find 99");
-}
+        assertEq(add(3, 4), 7);
+        assertEq(add(-1, 1), 0);
+    });
 
-fn testRecursion() {
-    fn factorial(n) {
-        if (n <= 1) return 1;
-        return n * factorial(n - 1);
-    }
-    if (factorial(5) != 120) print("FAIL: factorial(5)");
-    if (factorial(10) != 3628800) print("FAIL: factorial(10)");
-}
+    it("multiple returns", fn() {
+        fn identity(x) {
+            return x;
+        }
+        assertEq(identity(42), 42);
+        assertEq(identity("hi"), "hi");
+        assertEq(identity(true), true);
+        assertEq(identity(nil), nil);
+    });
 
-fn testDirectRecursion() {
-    fn sumTo(n) {
-        if (n <= 0) return 0;
-        return n + sumTo(n - 1);
-    }
-    if (sumTo(10) != 55) print("FAIL: sumTo(10)");
-}
+    it("early return", fn() {
+        fn findFirst(arr, target) {
+            let i = 0;
+            while (i < arr.length()) {
+                if (arr[i] == target) return i;
+                i = i + 1;
+            }
+            return -1;
+        }
+        let arr = [10, 20, 30, 40, 50];
+        assertEq(findFirst(arr, 30), 2);
+        assertEq(findFirst(arr, 99), -1);
+    });
 
-fn testFunctionInList() {
-    fn double(x) { return x * 2; }
-    fn triple(x) { return x * 3; }
-    let fns = [double, triple];
-    if (fns[0](5) != 10) print("FAIL: double via list");
-    if (fns[1](5) != 15) print("FAIL: triple via list");
-}
+    it("recursion", fn() {
+        fn factorial(n) {
+            if (n <= 1) return 1;
+            return n * factorial(n - 1);
+        }
+        assertEq(factorial(5), 120);
+        assertEq(factorial(10), 3628800);
+    });
 
-fn testFunctionAsArg() {
-    fn apply(f, x) { return f(x); }
-    fn inc(x) { return x + 1; }
-    if (apply(inc, 5) != 6) print("FAIL: apply(inc, 5)");
-}
+    it("direct recursion", fn() {
+        fn sumTo(n) {
+            if (n <= 0) return 0;
+            return n + sumTo(n - 1);
+        }
+        assertEq(sumTo(10), 55);
+    });
 
-testSimpleFunction();
-testMultipleReturns();
-testEarlyReturn();
-testRecursion();
-testDirectRecursion();
-testFunctionInList();
-testFunctionAsArg();
+    it("function in list", fn() {
+        fn double(x) { return x * 2; }
+        fn triple(x) { return x * 3; }
+        let fns = [double, triple];
+        assertEq(fns[0](5), 10);
+        assertEq(fns[1](5), 15);
+    });
 
-print("Functions OK");
-print("ALL TESTS PASSED");
+    it("function as arg", fn() {
+        fn apply(f, x) { return f(x); }
+        fn inc(x) { return x + 1; }
+        assertEq(apply(inc, 5), 6);
+    });
+});
