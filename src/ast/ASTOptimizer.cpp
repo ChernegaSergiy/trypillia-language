@@ -98,9 +98,7 @@ ExprNode *ASTOptimizer::optimizeExpr(ExprNode *expr) {
                     if (binExpr->op.type == TokenType::PLUS) {
                         Token t;
                         t.type = TokenType::STRING;
-                        std::string lStr = leftLit->value.lexeme.substr(1, leftLit->value.lexeme.size() - 2);
-                        std::string rStr = rightLit->value.lexeme.substr(1, rightLit->value.lexeme.size() - 2);
-                        t.lexeme = "\"" + lStr + rStr + "\"";
+                        t.lexeme = leftLit->value.lexeme + rightLit->value.lexeme;
                         auto newLit = new LiteralExpr(t);
                         delete binExpr;
                         return newLit;
