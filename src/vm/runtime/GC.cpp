@@ -106,6 +106,8 @@ void processGrayStack() {
             GC::markValue(promise->value);
             if (promise->onFulfilled) GC::markObj(promise->onFulfilled);
             if (promise->onRejected) GC::markObj(promise->onRejected);
+            for (auto &h : promise->thenHandlers)
+                GC::markValue(h);
             break;
         }
         }
