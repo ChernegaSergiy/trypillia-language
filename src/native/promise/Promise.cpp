@@ -7,20 +7,21 @@ namespace PromiseModule {
 static VMValue resolveNative(int argCount, VMValue *args) {
     if (argCount < 1) return nullptr;
     VM *vm = currentVM;
+
     ObjPromise *promise = nullptr;
-    if (!vm->frames.empty()) {
+    if (argCount >= 1 && args[0].isPromise()) {
+        promise = args[0].asPromise();
+    } else if (!vm->frames.empty()) {
         auto &frame = vm->frames.back();
-        int base = frame.stackStart;
-        int idx = base;
+        int idx = frame.stackStart;
         if (idx >= 0 && idx < (int)(vm->stackTop - vm->stack)) {
-            VMValue maybePromise = vm->stack[idx];
-            if (maybePromise.isPromise()) {
-                promise = maybePromise.asPromise();
-            }
+            VMValue maybe = vm->stack[idx];
+            if (maybe.isPromise()) promise = maybe.asPromise();
         }
     }
+
     if (promise && !promise->resolved) {
-        promise->value = args[0];
+        promise->value = argCount >= 2 ? args[1] : VMValue(nullptr);
         promise->resolved = true;
         if (promise->onFulfilled) {
             vm->push(VMValue(promise->onFulfilled));
@@ -34,20 +35,21 @@ static VMValue resolveNative(int argCount, VMValue *args) {
 static VMValue rejectNative(int argCount, VMValue *args) {
     if (argCount < 1) return nullptr;
     VM *vm = currentVM;
+
     ObjPromise *promise = nullptr;
-    if (!vm->frames.empty()) {
+    if (argCount >= 1 && args[0].isPromise()) {
+        promise = args[0].asPromise();
+    } else if (!vm->frames.empty()) {
         auto &frame = vm->frames.back();
-        int base = frame.stackStart;
-        int idx = base;
+        int idx = frame.stackStart;
         if (idx >= 0 && idx < (int)(vm->stackTop - vm->stack)) {
-            VMValue maybePromise = vm->stack[idx];
-            if (maybePromise.isPromise()) {
-                promise = maybePromise.asPromise();
-            }
+            VMValue maybe = vm->stack[idx];
+            if (maybe.isPromise()) promise = maybe.asPromise();
         }
     }
+
     if (promise && !promise->resolved) {
-        promise->value = args[0];
+        promise->value = argCount >= 2 ? args[1] : VMValue(nullptr);
         promise->resolved = true;
         if (promise->onRejected) {
             vm->push(VMValue(promise->onRejected));
@@ -59,24 +61,24 @@ static VMValue rejectNative(int argCount, VMValue *args) {
 }
 
 static VMValue thenNative(int argCount, VMValue *args) {
-    if (argCount < 1) return nullptr;
     VM *vm = currentVM;
-    if (vm->stackTop - vm->stack < 1) return nullptr;
-    VMValue self = vm->stackTop[-1];
-    if (!self.isPromise()) return nullptr;
-    ObjPromise *promise = self.asPromise();
+    ObjPromise *promise = nullptr;
+    if (argCount >= 1 && args[0].isPromise()) {
+        promise = args[0].asPromise();
+    }
+    if (!promise) return nullptr;
 
     if (promise->resolved) {
-        if (promise->onFulfilled && args[0].isClosure()) {
-            vm->push(args[0]);
+        if (argCount >= 2 && args[1].isClosure()) {
+            vm->push(args[1]);
             vm->push(promise->value);
-            vm->callClosure(args[0], 1, vm->stackTop - 1);
+            vm->callClosure(args[1], 1, vm->stackTop - 1);
         }
         return nullptr;
     }
 
-    if (args[0].isClosure()) promise->onFulfilled = args[0].asClosure();
-    if (argCount >= 2 && args[1].isClosure()) promise->onRejected = args[1].asClosure();
+    if (argCount >= 2 && args[1].isClosure()) promise->onFulfilled = args[1].asClosure();
+    if (argCount >= 3 && args[2].isClosure()) promise->onRejected = args[2].asClosure();
     return nullptr;
 }
 
@@ -91,8 +93,8 @@ static VMValue promiseConstructor(int argCount, VMValue *args) {
     auto *promise = new ObjPromise();
     VMValue promiseVal(promise);
 
-    auto resolveFn = new ObjNative("resolve", 1, resolveNative);
-    auto rejectFn = new ObjNative("reject", 1, rejectNative);
+    auto resolveFn = new ObjNative("resolve", 2, resolveNative);
+    auto rejectFn = new ObjNative("reject", 2, rejectNative);
 
     vm->push(promiseVal);
     vm->push(VMValue(executor));
@@ -110,15 +112,22 @@ static VMValue promiseConstructor(int argCount, VMValue *args) {
 }
 
 void registerAll(VM *vm) {
-    vm->defineNative("Promise", 1, promiseConstructor);
+    auto promiseClass = new ObjClass("Promise");
+
+    auto thenFn = new ObjNative("then", 2, thenNative);
+    promiseClass->methods["then"] = VMValue(thenFn);
+    promiseClass->statics["then"] = VMValue(thenFn);
+
+    vm->globals["Promise"] = VMValue(promiseClass);
+    vm->globals["__promise_then"] = VMValue(thenFn);
 }
 
 void registerSymbols(SymbolTable *scope) {
-    Symbol sym;
-    sym.name = "Promise";
-    sym.type = "function";
-    sym.isConst = true;
-    scope->define(sym);
+    Symbol cls;
+    cls.name = "Promise";
+    cls.type = "class";
+    cls.isConst = true;
+    scope->define(cls);
 }
 
 } // namespace PromiseModule
