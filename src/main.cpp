@@ -124,7 +124,10 @@ int main(int argc, char **argv) {
             }
         } else {
             VM vm;
-            vm.interpret(function);
+            InterpretResult result = vm.interpret(function);
+            if (result == InterpretResult::INTERPRET_RUNTIME_ERROR) {
+                return 1;
+            }
         }
     }
 
