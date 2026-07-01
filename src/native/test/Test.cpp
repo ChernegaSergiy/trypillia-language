@@ -137,35 +137,52 @@ static VMValue assertThrowsNative(int argCount, VMValue *args) {
         return nullptr;
     }
 
+    auto closure = fn.asClosure();
+
     auto savedStackTop = vm->stackTop;
     auto savedFrameCount = vm->frames.size();
 
-    vm->suppressRuntimeErrors = true;
-    VMValue result = vm->callClosure(fn, 0, nullptr);
-    vm->suppressRuntimeErrors = false;
+    if (sigsetjmp(vm->catchJmpBuf, 1) == 0) {
+        vm->catchJumpEnabled = true;
+        vm->suppressRuntimeErrors = true;
 
-    bool threw = (vm->frames.size() > savedFrameCount);
+        vm->push(fn);
 
-    vm->stackTop = savedStackTop;
-    vm->frames.resize(savedFrameCount);
+        CallFrame frame;
+        frame.closure = closure;
+        frame.ip = closure->function->chunk->code.data();
+        frame.stackStart = static_cast<int>((vm->stackTop - vm->stack) - 1);
+        vm->frames.push_back(frame);
 
-    if (threw) {
-        return nullptr;
+        InterpretResult result = vm->run(savedFrameCount);
+
+        vm->catchJumpEnabled = false;
+        vm->suppressRuntimeErrors = false;
+        vm->stackTop = savedStackTop;
+        vm->frames.resize(savedFrameCount);
+
+        if (result == InterpretResult::INTERPRET_OK) {
+            std::string filename;
+            int line = 0;
+            getSourceLocation(vm, filename, line);
+            std::string loc;
+            if (!filename.empty())
+                loc = filename + ":" + std::to_string(line) + " ";
+
+            std::string msg;
+            if (argCount >= 2 && args[1].isString()) {
+                msg = " — " + args[1].asString()->flatten();
+            }
+
+            failAssertion(vm, "FAIL: " + loc + "expected function to throw but it did not" + msg);
+        }
+    } else {
+        vm->catchJumpEnabled = false;
+        vm->suppressRuntimeErrors = false;
+        vm->stackTop = savedStackTop;
+        vm->frames.resize(savedFrameCount);
     }
 
-    std::string filename;
-    int line = 0;
-    getSourceLocation(vm, filename, line);
-    std::string loc;
-    if (!filename.empty())
-        loc = filename + ":" + std::to_string(line) + " ";
-
-    std::string msg;
-    if (argCount >= 2 && args[1].isString()) {
-        msg = " — " + args[1].asString()->flatten();
-    }
-
-    failAssertion(vm, "FAIL: " + loc + "expected function to throw but it did not" + msg);
     return nullptr;
 }
 
