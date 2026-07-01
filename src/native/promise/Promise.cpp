@@ -4,6 +4,43 @@
 namespace StdLib {
 namespace PromiseModule {
 
+static void scheduleResolve(VM *vm, ObjPromise *promise, VMValue value, ObjPromise *nextPromise,
+                            ObjClosure *onFulfilled, ObjClosure *onRejected) {
+    if (onFulfilled) {
+        ObjFunction *func = new ObjFunction();
+        func->arity = 0;
+        func->maxArity = 0;
+        func->name = "promise_microtask";
+        ObjClosure *closure = new ObjClosure(func);
+
+        auto *callerFrame = &vm->frames.back();
+        auto savedIp = callerFrame->ip;
+        auto savedStack = vm->stackTop;
+
+        vm->push(VMValue(onFulfilled));
+        vm->push(value);
+        vm->callClosure(VMValue(onFulfilled), 1, vm->stackTop - 1);
+
+        if (vm->stackTop > savedStack) {
+            VMValue result = vm->pop();
+            vm->push(result);
+            if (nextPromise) {
+                nextPromise->value = result;
+                nextPromise->resolved = true;
+                for (size_t i = 0; i < nextPromise->thenHandlers.size(); i += 3) {
+                    auto hOnFulfilled = nextPromise->thenHandlers[i];
+                    auto hNextPromise = nextPromise->thenHandlers[i + 2];
+                    scheduleResolve(vm, nextPromise, result,
+                                    hNextPromise.isPromise() ? hNextPromise.asPromise() : nullptr,
+                                    hOnFulfilled.isClosure() ? hOnFulfilled.asClosure() : nullptr,
+                                    nullptr);
+                }
+                nextPromise->thenHandlers.clear();
+            }
+        }
+    }
+}
+
 static VMValue resolveNative(int argCount, VMValue *args) {
     if (argCount < 1) return nullptr;
     VM *vm = currentVM;
@@ -13,12 +50,20 @@ static VMValue resolveNative(int argCount, VMValue *args) {
     if (promise->resolved) return nullptr;
     promise->value = args[0];
     promise->resolved = true;
-    if (promise->onFulfilled) {
-        vm->push(VMValue(promise->onFulfilled));
-        vm->push(promise->value);
-        vm->callClosure(VMValue(promise->onFulfilled), 1, vm->stackTop - 1);
-    }
     vm->globals.erase("__promise_pending");
+
+    auto handlers = std::move(promise->thenHandlers);
+    promise->thenHandlers.clear();
+    for (size_t i = 0; i < handlers.size(); i += 3) {
+        auto hOnFulfilled = handlers[i];
+        auto hOnRejected = handlers[i + 1];
+        auto hNextPromise = handlers[i + 2];
+        scheduleResolve(vm, promise, promise->value,
+                        hNextPromise.isPromise() ? hNextPromise.asPromise() : nullptr,
+                        hOnFulfilled.isClosure() ? hOnFulfilled.asClosure() : nullptr,
+                        hOnRejected.isClosure() ? hOnRejected.asClosure() : nullptr);
+    }
+
     return nullptr;
 }
 
@@ -31,12 +76,20 @@ static VMValue rejectNative(int argCount, VMValue *args) {
     if (promise->resolved) return nullptr;
     promise->value = args[0];
     promise->resolved = true;
-    if (promise->onRejected) {
-        vm->push(VMValue(promise->onRejected));
-        vm->push(promise->value);
-        vm->callClosure(VMValue(promise->onRejected), 1, vm->stackTop - 1);
-    }
     vm->globals.erase("__promise_pending");
+
+    auto handlers = std::move(promise->thenHandlers);
+    promise->thenHandlers.clear();
+    for (size_t i = 0; i < handlers.size(); i += 3) {
+        auto hOnRejected = handlers[i + 1];
+        auto hNextPromise = handlers[i + 2];
+        if (hOnRejected.isClosure() && hNextPromise.isPromise()) {
+            scheduleResolve(vm, promise, promise->value,
+                            hNextPromise.asPromise(),
+                            nullptr, hOnRejected.asClosure());
+        }
+    }
+
     return nullptr;
 }
 
@@ -51,18 +104,34 @@ static VMValue thenNative(int argCount, VMValue *args) {
     }
     if (!promise) return nullptr;
 
+    auto *newPromise = new ObjPromise();
+
     if (promise->resolved) {
         if (argCount > off && args[off].isClosure()) {
-            vm->push(args[off]);
-            vm->push(promise->value);
-            vm->callClosure(args[off], 1, vm->stackTop - 1);
+            scheduleResolve(vm, promise, promise->value, newPromise,
+                            args[off].asClosure(), nullptr);
         }
-        return nullptr;
+        return VMValue(newPromise);
     }
 
-    if (argCount > off && args[off].isClosure()) promise->onFulfilled = args[off].asClosure();
-    if (argCount > off + 1 && args[off + 1].isClosure()) promise->onRejected = args[off + 1].asClosure();
-    return nullptr;
+    promise->thenHandlers.push_back(argCount > off && args[off].isClosure() ? args[off] : VMValue(nullptr));
+    promise->thenHandlers.push_back(argCount > off + 1 && args[off + 1].isClosure() ? args[off + 1] : VMValue(nullptr));
+    promise->thenHandlers.push_back(VMValue(newPromise));
+    return VMValue(newPromise);
+}
+
+static VMValue resolveStaticNative(int argCount, VMValue *args) {
+    auto *promise = new ObjPromise();
+    promise->value = argCount >= 1 ? args[0] : VMValue(nullptr);
+    promise->resolved = true;
+    return VMValue(promise);
+}
+
+static VMValue rejectStaticNative(int argCount, VMValue *args) {
+    auto *promise = new ObjPromise();
+    promise->value = argCount >= 1 ? args[0] : VMValue(nullptr);
+    promise->resolved = true;
+    return VMValue(promise);
 }
 
 static VMValue promiseConstructor(int argCount, VMValue *args) {
@@ -94,6 +163,9 @@ void registerAll(VM *vm) {
     vm->globals["__promise_then"] = VMValue(thenFn);
 
     vm->defineNative("Promise", 1, promiseConstructor);
+
+    auto resolveStatic = new ObjNative("resolve", 1, resolveStaticNative);
+    vm->globals["__promise_resolve"] = VMValue(resolveStatic);
 }
 
 void registerSymbols(SymbolTable *scope) {
