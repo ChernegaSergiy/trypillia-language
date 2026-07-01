@@ -96,8 +96,8 @@ static VMValue promiseConstructor(int argCount, VMValue *args) {
     auto *promise = new ObjPromise();
     VMValue promiseVal(promise);
 
-    auto resolveFn = new ObjNative("resolve", 2, resolveNative);
-    auto rejectFn = new ObjNative("reject", 2, rejectNative);
+    auto resolveFn = new ObjNative("resolve", 1, resolveNative);
+    auto rejectFn = new ObjNative("reject", 1, rejectNative);
 
     vm->push(promiseVal);
     vm->push(VMValue(executor));
