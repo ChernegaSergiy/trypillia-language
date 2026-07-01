@@ -131,25 +131,19 @@ static VMValue assertThrowsNative(int argCount, VMValue *args) {
         return nullptr;
     }
 
-    auto closure = fn.asClosure();
-
     auto savedStackTop = vm->stackTop;
     auto savedFrameCount = vm->frames.size();
 
-    vm->push(fn);
+    vm->suppressRuntimeErrors = true;
+    VMValue result = vm->callClosure(fn, 0, nullptr);
+    vm->suppressRuntimeErrors = false;
 
-    CallFrame frame;
-    frame.closure = closure;
-    frame.ip = closure->function->chunk->code.data();
-    frame.stackStart = static_cast<int>((vm->stackTop - vm->stack) - 1);
-    vm->frames.push_back(frame);
-
-    InterpretResult result = vm->run(savedFrameCount);
+    bool threw = (vm->frames.size() > savedFrameCount);
 
     vm->stackTop = savedStackTop;
     vm->frames.resize(savedFrameCount);
 
-    if (result == InterpretResult::INTERPRET_RUNTIME_ERROR) {
+    if (threw) {
         return nullptr;
     }
 
