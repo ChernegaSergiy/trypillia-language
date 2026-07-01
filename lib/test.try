@@ -1,0 +1,22 @@
+let expect = fn(actual) {
+    return {
+        toBe: fn(expected) {
+            assertEq(actual, expected, "toBe");
+        },
+        toNotBe: fn(unexpected) {
+            assertNeq(actual, unexpected, "toNotBe");
+        },
+        toBeTrue: fn() {
+            assert(actual, "toBeTrue");
+        },
+        toBeFalse: fn() {
+            assert(!actual, "toBeFalse");
+        },
+        toBeNil: fn() {
+            assert(actual == nil, "toBeNil");
+        },
+        toThrow: fn() {
+            assertThrows(actual, "toThrow");
+        }
+    };
+};
