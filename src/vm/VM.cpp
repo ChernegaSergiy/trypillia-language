@@ -948,9 +948,17 @@ bool VM::executeCall(uint8_t argCount) {
                          std::to_string(argCount) + ".");
             return false;
         }
-        VMValue result = native->function(argCount, stack + (stackTop - stack) - argCount);
-        stackTop -= argCount + 1;
-        push(result);
+        if (sigsetjmp(assertJmpBuf, 1) == 0) {
+            assertJumpEnabled = true;
+            VMValue result = native->function(argCount, stack + (stackTop - stack) - argCount);
+            assertJumpEnabled = false;
+            stackTop -= argCount + 1;
+            push(result);
+        } else {
+            assertJumpEnabled = false;
+            resetStack();
+            return false;
+        }
 
     } else if (callee.isClass()) {
         auto klass = callee.asClass();
