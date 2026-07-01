@@ -112,22 +112,18 @@ static VMValue promiseConstructor(int argCount, VMValue *args) {
 }
 
 void registerAll(VM *vm) {
-    auto promiseClass = new ObjClass("Promise");
-
     auto thenFn = new ObjNative("then", 2, thenNative);
-    promiseClass->methods["then"] = VMValue(thenFn);
-    promiseClass->statics["then"] = VMValue(thenFn);
-
-    vm->globals["Promise"] = VMValue(promiseClass);
     vm->globals["__promise_then"] = VMValue(thenFn);
+
+    vm->defineNative("Promise", 1, promiseConstructor);
 }
 
 void registerSymbols(SymbolTable *scope) {
-    Symbol cls;
-    cls.name = "Promise";
-    cls.type = "class";
-    cls.isConst = true;
-    scope->define(cls);
+    Symbol sym;
+    sym.name = "Promise";
+    sym.type = "function";
+    sym.isConst = true;
+    scope->define(sym);
 }
 
 } // namespace PromiseModule
