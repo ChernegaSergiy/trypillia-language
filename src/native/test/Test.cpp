@@ -363,6 +363,10 @@ static VMValue itNative(int argCount, VMValue *args) {
         return nullptr;
     }
 
+    if (isOnlyMode(vm)) {
+        return nullptr;
+    }
+
     std::string testName = name.asString()->flatten();
     auto prefixIt = vm->globals.find("__test_describe");
     if (prefixIt != vm->globals.end() && prefixIt->second.isString()) {
