@@ -36,7 +36,6 @@ class VM {
     std::unordered_map<std::string, VMValue> globals;
     ObjUpvalue *openUpvalues;
 
-  private:
     void resetStack();
     void push(VMValue value);
     VMValue pop();
