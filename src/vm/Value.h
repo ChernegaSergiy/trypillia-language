@@ -191,6 +191,8 @@ class VMValue {
     bool operator==(const VMValue &other) const {
         if (val == other.val)
             return true;
+        if (isNumber() && other.isNumber())
+            return asNumber() == other.asNumber();
         return equalsImpl(other);
     }
 
