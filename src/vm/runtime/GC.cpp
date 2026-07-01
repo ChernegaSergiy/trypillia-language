@@ -101,6 +101,13 @@ void processGrayStack() {
         case ObjType::OBJ_WEAK_REF: {
             break;
         }
+        case ObjType::OBJ_PROMISE: {
+            auto promise = static_cast<ObjPromise *>(obj);
+            GC::markValue(promise->value);
+            if (promise->onFulfilled) GC::markObj(promise->onFulfilled);
+            if (promise->onRejected) GC::markObj(promise->onRejected);
+            break;
+        }
         }
     }
 }
