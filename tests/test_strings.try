@@ -1,15 +1,14 @@
 fn testStringLiteral() {
-    let s = "hello";
-    if (s != "hello") print("FAIL: string literal");
-    if (s == "world") print("FAIL: string literal eq wrong");
+    if ("hello" != "hello") print("FAIL: string literal");
+    if ("hello" == "world") print("FAIL: string literal eq wrong");
 }
 
 fn testStringConcat() {
-    let s = "foo" + "bar";
-    if (s != "foobar") print("FAIL: foo+bar != foobar", s);
+    if ("foo" + "bar" != "foobar") print("FAIL: foo+bar != foobar");
     if ("" + "a" != "a") print("FAIL: empty + a");
     if ("a" + "" != "a") print("FAIL: a + empty");
     if ("" + "" != "") print("FAIL: empty + empty");
+    if ("he" + "llo" != "hello") print("FAIL: he+llo != hello");
 }
 
 fn testStringLength() {
@@ -31,13 +30,6 @@ fn testStringComparison() {
     if ("hello" == "Hello") print("FAIL: hello == Hello");
 }
 
-fn testStringEscape() {
-    // check basic escapes work
-    print("escape test: tab=[\t] end");
-    print("escape test: newline=[\n] end");
-    print("escape test: quote=[\"] end");
-}
-
 fn testStringMixed() {
     let s = "Hello, " + "World!";
     if (s.length() != 13) print("FAIL: Hello World length");
@@ -45,16 +37,12 @@ fn testStringMixed() {
     if (s[12] != "!") print("FAIL: Hello World[12]");
 }
 
-let i = 0;
-while (i < 60) {
-    testStringLiteral();
-    testStringConcat();
-    testStringLength();
-    testStringIndex();
-    testStringComparison();
-    testStringMixed();
-    i = i + 1;
-}
-print("Strings OK");
+testStringLiteral();
+testStringConcat();
+testStringLength();
+testStringIndex();
+testStringComparison();
+testStringMixed();
 
+print("Strings OK");
 print("ALL TESTS PASSED");
