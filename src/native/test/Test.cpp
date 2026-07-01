@@ -431,6 +431,23 @@ static VMValue xitNative(int argCount, VMValue *args) {
     return nullptr;
 }
 
+static VMValue fitNative(int argCount, VMValue *args) {
+    VM *vm = currentVM;
+    if (argCount < 2) {
+        failAssertion(vm, "FAIL: fit requires 2 arguments (name, fn)");
+        return nullptr;
+    }
+    return itNative(argCount, args);
+}
+
+static VMValue fdescribeNative(int argCount, VMValue *args) {
+    VM *vm = currentVM;
+    if (argCount < 2 || !args[0].isString() || !args[1].isClosure()) {
+        return nullptr;
+    }
+    return describeNative(argCount, args);
+}
+
 void registerAll(VM *vm) {
     vm->defineNative("assert", -1, assertNative);
     vm->defineNative("assertEq", -1, assertEqNative);
@@ -439,6 +456,8 @@ void registerAll(VM *vm) {
     vm->defineNative("describe", -1, describeNative);
     vm->defineNative("it", -1, itNative);
     vm->defineNative("xit", -1, xitNative);
+    vm->defineNative("fit", -1, fitNative);
+    vm->defineNative("fdescribe", -1, fdescribeNative);
     vm->defineNative("before", -1, beforeNative);
     vm->defineNative("after", -1, afterNative);
     vm->defineNative("beforeEach", -1, beforeEachNative);
@@ -460,6 +479,8 @@ void registerSymbols(SymbolTable *scope) {
     addFunc("describe");
     addFunc("it");
     addFunc("xit");
+    addFunc("fit");
+    addFunc("fdescribe");
     addFunc("before");
     addFunc("after");
     addFunc("beforeEach");
