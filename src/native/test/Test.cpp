@@ -186,11 +186,156 @@ static VMValue assertThrowsNative(int argCount, VMValue *args) {
     return nullptr;
 }
 
+static void runCallbacks(VM *vm, const std::string &key) {
+    auto it = vm->globals.find(key);
+    if (it == vm->globals.end() || !it->second.isList())
+        return;
+    auto list = it->second.asList();
+    for (auto &cb : list->elements) {
+        if (cb.isClosure()) {
+            vm->callClosure(cb, 0, nullptr);
+        }
+    }
+}
+
+static VMValue beforeEachNative(int argCount, VMValue *args) {
+    VM *vm = currentVM;
+    if (argCount < 1 || !args[0].isClosure()) {
+        failAssertion(vm, "FAIL: beforeEach requires a function argument");
+        return nullptr;
+    }
+    auto it = vm->globals.find("__test_beforeEach");
+    ObjList *list;
+    if (it == vm->globals.end() || !it->second.isList()) {
+        list = new ObjList({});
+        vm->globals["__test_beforeEach"] = list;
+    } else {
+        list = it->second.asList();
+    }
+    list->elements.push_back(args[0]);
+    return nullptr;
+}
+
+static VMValue afterEachNative(int argCount, VMValue *args) {
+    VM *vm = currentVM;
+    if (argCount < 1 || !args[0].isClosure()) {
+        failAssertion(vm, "FAIL: afterEach requires a function argument");
+        return nullptr;
+    }
+    auto it = vm->globals.find("__test_afterEach");
+    ObjList *list;
+    if (it == vm->globals.end() || !it->second.isList()) {
+        list = new ObjList({});
+        vm->globals["__test_afterEach"] = list;
+    } else {
+        list = it->second.asList();
+    }
+    list->elements.push_back(args[0]);
+    return nullptr;
+}
+
+static VMValue describeNative(int argCount, VMValue *args) {
+    VM *vm = currentVM;
+    if (argCount < 2 || !args[0].isString() || !args[1].isClosure()) {
+        return nullptr;
+    }
+    std::string name = args[0].asString()->flatten();
+
+    auto it = vm->globals.find("__test_describe");
+    std::string prev;
+    if (it != vm->globals.end() && it->second.isString()) {
+        prev = it->second.asString()->flatten();
+    }
+
+    vm->globals["__test_describe"] = VMValue(name);
+
+    vm->callClosure(args[1], 0, nullptr);
+
+    if (prev.empty()) {
+        vm->globals.erase("__test_describe");
+    } else {
+        vm->globals["__test_describe"] = VMValue(prev);
+    }
+    return nullptr;
+}
+
+static VMValue itNative(int argCount, VMValue *args) {
+    if (argCount < 2) {
+        failAssertion(currentVM, "FAIL: it requires 2 arguments (name, fn)");
+        return nullptr;
+    }
+    VM *vm = currentVM;
+    VMValue name = args[0];
+    VMValue fn = args[1];
+
+    if (!name.isString()) {
+        failAssertion(vm, "FAIL: it() first argument must be a string (test name)");
+        return nullptr;
+    }
+    if (!fn.isClosure()) {
+        failAssertion(vm, "FAIL: it() second argument must be a function");
+        return nullptr;
+    }
+
+    std::string testName = name.asString()->flatten();
+    auto prefixIt = vm->globals.find("__test_describe");
+    if (prefixIt != vm->globals.end() && prefixIt->second.isString()) {
+        testName = prefixIt->second.asString()->flatten() + " " + testName;
+    }
+
+    auto closure = fn.asClosure();
+
+    runCallbacks(vm, "__test_beforeEach");
+
+    auto savedStackTop = vm->stackTop;
+    auto savedFrameCount = vm->frames.size();
+    bool passed = true;
+
+    if (sigsetjmp(vm->catchJmpBuf, 1) == 0) {
+        vm->catchJumpEnabled = true;
+
+        vm->push(fn);
+        CallFrame frame;
+        frame.closure = closure;
+        frame.ip = closure->function->chunk->code.data();
+        frame.stackStart = static_cast<int>((vm->stackTop - vm->stack) - 1);
+        vm->frames.push_back(frame);
+
+        InterpretResult result = vm->run(savedFrameCount);
+        vm->catchJumpEnabled = false;
+
+        if (result != InterpretResult::INTERPRET_OK) {
+            passed = false;
+        }
+    } else {
+        vm->catchJumpEnabled = false;
+        passed = false;
+    }
+
+    vm->stackTop = savedStackTop;
+    vm->frames.resize(savedFrameCount);
+
+    runCallbacks(vm, "__test_afterEach");
+
+    if (passed) {
+        std::cout << "    ok " << testName << std::endl;
+    } else {
+        std::cout << "    not ok " << testName << std::endl;
+        vm->globals["__test_failed"] = VMValue(true);
+    }
+
+    return nullptr;
+}
+
 void registerAll(VM *vm) {
     vm->defineNative("assert", -1, assertNative);
     vm->defineNative("assertEq", -1, assertEqNative);
     vm->defineNative("assertNeq", -1, assertNeqNative);
     vm->defineNative("assertThrows", -1, assertThrowsNative);
+    vm->defineNative("describe", -1, describeNative);
+    vm->defineNative("it", -1, itNative);
+    vm->defineNative("beforeEach", -1, beforeEachNative);
+    vm->defineNative("afterEach", -1, afterEachNative);
 }
 
 void registerSymbols(SymbolTable *scope) {
@@ -205,6 +350,10 @@ void registerSymbols(SymbolTable *scope) {
     addFunc("assertEq");
     addFunc("assertNeq");
     addFunc("assertThrows");
+    addFunc("describe");
+    addFunc("it");
+    addFunc("beforeEach");
+    addFunc("afterEach");
 }
 
 } // namespace Test
