@@ -6,6 +6,7 @@
 #include "vm/VM.h"
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -23,8 +24,8 @@ int main(int argc, char **argv) {
 
         std::ifstream sourceFile(path);
         if (!sourceFile.is_open()) {
-            std::cerr << "not ok " << i << " — " << path << std::endl;
-            std::cerr << "# Could not open file" << std::endl;
+            std::cout << "not ok " << i << " — " << path << std::endl;
+            std::cout << "# Could not open file" << std::endl;
             failed++;
             continue;
         }
@@ -34,8 +35,8 @@ int main(int argc, char **argv) {
         Parser parser(lexer);
         ASTNode *ast = parser.parse();
         if (!ast) {
-            std::cerr << "not ok " << i << " — " << path << std::endl;
-            std::cerr << "# Parse error" << std::endl;
+            std::cout << "not ok " << i << " — " << path << std::endl;
+            std::cout << "# Parse error" << std::endl;
             failed++;
             continue;
         }
@@ -46,8 +47,8 @@ int main(int argc, char **argv) {
         semanticAnalyzer.currentFilename = path;
         SymbolTable *globals = semanticAnalyzer.analyze(ast);
         if (!globals) {
-            std::cerr << "not ok " << i << " — " << path << std::endl;
-            std::cerr << "# Semantic analysis error" << std::endl;
+            std::cout << "not ok " << i << " — " << path << std::endl;
+            std::cout << "# Semantic analysis error" << std::endl;
             failed++;
             continue;
         }
@@ -58,21 +59,35 @@ int main(int argc, char **argv) {
         delete globals;
 
         if (!function) {
-            std::cerr << "not ok " << i << " — " << path << std::endl;
-            std::cerr << "# Compilation error" << std::endl;
+            std::cout << "not ok " << i << " — " << path << std::endl;
+            std::cout << "# Compilation error" << std::endl;
             failed++;
             continue;
         }
 
+        std::stringstream capturedOut;
+        std::stringstream capturedErr;
+        auto oldBufOut = std::cout.rdbuf(capturedOut.rdbuf());
+        auto oldBufErr = std::cerr.rdbuf(capturedErr.rdbuf());
+
         VM vm;
         InterpretResult result = vm.interpret(function);
+
+        std::cout.rdbuf(oldBufOut);
+        std::cerr.rdbuf(oldBufErr);
 
         if (result == InterpretResult::INTERPRET_OK) {
             passed++;
             std::cout << "ok " << i << " — " << path << std::endl;
         } else {
             failed++;
-            std::cerr << "not ok " << i << " — " << path << std::endl;
+            std::cout << "not ok " << i << " — " << path << std::endl;
+            std::string errOutput = capturedErr.str();
+            if (!errOutput.empty()) {
+                std::cout << "# " << errOutput;
+                if (errOutput.back() != '\n')
+                    std::cout << std::endl;
+            }
         }
     }
 
