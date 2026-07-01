@@ -307,9 +307,17 @@ static VMValue afterNative(int argCount, VMValue *args) {
     return nullptr;
 }
 
+static bool isOnlyMode(VM *vm) {
+    auto it = vm->globals.find("__test_only");
+    return it != vm->globals.end() && it->second.isBool() && it->second.asBool();
+}
+
 static VMValue describeNative(int argCount, VMValue *args) {
     VM *vm = currentVM;
     if (argCount < 2 || !args[0].isString() || !args[1].isClosure()) {
+        return nullptr;
+    }
+    if (isOnlyMode(vm)) {
         return nullptr;
     }
     std::string name = args[0].asString()->flatten();
