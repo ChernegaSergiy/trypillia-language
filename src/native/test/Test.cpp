@@ -25,7 +25,9 @@ static void getSourceLocation(VM *vm, std::string &filename, int &line) {
 
 static void failAssertion(VM *vm, const std::string &message) {
     std::cerr << message << std::endl;
-    if (vm->assertJumpEnabled) {
+    if (vm->catchJumpEnabled) {
+        siglongjmp(vm->catchJmpBuf, 1);
+    } else if (vm->assertJumpEnabled) {
         siglongjmp(vm->assertJmpBuf, 1);
     }
 }
