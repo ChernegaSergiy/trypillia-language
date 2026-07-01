@@ -50,6 +50,12 @@ class Expect {
         }
         assert(found, "toContain");
     }
+    fn toMatch(pattern) {
+        assert(Regex.test(pattern, this.actual), "toMatch");
+    }
+    fn toBeDefined() {
+        assert(this.actual != nil, "toBeDefined");
+    }
     fn toBeTrue() {
         assert(this.actual, "toBeTrue");
     }
