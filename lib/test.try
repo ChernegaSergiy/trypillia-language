@@ -1,22 +1,28 @@
+class Expect {
+    let actual;
+    fn init(value) {
+        this.actual = value;
+    }
+    fn toBe(expected) {
+        assertEq(this.actual, expected, "toBe");
+    }
+    fn toNotBe(unexpected) {
+        assertNeq(this.actual, unexpected, "toNotBe");
+    }
+    fn toBeTrue() {
+        assert(this.actual, "toBeTrue");
+    }
+    fn toBeFalse() {
+        assert(!this.actual, "toBeFalse");
+    }
+    fn toBeNil() {
+        assert(this.actual == nil, "toBeNil");
+    }
+    fn toThrow() {
+        assertThrows(this.actual, "toThrow");
+    }
+}
+
 let expect = fn(actual) {
-    return {
-        toBe: fn(expected) {
-            assertEq(actual, expected, "toBe");
-        },
-        toNotBe: fn(unexpected) {
-            assertNeq(actual, unexpected, "toNotBe");
-        },
-        toBeTrue: fn() {
-            assert(actual, "toBeTrue");
-        },
-        toBeFalse: fn() {
-            assert(!actual, "toBeFalse");
-        },
-        toBeNil: fn() {
-            assert(actual == nil, "toBeNil");
-        },
-        toThrow: fn() {
-            assertThrows(actual, "toThrow");
-        }
-    };
+    return Expect(actual);
 };
