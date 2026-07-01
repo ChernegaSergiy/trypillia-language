@@ -198,21 +198,25 @@ static void runCallbacks(VM *vm, const std::string &key) {
     }
 }
 
+static void addCallback(VM *vm, const std::string &key, VMValue fn) {
+    auto it = vm->globals.find(key);
+    ObjList *list;
+    if (it == vm->globals.end() || !it->second.isList()) {
+        list = new ObjList({});
+        vm->globals[key] = VMValue(list);
+    } else {
+        list = it->second.asList();
+    }
+    list->elements.push_back(fn);
+}
+
 static VMValue beforeEachNative(int argCount, VMValue *args) {
     VM *vm = currentVM;
     if (argCount < 1 || !args[0].isClosure()) {
         failAssertion(vm, "FAIL: beforeEach requires a function argument");
         return nullptr;
     }
-    auto it = vm->globals.find("__test_beforeEach");
-    ObjList *list;
-    if (it == vm->globals.end() || !it->second.isList()) {
-        list = new ObjList({});
-        vm->globals["__test_beforeEach"] = list;
-    } else {
-        list = it->second.asList();
-    }
-    list->elements.push_back(args[0]);
+    addCallback(vm, "__test_beforeEach", args[0]);
     return nullptr;
 }
 
@@ -222,15 +226,7 @@ static VMValue afterEachNative(int argCount, VMValue *args) {
         failAssertion(vm, "FAIL: afterEach requires a function argument");
         return nullptr;
     }
-    auto it = vm->globals.find("__test_afterEach");
-    ObjList *list;
-    if (it == vm->globals.end() || !it->second.isList()) {
-        list = new ObjList({});
-        vm->globals["__test_afterEach"] = list;
-    } else {
-        list = it->second.asList();
-    }
-    list->elements.push_back(args[0]);
+    addCallback(vm, "__test_afterEach", args[0]);
     return nullptr;
 }
 
