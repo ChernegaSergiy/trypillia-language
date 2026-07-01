@@ -191,9 +191,11 @@ class VMValue {
     bool operator==(const VMValue &other) const {
         if (val == other.val)
             return true;
-        // String equality can be handled separately.
-        return false;
+        return equalsImpl(other);
     }
+
+  private:
+    bool equalsImpl(const VMValue &other) const;
 };
 
 #endif // TRYPILLIA_VALUE_H

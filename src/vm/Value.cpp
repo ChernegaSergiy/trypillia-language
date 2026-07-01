@@ -88,3 +88,10 @@ std::string VMValue::toString(bool inContainer) const {
     }
     return "<unknown>";
 }
+
+bool VMValue::equalsImpl(const VMValue &other) const {
+    if (isString() && other.isString()) {
+        return asString()->flatten() == other.asString()->flatten();
+    }
+    return false;
+}
