@@ -1,0 +1,20 @@
+describe("Promise", fn() {
+    it("basic resolve", fn() {
+        var resolved = false;
+        var p = Promise(fn(resolve, reject) {
+            resolve(42);
+        });
+        assertEq(resolved, false);
+    });
+
+    it(".then callback", fn() {
+        var result = nil;
+        var p = Promise(fn(resolve, reject) {
+            resolve(42);
+        });
+        then(p, fn(v) {
+            result = v;
+        });
+        assertEq(result, 42);
+    });
+});
