@@ -147,6 +147,7 @@ struct ObjPromise : public Obj {
     ObjClosure *onFulfilled;
     ObjClosure *onRejected;
     ObjPromise *next;
+    std::vector<VMValue> thenHandlers;
 
     ObjPromise()
         : Obj(ObjType::OBJ_PROMISE), value(nullptr), resolved(false), onFulfilled(nullptr), onRejected(nullptr), next(nullptr) {
