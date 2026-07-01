@@ -66,6 +66,8 @@ class VM {
     bool suppressRuntimeErrors = false;
     sigjmp_buf assertJmpBuf;
     bool assertJumpEnabled = false;
+    sigjmp_buf catchJmpBuf;
+    bool catchJumpEnabled = false;
 
     VMValue instantiateClass(VMValue classVal, int argCount, VMValue *args);
 
