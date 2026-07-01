@@ -378,6 +378,22 @@ static VMValue itNative(int argCount, VMValue *args) {
     return nullptr;
 }
 
+static VMValue xitNative(int argCount, VMValue *args) {
+    VM *vm = currentVM;
+    if (argCount < 1 || !args[0].isString()) {
+        return nullptr;
+    }
+    std::string testName = args[0].asString()->flatten();
+    auto prefixIt = vm->globals.find("__test_describe");
+    if (prefixIt != vm->globals.end() && prefixIt->second.isString()) {
+        testName = prefixIt->second.asString()->flatten() + " " + testName;
+    }
+
+    std::cout << "    ok " << testName << " # SKIP" << std::endl;
+
+    return nullptr;
+}
+
 void registerAll(VM *vm) {
     vm->defineNative("assert", -1, assertNative);
     vm->defineNative("assertEq", -1, assertEqNative);
@@ -385,6 +401,7 @@ void registerAll(VM *vm) {
     vm->defineNative("assertThrows", -1, assertThrowsNative);
     vm->defineNative("describe", -1, describeNative);
     vm->defineNative("it", -1, itNative);
+    vm->defineNative("xit", -1, xitNative);
     vm->defineNative("before", -1, beforeNative);
     vm->defineNative("after", -1, afterNative);
     vm->defineNative("beforeEach", -1, beforeEachNative);
@@ -405,6 +422,7 @@ void registerSymbols(SymbolTable *scope) {
     addFunc("assertThrows");
     addFunc("describe");
     addFunc("it");
+    addFunc("xit");
     addFunc("before");
     addFunc("after");
     addFunc("beforeEach");
