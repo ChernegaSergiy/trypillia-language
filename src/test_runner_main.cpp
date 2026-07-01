@@ -79,6 +79,10 @@ static bool pathMatchesFilter(const std::string &path, const std::string &filter
     return path.find(filter) != std::string::npos;
 }
 
+static bool hasFocusedTests(const std::string &source) {
+    return source.find("fit(") != std::string::npos || source.find("fdescribe(") != std::string::npos;
+}
+
 static bool readTestResults(VM &vm, std::vector<std::string> &names, std::vector<bool> &results) {
     auto namesIt = vm.globals.find("__test_names");
     auto resultsIt = vm.globals.find("__test_results");
