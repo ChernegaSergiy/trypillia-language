@@ -22,6 +22,18 @@ class Expect {
         if (diff < 0) diff = -diff;
         assert(diff <= tolerance, "toBeCloseTo");
     }
+    fn toBeGreaterThan(expected) {
+        assert(this.actual > expected, "toBeGreaterThan");
+    }
+    fn toBeLessThan(expected) {
+        assert(this.actual < expected, "toBeLessThan");
+    }
+    fn toBeGreaterThanOrEqual(expected) {
+        assert(this.actual >= expected, "toBeGreaterThanOrEqual");
+    }
+    fn toBeLessThanOrEqual(expected) {
+        assert(this.actual <= expected, "toBeLessThanOrEqual");
+    }
     fn toBeTrue() {
         assert(this.actual, "toBeTrue");
     }
