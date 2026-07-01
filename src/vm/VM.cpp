@@ -128,9 +128,10 @@ InterpretResult VM::interpret(ObjFunction *function) {
 #define READ_SHORT() (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
 
 InterpretResult VM::runtimeError(const std::string &message) {
-    std::cerr << "\n ૮ ˶ᵔ ᵕ ᵔ˶ ა \n / づ 📝 ♡ \n\n";
-    std::cerr << "Panic: " << message << "\n\n";
-    std::cerr << "Traceback (most recent call last):\n";
+    if (!suppressRuntimeErrors) {
+        std::cerr << "\n ૮ ˶ᵔ ᵕ ᵔ˶ ა \n / づ 📝 ♡ \n\n";
+        std::cerr << "Panic: " << message << "\n\n";
+        std::cerr << "Traceback (most recent call last):\n";
 
     for (int i = static_cast<int>(frames.size()) - 1; i >= 0; i--) {
         CallFrame *frame = &frames[i];
@@ -155,6 +156,7 @@ InterpretResult VM::runtimeError(const std::string &message) {
         std::cerr << " in " << fname << ":" << line << "\n";
     }
     std::cerr << std::endl;
+    }
     resetStack();
     return InterpretResult::INTERPRET_RUNTIME_ERROR;
 }
