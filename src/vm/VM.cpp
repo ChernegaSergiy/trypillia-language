@@ -106,6 +106,27 @@ VMValue VM::peek(int distance) {
     return stack[(stackTop - stack) - 1 - distance];
 }
 
+void VM::drainMicrotasks() {
+    while (!microtaskQueue.empty()) {
+        VMValue task = microtaskQueue.front();
+        microtaskQueue.erase(microtaskQueue.begin());
+
+        if (task.isClosure()) {
+            auto closure = task.asClosure();
+            int initialDepth = static_cast<int>(frames.size());
+
+            push(task);
+            CallFrame frame;
+            frame.closure = closure;
+            frame.ip = closure->function->chunk->code.data();
+            frame.stackStart = static_cast<int>((stackTop - stack) - 1);
+            frames.push_back(frame);
+
+            run(initialDepth);
+        }
+    }
+}
+
 InterpretResult VM::interpret(ObjFunction *function) {
     resetStack();
     frames.clear();
@@ -120,7 +141,13 @@ InterpretResult VM::interpret(ObjFunction *function) {
     frame.stackStart = 0;
     frames.push_back(frame);
 
-    return run(0);
+    InterpretResult result = run(0);
+
+    if (result == InterpretResult::INTERPRET_OK) {
+        drainMicrotasks();
+    }
+
+    return result;
 }
 
 #define READ_BYTE() (*frame->ip++)
