@@ -861,6 +861,14 @@ bool VM::executePropertyGet(const std::string &name) {
         }
         runtimeError(std::string("Undefined property '") + name + "' on Map.");
         return false;
+    } else if (instanceVal.isPromise()) {
+        if (globals.count("__promise_then") && name == "then") {
+            pop();
+            push(new ObjBoundMethod(instanceVal, globals["__promise_then"]));
+            return true;
+        }
+        runtimeError(std::string("Undefined property '") + name + "' on Promise.");
+        return false;
     } else {
         runtimeError(std::string("Only instances and classes have properties."));
         return false;
