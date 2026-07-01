@@ -66,6 +66,58 @@ describe("assert framework", fn() {
         }).toThrow();
     });
 
+    it("expect toBeCloseTo", fn() {
+        load "lib/test.try";
+        expect(0.1 + 0.2).toBeCloseTo(0.3, 2);
+    });
+
+    it("expect toBeGreaterThan", fn() {
+        load "lib/test.try";
+        expect(5).toBeGreaterThan(3);
+    });
+
+    it("expect toBeLessThan", fn() {
+        load "lib/test.try";
+        expect(3).toBeLessThan(5);
+    });
+
+    it("expect toBeGreaterThanOrEqual", fn() {
+        load "lib/test.try";
+        expect(5).toBeGreaterThanOrEqual(5);
+        expect(6).toBeGreaterThanOrEqual(5);
+    });
+
+    it("expect toBeLessThanOrEqual", fn() {
+        load "lib/test.try";
+        expect(5).toBeLessThanOrEqual(5);
+        expect(3).toBeLessThanOrEqual(5);
+    });
+
+    it("expect toHaveLength on list", fn() {
+        load "lib/test.try";
+        expect([1, 2, 3]).toHaveLength(3);
+    });
+
+    it("expect toHaveLength on string", fn() {
+        load "lib/test.try";
+        expect("hello").toHaveLength(5);
+    });
+
+    it("expect toContain on list", fn() {
+        load "lib/test.try";
+        expect([1, 2, 3]).toContain(2);
+    });
+
+    it("expect toMatch", fn() {
+        load "lib/test.try";
+        expect("hello world").toMatch("hello");
+    });
+
+    it("expect toBeDefined", fn() {
+        load "lib/test.try";
+        expect(42).toBeDefined();
+    });
+
     it("xit skips test", fn() {
         xit("skipped", fn() {
             assert(false);
