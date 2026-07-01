@@ -68,7 +68,14 @@ class VM {
     sigjmp_buf catchJmpBuf;
     bool catchJumpEnabled = false;
 
+    struct PromiseMicrotask {
+        ObjPromise *targetPromise;
+        VMValue onFulfilled;
+        VMValue onRejected;
+        VMValue inputValue;
+    };
     std::vector<VMValue> microtaskQueue;
+    std::vector<PromiseMicrotask> promiseMicrotasks;
     void drainMicrotasks();
 
     VMValue instantiateClass(VMValue classVal, int argCount, VMValue *args);
