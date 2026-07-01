@@ -83,6 +83,12 @@ std::string VMValue::toString(bool inContainer) const {
         return "<closure " + this->asClosure()->function->name + ">";
     } else if (this->isWeakRef()) {
         return "<weakref>";
+    } else if (this->isPromise()) {
+        auto p = this->asPromise();
+        if (p->resolved)
+            return "<promise resolved>";
+        else
+            return "<promise pending>";
     } else if (this->isNil()) {
         return "nil";
     }
