@@ -257,6 +257,26 @@ static VMValue afterEachNative(int argCount, VMValue *args) {
     return nullptr;
 }
 
+static VMValue beforeNative(int argCount, VMValue *args) {
+    VM *vm = currentVM;
+    if (argCount < 1 || !args[0].isClosure()) {
+        failAssertion(vm, "FAIL: before requires a function argument");
+        return nullptr;
+    }
+    addCallback(vm, "__test_before", args[0]);
+    return nullptr;
+}
+
+static VMValue afterNative(int argCount, VMValue *args) {
+    VM *vm = currentVM;
+    if (argCount < 1 || !args[0].isClosure()) {
+        failAssertion(vm, "FAIL: after requires a function argument");
+        return nullptr;
+    }
+    addCallback(vm, "__test_after", args[0]);
+    return nullptr;
+}
+
 static VMValue describeNative(int argCount, VMValue *args) {
     VM *vm = currentVM;
     if (argCount < 2 || !args[0].isString() || !args[1].isClosure()) {
@@ -273,6 +293,11 @@ static VMValue describeNative(int argCount, VMValue *args) {
     vm->globals["__test_describe"] = VMValue(name);
 
     vm->callClosure(args[1], 0, nullptr);
+
+    runCallbacks(vm, "__test_after");
+
+    vm->globals["__test_before"] = VMValue(new ObjList({}));
+    vm->globals["__test_after"] = VMValue(new ObjList({}));
 
     if (prev.empty()) {
         vm->globals.erase("__test_describe");
@@ -307,6 +332,9 @@ static VMValue itNative(int argCount, VMValue *args) {
     }
 
     auto closure = fn.asClosure();
+
+    runCallbacks(vm, "__test_before");
+    vm->globals["__test_before"] = VMValue(new ObjList({}));
 
     runCallbacks(vm, "__test_beforeEach");
 
@@ -357,6 +385,8 @@ void registerAll(VM *vm) {
     vm->defineNative("assertThrows", -1, assertThrowsNative);
     vm->defineNative("describe", -1, describeNative);
     vm->defineNative("it", -1, itNative);
+    vm->defineNative("before", -1, beforeNative);
+    vm->defineNative("after", -1, afterNative);
     vm->defineNative("beforeEach", -1, beforeEachNative);
     vm->defineNative("afterEach", -1, afterEachNative);
 }
@@ -375,6 +405,8 @@ void registerSymbols(SymbolTable *scope) {
     addFunc("assertThrows");
     addFunc("describe");
     addFunc("it");
+    addFunc("before");
+    addFunc("after");
     addFunc("beforeEach");
     addFunc("afterEach");
 }
