@@ -34,6 +34,22 @@ class Expect {
     fn toBeLessThanOrEqual(expected) {
         assert(this.actual <= expected, "toBeLessThanOrEqual");
     }
+    fn toHaveLength(expected) {
+        assertEq(this.actual.length(), expected, "toHaveLength");
+    }
+    fn toContain(item) {
+        let found = false;
+        let len = this.actual.length();
+        let i = 0;
+        while (i < len) {
+            if (this.actual[i] == item) {
+                found = true;
+                i = len;
+            }
+            i = i + 1;
+        }
+        assert(found, "toContain");
+    }
     fn toBeTrue() {
         assert(this.actual, "toBeTrue");
     }
