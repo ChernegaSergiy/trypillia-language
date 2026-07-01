@@ -1,10 +1,37 @@
 #include "Test.h"
 #include <csignal>
+#include <vector>
+#include <string>
 
 namespace StdLib {
 namespace Test {
 
-static std::string valueToString(const VMValue &val) {
+static std::string valueToString(const VMValue &val, int depth = 0) {
+    if (depth > 3) {
+        return "...";
+    }
+    if (val.isList()) {
+        auto list = val.asList();
+        std::string result = "[";
+        for (size_t i = 0; i < list->elements.size(); i++) {
+            if (i > 0) result += ", ";
+            result += valueToString(list->elements[i], depth + 1);
+        }
+        result += "]";
+        return result;
+    }
+    if (val.isMap()) {
+        auto map = val.asMap();
+        std::string result = "{";
+        bool first = true;
+        for (auto &[k, v] : map->values) {
+            if (!first) result += ", ";
+            first = false;
+            result += k.toString() + ": " + valueToString(v, depth + 1);
+        }
+        result += "}";
+        return result;
+    }
     return val.toString(true);
 }
 
