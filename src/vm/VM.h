@@ -64,6 +64,8 @@ class VM {
     std::unordered_map<void *, JitFunc> compiledFuncs;
 
     bool suppressRuntimeErrors = false;
+    sigjmp_buf assertJmpBuf;
+    bool assertJumpEnabled = false;
 
     VMValue instantiateClass(VMValue classVal, int argCount, VMValue *args);
 
