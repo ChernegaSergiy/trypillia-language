@@ -15,6 +15,7 @@
 #include "worker/Worker.h"
 #include "json/Json.h"
 #include "test/Test.h"
+#include "promise/Promise.h"
 
 namespace StdLib {
 void registerAll(VM *vm) {
@@ -35,6 +36,7 @@ void registerAll(VM *vm) {
     CryptoModule::registerAll(vm);
     WebSocketModule::registerAll(vm);
     Test::registerAll(vm);
+    PromiseModule::registerAll(vm);
 }
 
 void registerSymbols(SymbolTable *scope) {
@@ -55,6 +57,7 @@ void registerSymbols(SymbolTable *scope) {
     CryptoModule::registerSymbols(scope);
     WebSocketModule::registerSymbols(scope);
     Test::registerSymbols(scope);
+    PromiseModule::registerSymbols(scope);
 }
 
 VMValue makeResultOk(VM *vm, VMValue value) {
