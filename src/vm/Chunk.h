@@ -141,6 +141,18 @@ struct ObjWeakRef : public Obj {
     }
 };
 
+struct ObjPromise : public Obj {
+    VMValue value;
+    bool resolved;
+    ObjClosure *onFulfilled;
+    ObjClosure *onRejected;
+    ObjPromise *next;
+
+    ObjPromise()
+        : Obj(ObjType::OBJ_PROMISE), value(nullptr), resolved(false), onFulfilled(nullptr), onRejected(nullptr), next(nullptr) {
+    }
+};
+
 struct ObjList : public Obj {
     std::vector<VMValue> elements;
     ObjList(const std::vector<VMValue> &e) : Obj(ObjType::OBJ_LIST), elements(e) {
