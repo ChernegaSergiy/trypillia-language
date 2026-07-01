@@ -190,6 +190,9 @@ int main(int argc, char **argv) {
         auto oldBufErr = std::cerr.rdbuf(capturedErr.rdbuf());
 
         VM vm;
+        if (hasFocusedTests(source)) {
+            vm.globals["__test_only"] = VMValue(true);
+        }
         InterpretResult result = vm.interpret(function);
 
         std::cout.rdbuf(oldBufOut);
