@@ -63,22 +63,25 @@ static VMValue rejectNative(int argCount, VMValue *args) {
 static VMValue thenNative(int argCount, VMValue *args) {
     VM *vm = currentVM;
     ObjPromise *promise = nullptr;
+
+    int off = 0;
     if (argCount >= 1 && args[0].isPromise()) {
         promise = args[0].asPromise();
+        off = 1;
     }
     if (!promise) return nullptr;
 
     if (promise->resolved) {
-        if (argCount >= 2 && args[1].isClosure()) {
-            vm->push(args[1]);
+        if (argCount > off && args[off].isClosure()) {
+            vm->push(args[off]);
             vm->push(promise->value);
-            vm->callClosure(args[1], 1, vm->stackTop - 1);
+            vm->callClosure(args[off], 1, vm->stackTop - 1);
         }
         return nullptr;
     }
 
-    if (argCount >= 2 && args[1].isClosure()) promise->onFulfilled = args[1].asClosure();
-    if (argCount >= 3 && args[2].isClosure()) promise->onRejected = args[2].asClosure();
+    if (argCount > off && args[off].isClosure()) promise->onFulfilled = args[off].asClosure();
+    if (argCount > off + 1 && args[off + 1].isClosure()) promise->onRejected = args[off + 1].asClosure();
     return nullptr;
 }
 
@@ -112,7 +115,7 @@ static VMValue promiseConstructor(int argCount, VMValue *args) {
 }
 
 void registerAll(VM *vm) {
-    auto thenFn = new ObjNative("then", 2, thenNative);
+    auto thenFn = new ObjNative("then", -1, thenNative);
     vm->globals["__promise_then"] = VMValue(thenFn);
 
     vm->defineNative("Promise", 1, promiseConstructor);
