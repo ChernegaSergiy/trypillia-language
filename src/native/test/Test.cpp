@@ -1,4 +1,5 @@
 #include "Test.h"
+#include <csignal>
 
 namespace StdLib {
 namespace Test {
@@ -22,14 +23,16 @@ static void getSourceLocation(VM *vm, std::string &filename, int &line) {
     }
 }
 
-static void failWith(const std::string &message) {
+static void failAssertion(VM *vm, const std::string &message) {
     std::cerr << message << std::endl;
-    exit(1);
+    if (vm->assertJumpEnabled) {
+        siglongjmp(vm->assertJmpBuf, 1);
+    }
 }
 
 static VMValue assertNative(int argCount, VMValue *args) {
     if (argCount < 1) {
-        failWith("FAIL: assert requires at least 1 argument (condition)");
+        failAssertion(currentVM, "FAIL: assert requires at least 1 argument (condition)");
         return nullptr;
     }
 
@@ -50,7 +53,7 @@ static VMValue assertNative(int argCount, VMValue *args) {
         if (!filename.empty())
             loc = filename + ":" + std::to_string(line) + " ";
 
-        failWith("FAIL: " + loc + "assertion failed" + msg);
+        failAssertion(vm, "FAIL: " + loc + "assertion failed" + msg);
     }
 
     return nullptr;
@@ -58,7 +61,7 @@ static VMValue assertNative(int argCount, VMValue *args) {
 
 static VMValue assertEqNative(int argCount, VMValue *args) {
     if (argCount < 2) {
-        failWith("FAIL: assertEq requires at least 2 arguments (actual, expected)");
+        failAssertion(currentVM, "FAIL: assertEq requires at least 2 arguments (actual, expected)");
         return nullptr;
     }
 
@@ -80,7 +83,8 @@ static VMValue assertEqNative(int argCount, VMValue *args) {
         if (!filename.empty())
             loc = filename + ":" + std::to_string(line) + " ";
 
-        failWith("FAIL: " + loc + "expected " + valueToString(expected) + " but got " + valueToString(actual) + msg);
+        failAssertion(vm, "FAIL: " + loc + "expected " + valueToString(expected) + " but got " +
+                           valueToString(actual) + msg);
     }
 
     return nullptr;
@@ -88,7 +92,7 @@ static VMValue assertEqNative(int argCount, VMValue *args) {
 
 static VMValue assertNeqNative(int argCount, VMValue *args) {
     if (argCount < 2) {
-        failWith("FAIL: assertNeq requires at least 2 arguments (actual, unexpected)");
+        failAssertion(currentVM, "FAIL: assertNeq requires at least 2 arguments (actual, unexpected)");
         return nullptr;
     }
 
@@ -110,8 +114,8 @@ static VMValue assertNeqNative(int argCount, VMValue *args) {
         if (!filename.empty())
             loc = filename + ":" + std::to_string(line) + " ";
 
-        failWith("FAIL: " + loc + "expected " + valueToString(actual) + " to differ from " +
-                 valueToString(unexpected) + msg);
+        failAssertion(vm, "FAIL: " + loc + "expected " + valueToString(actual) + " to differ from " +
+                           valueToString(unexpected) + msg);
     }
 
     return nullptr;
@@ -119,7 +123,7 @@ static VMValue assertNeqNative(int argCount, VMValue *args) {
 
 static VMValue assertThrowsNative(int argCount, VMValue *args) {
     if (argCount < 1) {
-        failWith("FAIL: assertThrows requires at least 1 argument (function)");
+        failAssertion(currentVM, "FAIL: assertThrows requires at least 1 argument (function)");
         return nullptr;
     }
 
@@ -127,7 +131,7 @@ static VMValue assertThrowsNative(int argCount, VMValue *args) {
     VMValue fn = args[0];
 
     if (!fn.isClosure()) {
-        failWith("FAIL: assertThrows argument must be a function");
+        failAssertion(vm, "FAIL: assertThrows argument must be a function");
         return nullptr;
     }
 
@@ -159,7 +163,7 @@ static VMValue assertThrowsNative(int argCount, VMValue *args) {
         msg = " — " + args[1].asString()->flatten();
     }
 
-    failWith("FAIL: " + loc + "expected function to throw but it did not" + msg);
+    failAssertion(vm, "FAIL: " + loc + "expected function to throw but it did not" + msg);
     return nullptr;
 }
 
