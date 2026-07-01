@@ -27,7 +27,7 @@
 
 ## Performance
 
-Trypillia features a highly optimized backend, including a custom AsmJit-based **Static Register Allocator** that completely eliminates memory accesses during loop execution. 
+Trypillia features a highly optimized backend, including a custom sljit-based **Static Register Allocator** that completely eliminates memory accesses during loop execution. 
 
 In pure mathematical operations, Trypillia's JIT executes exactly as fast as V8 (Node.js) and is **15x faster than Python**. 
 
