@@ -437,7 +437,64 @@ static VMValue fitNative(int argCount, VMValue *args) {
         failAssertion(vm, "FAIL: fit requires 2 arguments (name, fn)");
         return nullptr;
     }
-    return itNative(argCount, args);
+    VMValue name = args[0];
+    VMValue fn = args[1];
+
+    if (!name.isString()) {
+        failAssertion(vm, "FAIL: fit() first argument must be a string (test name)");
+        return nullptr;
+    }
+    if (!fn.isClosure()) {
+        failAssertion(vm, "FAIL: fit() second argument must be a function");
+        return nullptr;
+    }
+
+    std::string testName = name.asString()->flatten();
+    auto prefixIt = vm->globals.find("__test_describe");
+    if (prefixIt != vm->globals.end() && prefixIt->second.isString()) {
+        testName = prefixIt->second.asString()->flatten() + " " + testName;
+    }
+
+    auto closure = fn.asClosure();
+
+    runCallbacks(vm, "__test_before");
+    vm->globals["__test_before"] = VMValue(new ObjList({}));
+
+    runCallbacks(vm, "__test_beforeEach");
+
+    auto savedStackTop = vm->stackTop;
+    auto savedFrameCount = vm->frames.size();
+    bool passed = true;
+
+    if (sigsetjmp(vm->catchJmpBuf, 1) == 0) {
+        vm->catchJumpEnabled = true;
+
+        vm->push(fn);
+        CallFrame frame;
+        frame.closure = closure;
+        frame.ip = closure->function->chunk->code.data();
+        frame.stackStart = static_cast<int>((vm->stackTop - vm->stack) - 1);
+        vm->frames.push_back(frame);
+
+        InterpretResult result = vm->run(savedFrameCount);
+        vm->catchJumpEnabled = false;
+
+        if (result != InterpretResult::INTERPRET_OK) {
+            passed = false;
+        }
+    } else {
+        vm->catchJumpEnabled = false;
+        passed = false;
+    }
+
+    vm->stackTop = savedStackTop;
+    vm->frames.resize(savedFrameCount);
+
+    runCallbacks(vm, "__test_afterEach");
+
+    trackTestResult(vm, testName, passed);
+
+    return nullptr;
 }
 
 static VMValue fdescribeNative(int argCount, VMValue *args) {
@@ -445,7 +502,29 @@ static VMValue fdescribeNative(int argCount, VMValue *args) {
     if (argCount < 2 || !args[0].isString() || !args[1].isClosure()) {
         return nullptr;
     }
-    return describeNative(argCount, args);
+    std::string name = args[0].asString()->flatten();
+
+    auto it = vm->globals.find("__test_describe");
+    std::string prev;
+    if (it != vm->globals.end() && it->second.isString()) {
+        prev = it->second.asString()->flatten();
+    }
+
+    vm->globals["__test_describe"] = VMValue(name);
+
+    vm->callClosure(args[1], 0, nullptr);
+
+    runCallbacks(vm, "__test_after");
+
+    vm->globals["__test_before"] = VMValue(new ObjList({}));
+    vm->globals["__test_after"] = VMValue(new ObjList({}));
+
+    if (prev.empty()) {
+        vm->globals.erase("__test_describe");
+    } else {
+        vm->globals["__test_describe"] = VMValue(prev);
+    }
+    return nullptr;
 }
 
 void registerAll(VM *vm) {
