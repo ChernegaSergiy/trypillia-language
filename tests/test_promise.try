@@ -1,11 +1,11 @@
 describe("Promise", fn() {
     it("basic resolve", fn() {
-        var called = false;
-        var exec = fn(resolve, reject) {
+        let called = false;
+        let exec = fn(resolve, reject) {
             called = true;
             resolve(42);
         };
-        var p = Promise(exec);
+        let p = Promise(exec);
         assertEq(called, true);
     });
 });
