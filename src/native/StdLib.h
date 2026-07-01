@@ -9,6 +9,7 @@
 #include "regex/Regex.h"
 #include "string/String.h"
 #include "terminal/Terminal.h"
+#include "test/Test.h"
 
 namespace StdLib {
 // Registers actual functions and objects in the VM
