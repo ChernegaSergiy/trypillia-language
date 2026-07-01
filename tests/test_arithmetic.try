@@ -1,0 +1,84 @@
+fn testAddition() {
+    if (1 + 1 != 2) print("FAIL: 1 + 1 != 2");
+    if (0 + 0 != 0) print("FAIL: 0 + 0 != 0");
+    if (-1 + 1 != 0) print("FAIL: -1 + 1 != 0");
+    if (100 + 200 != 300) print("FAIL: 100 + 200 != 300");
+    if (1.5 + 2.5 != 4) print("FAIL: 1.5 + 2.5 != 4");
+}
+
+fn testSubtraction() {
+    if (5 - 3 != 2) print("FAIL: 5 - 3 != 2");
+    if (1 - 1 != 0) print("FAIL: 1 - 1 != 0");
+    if (3 - 5 != -2) print("FAIL: 3 - 5 != -2");
+    if (0 - 10 != -10) print("FAIL: 0 - 10 != -10");
+}
+
+fn testMultiplication() {
+    if (2 * 3 != 6) print("FAIL: 2 * 3 != 6");
+    if (0 * 5 != 0) print("FAIL: 0 * 5 != 0");
+    if (-2 * 3 != -6) print("FAIL: -2 * 3 != -6");
+    if (10 * 10 != 100) print("FAIL: 10 * 10 != 100");
+}
+
+fn testDivision() {
+    if (10 / 2 != 5) print("FAIL: 10 / 2 != 5");
+    if (7 / 2 != 3.5) print("FAIL: 7 / 2 != 3.5");
+    if (0 / 5 != 0) print("FAIL: 0 / 5 != 0");
+    if (-10 / 2 != -5) print("FAIL: -10 / 2 != -5");
+}
+
+fn testModulo() {
+    if (10 % 3 != 1) print("FAIL: 10 % 3 != 1");
+    if (10 % 5 != 0) print("FAIL: 10 % 5 != 0");
+    if (7 % 10 != 7) print("FAIL: 7 % 10 != 7");
+    if (0 % 5 != 0) print("FAIL: 0 % 5 != 0");
+}
+
+fn testNegation() {
+    let x = 5;
+    if (-x != -5) print("FAIL: -5 != -5");
+    if (-(-10) != 10) print("FAIL: -(-10) != 10");
+    if (-0 != 0) print("FAIL: -0 != 0");
+}
+
+fn testOperatorPrecedence() {
+    if (1 + 2 * 3 != 7) print("FAIL: 1 + 2 * 3 != 7");
+    if ((1 + 2) * 3 != 9) print("FAIL: (1 + 2) * 3 != 9");
+    if (10 - 5 - 2 != 3) print("FAIL: 10 - 5 - 2 != 3");
+    if (10 / 2 * 3 != 15) print("FAIL: 10 / 2 * 3 != 15");
+    if (10 + 5 % 3 != 12) print("FAIL: 10 + 5 % 3 != 12");
+}
+
+fn testCompoundExpression() {
+    let x = 1;
+    x = x + 1;
+    if (x != 2) print("FAIL: x after +=", x);
+
+    let y = 10;
+    y = y - 3;
+    if (y != 7) print("FAIL: y after -=", y);
+
+    let z = 2;
+    z = z * 5;
+    if (z != 10) print("FAIL: z after *=", z);
+
+    let w = 20;
+    w = w / 4;
+    if (w != 5) print("FAIL: w after /=", w);
+}
+
+let i = 0;
+while (i < 60) {
+    testAddition();
+    testSubtraction();
+    testMultiplication();
+    testDivision();
+    testModulo();
+    testNegation();
+    testOperatorPrecedence();
+    testCompoundExpression();
+    i = i + 1;
+}
+print("Arithmetic OK");
+
+print("ALL TESTS PASSED");
