@@ -4,11 +4,80 @@
 #include "semantic/SemanticAnalyzer.h"
 #include "vm/Compiler.h"
 #include "vm/VM.h"
+#include <algorithm>
+#include <filesystem>
 #include <fstream>
+#include <glob.h>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
+#include <cstring>
+
+namespace fs = std::filesystem;
+
+static std::vector<std::string> expandGlobs(const std::vector<std::string> &patterns) {
+    std::vector<std::string> files;
+
+    auto addFile = [&](const std::string &path) {
+        bool alreadyAdded = false;
+        for (auto &f : files) {
+            if (f == path) {
+                alreadyAdded = true;
+                break;
+            }
+        }
+        if (!alreadyAdded) {
+            files.push_back(path);
+        }
+    };
+
+    for (auto &pattern : patterns) {
+        std::error_code ec;
+        if (fs::is_directory(pattern, ec)) {
+            for (auto &entry : fs::recursive_directory_iterator(pattern, ec)) {
+                if (!ec && entry.path().extension() == ".try") {
+                    addFile(entry.path().string());
+                }
+            }
+        } else if (pattern.find("**") != std::string::npos) {
+            size_t starPos = pattern.find("**");
+            std::string baseDir = pattern.substr(0, starPos);
+            if (baseDir.empty()) baseDir = ".";
+            if (fs::is_directory(baseDir, ec)) {
+                std::string suffix = pattern.substr(starPos + 2);
+                for (auto &entry : fs::recursive_directory_iterator(baseDir, ec)) {
+                    if (!ec && !fs::is_directory(entry.path(), ec)) {
+                        std::string entryPath = entry.path().string();
+                        if (entryPath.size() >= suffix.size() &&
+                            entryPath.compare(entryPath.size() - suffix.size(), suffix.size(), suffix) == 0) {
+                            addFile(entryPath);
+                        }
+                    }
+                }
+            }
+        } else {
+            glob_t g;
+            glob(pattern.c_str(), GLOB_NOCHECK | GLOB_TILDE, nullptr, &g);
+            for (size_t i = 0; i < g.gl_pathc; i++) {
+                std::string path = g.gl_pathv[i];
+                if (fs::is_regular_file(path, ec)) {
+                    addFile(path);
+                }
+            }
+            globfree(&g);
+        }
+    }
+
+    std::sort(files.begin(), files.end());
+    return files;
+}
+
+static bool pathMatchesFilter(const std::string &path, const std::string &filter) {
+    if (filter.empty())
+        return true;
+    return path.find(filter) != std::string::npos;
+}
 
 static bool readTestResults(VM &vm, std::vector<std::string> &names, std::vector<bool> &results) {
     auto namesIt = vm.globals.find("__test_names");
@@ -32,7 +101,27 @@ static bool readTestResults(VM &vm, std::vector<std::string> &names, std::vector
 
 int main(int argc, char **argv) {
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <test-file> [test-file...]" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " [--filter <pattern>] <test-file> [test-file...]" << std::endl;
+        return 1;
+    }
+
+    std::string filter;
+    int argStart = 1;
+
+    if (argc > 2 && strcmp(argv[1], "--filter") == 0) {
+        filter = argv[2];
+        argStart = 3;
+    }
+
+    std::vector<std::string> rawPatterns;
+    for (int i = argStart; i < argc; i++) {
+        rawPatterns.push_back(argv[i]);
+    }
+
+    std::vector<std::string> paths = expandGlobs(rawPatterns);
+
+    if (paths.empty()) {
+        std::cerr << "No test files found matching the given patterns." << std::endl;
         return 1;
     }
 
@@ -41,8 +130,12 @@ int main(int argc, char **argv) {
     int totalFailed = 0;
     int tapCounter = 0;
 
-    for (int i = 1; i < argc; i++) {
-        std::string path = argv[i];
+    for (size_t fileIdx = 0; fileIdx < paths.size(); fileIdx++) {
+        std::string path = paths[fileIdx];
+
+        if (!pathMatchesFilter(path, filter)) {
+            continue;
+        }
 
         std::ifstream sourceFile(path);
         if (!sourceFile.is_open()) {
