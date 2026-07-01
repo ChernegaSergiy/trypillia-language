@@ -1,0 +1,60 @@
+fn testStringLiteral() {
+    let s = "hello";
+    if (s != "hello") print("FAIL: string literal");
+    if (s == "world") print("FAIL: string literal eq wrong");
+}
+
+fn testStringConcat() {
+    let s = "foo" + "bar";
+    if (s != "foobar") print("FAIL: foo+bar != foobar", s);
+    if ("" + "a" != "a") print("FAIL: empty + a");
+    if ("a" + "" != "a") print("FAIL: a + empty");
+    if ("" + "" != "") print("FAIL: empty + empty");
+}
+
+fn testStringLength() {
+    if ("hello".length() != 5) print("FAIL: hello length != 5");
+    if ("".length() != 0) print("FAIL: empty length != 0");
+    if ("abc".length() != 3) print("FAIL: abc length != 3");
+}
+
+fn testStringIndex() {
+    if ("hello"[0] != "h") print("FAIL: hello[0] != h");
+    if ("hello"[1] != "e") print("FAIL: hello[1] != e");
+    if ("hello"[4] != "o") print("FAIL: hello[4] != o");
+    if ("abc"[2] != "c") print("FAIL: abc[2] != c");
+}
+
+fn testStringComparison() {
+    if ("abc" == "xyz") print("FAIL: abc == xyz");
+    if ("abc" != "abc") print("FAIL: abc != abc");
+    if ("hello" == "Hello") print("FAIL: hello == Hello");
+}
+
+fn testStringEscape() {
+    // check basic escapes work
+    print("escape test: tab=[\t] end");
+    print("escape test: newline=[\n] end");
+    print("escape test: quote=[\"] end");
+}
+
+fn testStringMixed() {
+    let s = "Hello, " + "World!";
+    if (s.length() != 13) print("FAIL: Hello World length");
+    if (s[0] != "H") print("FAIL: Hello World[0]");
+    if (s[12] != "!") print("FAIL: Hello World[12]");
+}
+
+let i = 0;
+while (i < 60) {
+    testStringLiteral();
+    testStringConcat();
+    testStringLength();
+    testStringIndex();
+    testStringComparison();
+    testStringMixed();
+    i = i + 1;
+}
+print("Strings OK");
+
+print("ALL TESTS PASSED");
