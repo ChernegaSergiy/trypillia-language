@@ -59,6 +59,36 @@ static void failAssertion(VM *vm, const std::string &message) {
     }
 }
 
+static void trackTestResult(VM *vm, const std::string &testName, bool passed) {
+    auto countIt = vm->globals.find("__test_count");
+    int count = 0;
+    if (countIt != vm->globals.end() && countIt->second.isNumber()) {
+        count = (int)countIt->second.asNumber();
+    }
+    count++;
+    vm->globals["__test_count"] = VMValue((double)count);
+
+    auto namesIt = vm->globals.find("__test_names");
+    ObjList *namesList;
+    if (namesIt == vm->globals.end() || !namesIt->second.isList()) {
+        namesList = new ObjList({});
+        vm->globals["__test_names"] = VMValue(namesList);
+    } else {
+        namesList = namesIt->second.asList();
+    }
+    namesList->elements.push_back(VMValue(testName));
+
+    auto resultsIt = vm->globals.find("__test_results");
+    ObjList *resultsList;
+    if (resultsIt == vm->globals.end() || !resultsIt->second.isList()) {
+        resultsList = new ObjList({});
+        vm->globals["__test_results"] = VMValue(resultsList);
+    } else {
+        resultsList = resultsIt->second.asList();
+    }
+    resultsList->elements.push_back(VMValue(passed));
+}
+
 static VMValue assertNative(int argCount, VMValue *args) {
     if (argCount < 1) {
         failAssertion(currentVM, "FAIL: assert requires at least 1 argument (condition)");
@@ -368,12 +398,7 @@ static VMValue itNative(int argCount, VMValue *args) {
 
     runCallbacks(vm, "__test_afterEach");
 
-    if (passed) {
-        std::cout << "    ok " << testName << std::endl;
-    } else {
-        std::cout << "    not ok " << testName << std::endl;
-        vm->globals["__test_failed"] = VMValue(true);
-    }
+    trackTestResult(vm, testName, passed);
 
     return nullptr;
 }
@@ -389,7 +414,7 @@ static VMValue xitNative(int argCount, VMValue *args) {
         testName = prefixIt->second.asString()->flatten() + " " + testName;
     }
 
-    std::cout << "    ok " << testName << " # SKIP" << std::endl;
+    trackTestResult(vm, testName, true);
 
     return nullptr;
 }
