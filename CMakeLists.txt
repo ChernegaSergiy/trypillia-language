@@ -38,6 +38,9 @@ include_directories(include ${sljit_SOURCE_DIR}/sljit_src)
 add_executable(trypillia src/main.cpp ${CORE_SOURCES} ${sljit_SOURCE_DIR}/sljit_src/sljitLir.c)
 target_link_libraries(trypillia mbedtls mbedx509 mbedcrypto)
 
+add_executable(trypillia-test src/test_runner_main.cpp)
+target_link_libraries(trypillia-test)
+
 add_executable(trypillia-lsp src/lsp/LSPMain.cpp src/lsp/LSP.cpp ${CORE_SOURCES} ${sljit_SOURCE_DIR}/sljit_src/sljitLir.c)
 target_link_libraries(trypillia-lsp mbedtls mbedx509 mbedcrypto)
 
