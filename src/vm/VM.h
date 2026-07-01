@@ -68,6 +68,9 @@ class VM {
     sigjmp_buf catchJmpBuf;
     bool catchJumpEnabled = false;
 
+    std::vector<VMValue> microtaskQueue;
+    void drainMicrotasks();
+
     VMValue instantiateClass(VMValue classVal, int argCount, VMValue *args);
 
     InterpretResult interpret(ObjFunction *function);
