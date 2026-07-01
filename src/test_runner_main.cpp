@@ -1,8 +1,10 @@
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <string>
 #include <vector>
+#include <sys/wait.h>
 
 static std::string execAndCapture(const std::string &cmd) {
     std::string result;
@@ -17,23 +19,30 @@ static std::string execAndCapture(const std::string &cmd) {
     return result;
 }
 
+static int execAndGetStatus(const std::string &cmd) {
+    int ret = system(cmd.c_str());
+    if (ret == -1)
+        return -1;
+    return WEXITSTATUS(ret);
+}
+
 int main(int argc, char **argv) {
     if (argc < 2) {
         std::cerr << "Usage: " << argv[0] << " <test-file> [test-file...]" << std::endl;
         return 1;
     }
 
-    const char *trypilliaBin = nullptr;
+    std::string trypilliaBin = "trypillia";
     {
         std::string selfPath(argv[0]);
         auto slash = selfPath.find_last_of("/\\");
-        std::string dir = (slash == std::string::npos) ? "." : selfPath.substr(0, slash);
-        std::string candidate = dir + "/trypillia";
-        if (FILE *f = fopen(candidate.c_str(), "r")) {
-            fclose(f);
-            trypilliaBin = strdup(candidate.c_str());
-        } else {
-            trypilliaBin = "trypillia";
+        if (slash != std::string::npos) {
+            std::string dir = selfPath.substr(0, slash);
+            std::string candidate = dir + "/trypillia";
+            if (FILE *f = fopen(candidate.c_str(), "r")) {
+                fclose(f);
+                trypilliaBin = candidate;
+            }
         }
     }
 
@@ -41,19 +50,21 @@ int main(int argc, char **argv) {
     int failed = 0;
 
     for (int i = 1; i < argc; i++) {
-        std::string cmd = std::string(trypilliaBin) + " " + argv[i] + " 2>/dev/null";
-        int exitCode = system(cmd.c_str());
-        int status = WEXITSTATUS(exitCode);
+        std::string cmd = trypilliaBin + " " + argv[i] + " > /dev/null 2>&1";
+        int exitCode = execAndGetStatus(cmd);
+        bool ok = (exitCode == 0);
 
-        if (status == 0) {
+        if (ok) {
             passed++;
             std::cout << "ok " << i << " — " << argv[i] << std::endl;
         } else {
             failed++;
             std::cout << "not ok " << i << " — " << argv[i] << std::endl;
-            std::string output = execAndCapture(cmd);
+            std::string output = execAndCapture(trypilliaBin + " " + argv[i] + " 2>&1");
             if (!output.empty()) {
-                std::cout << "# " << output << std::endl;
+                std::cout << "# " << output;
+                if (output.back() != '\n')
+                    std::cout << std::endl;
             }
         }
     }
