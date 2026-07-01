@@ -27,4 +27,48 @@ describe("assert framework", fn() {
             let x = list[100];
         });
     });
+
+    it("load lib/test.try", fn() {
+        load "lib/test.try";
+        assert(expect != nil, "expect was defined");
+    });
+
+    it("expect toBe", fn() {
+        load "lib/test.try";
+        expect(2 + 2).toBe(4);
+    });
+
+    it("expect toNotBe", fn() {
+        load "lib/test.try";
+        expect(2 + 2).toNotBe(5);
+    });
+
+    it("expect toBeTrue", fn() {
+        load "lib/test.try";
+        expect(1 == 1).toBeTrue();
+    });
+
+    it("expect toBeFalse", fn() {
+        load "lib/test.try";
+        expect(1 == 2).toBeFalse();
+    });
+
+    it("expect toBeNil", fn() {
+        load "lib/test.try";
+        expect(nil).toBeNil();
+    });
+
+    it("expect toThrow", fn() {
+        load "lib/test.try";
+        expect(fn () {
+            let list = [1];
+            let x = list[100];
+        }).toThrow();
+    });
+
+    it("xit skips test", fn() {
+        xit("skipped", fn() {
+            assert(false);
+        });
+    });
 });
