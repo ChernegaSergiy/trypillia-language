@@ -14,6 +14,7 @@
 #include "time/Time.h"
 #include "worker/Worker.h"
 #include "json/Json.h"
+#include "test/Test.h"
 
 namespace StdLib {
 void registerAll(VM *vm) {
@@ -33,6 +34,7 @@ void registerAll(VM *vm) {
     WorkerModule::registerAll(vm);
     CryptoModule::registerAll(vm);
     WebSocketModule::registerAll(vm);
+    Test::registerAll(vm);
 }
 
 void registerSymbols(SymbolTable *scope) {
@@ -52,6 +54,7 @@ void registerSymbols(SymbolTable *scope) {
     WorkerModule::registerSymbols(scope);
     CryptoModule::registerSymbols(scope);
     WebSocketModule::registerSymbols(scope);
+    Test::registerSymbols(scope);
 }
 
 VMValue makeResultOk(VM *vm, VMValue value) {
