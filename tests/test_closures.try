@@ -1,0 +1,114 @@
+fn testClosureBasic() {
+    fn makeCounter(start) {
+        let count = start;
+        fn inner() {
+            count = count + 1;
+            return count;
+        }
+        return inner;
+    }
+    let counter = makeCounter(0);
+    if (counter() != 1) print("FAIL: counter 1");
+    if (counter() != 2) print("FAIL: counter 2");
+    if (counter() != 3) print("FAIL: counter 3");
+}
+
+fn testMultipleClosures() {
+    fn makeCounter(start) {
+        let count = start;
+        fn inner() {
+            count = count + 1;
+            return count;
+        }
+        return inner;
+    }
+    let c1 = makeCounter(10);
+    let c2 = makeCounter(100);
+    if (c1() != 11) print("FAIL: c1 first");
+    if (c2() != 101) print("FAIL: c2 first");
+    if (c1() != 12) print("FAIL: c1 second");
+    if (c2() != 102) print("FAIL: c2 second");
+}
+
+fn testClosureWithParams() {
+    fn makeAdder(x) {
+        fn add(y) {
+            return x + y;
+        }
+        return add;
+    }
+    let add5 = makeAdder(5);
+    let add10 = makeAdder(10);
+    if (add5(3) != 8) print("FAIL: add5(3)");
+    if (add5(10) != 15) print("FAIL: add5(10)");
+    if (add10(1) != 11) print("FAIL: add10(1)");
+}
+
+fn testNestedClosures() {
+    fn outer(x) {
+        fn middle(y) {
+            fn inner(z) {
+                return x + y + z;
+            }
+            return inner;
+        }
+        return middle;
+    }
+    let result = outer(1)(2)(3);
+    if (result != 6) print("FAIL: 1+2+3 != 6", result);
+}
+
+fn testClosureUpvalueModify() {
+    fn makeAccumulator() {
+        let sum = 0;
+        fn add(n) {
+            sum = sum + n;
+            return sum;
+        }
+        return add;
+    }
+    let acc = makeAccumulator();
+    if (acc(5) != 5) print("FAIL: acc 5");
+    if (acc(3) != 8) print("FAIL: acc 8");
+    if (acc(2) != 10) print("FAIL: acc 10");
+}
+
+fn testClosureInList() {
+    fn makeMult(n) {
+        fn mult(x) { return x * n; }
+        return mult;
+    }
+    let fns = [makeMult(2), makeMult(3)];
+    if (fns[0](5) != 10) print("FAIL: mult 2");
+    if (fns[1](5) != 15) print("FAIL: mult 3");
+}
+
+fn testClosureOverNestedLoops() {
+    fn makeCounter() {
+        let i = 0;
+        fn inc() {
+            i = i + 1;
+            return i;
+        }
+        return inc;
+    }
+    let c = makeCounter();
+    let sum = 0;
+    let j = 0;
+    while (j < 5) {
+        sum = sum + c();
+        j = j + 1;
+    }
+    if (sum != 15) print("FAIL: closure over loop", sum);
+}
+
+testClosureBasic();
+testMultipleClosures();
+testClosureWithParams();
+testNestedClosures();
+testClosureUpvalueModify();
+testClosureInList();
+testClosureOverNestedLoops();
+
+print("Closures OK");
+print("ALL TESTS PASSED");

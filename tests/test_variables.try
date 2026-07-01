@@ -1,0 +1,70 @@
+fn testLetDecl() {
+    let x = 10;
+    if (x != 10) print("FAIL: let init");
+    x = 20;
+    if (x != 20) print("FAIL: let assign");
+}
+
+fn testMultipleDecl() {
+    let a = 1;
+    let b = 2;
+    let c = 3;
+    if (a + b + c != 6) print("FAIL: multiple decl");
+}
+
+fn testCompoundAssign() {
+    let x = 10;
+    x = x + 5;
+    if (x != 15) print("FAIL: +=");
+    x = x - 3;
+    if (x != 12) print("FAIL: -=");
+    x = x * 2;
+    if (x != 24) print("FAIL: *=");
+    x = x / 4;
+    if (x != 6) print("FAIL: /=");
+}
+
+fn testClosureCapture() {
+    let globalVar = 42;
+    fn getGlobal() {
+        return globalVar;
+    }
+    if (getGlobal() != 42) print("FAIL: global var in fn");
+}
+
+fn testBlockScope() {
+    let x = 1;
+    {
+        let x = 2;
+        if (x != 2) print("FAIL: inner x");
+    }
+    if (x != 1) print("FAIL: outer x after scope");
+}
+
+fn testSwap() {
+    let a = 1;
+    let b = 2;
+    let tmp = a;
+    a = b;
+    b = tmp;
+    if (a != 2) print("FAIL: swap a");
+    if (b != 1) print("FAIL: swap b");
+}
+
+fn testUninitialized() {
+    let x;
+    if (x != nil) print("FAIL: uninitialized");
+    x = 5;
+    if (x != 5) print("FAIL: after init");
+}
+
+testLetDecl();
+testMultipleDecl();
+testCompoundAssign();
+testClosureCapture();
+testBlockScope();
+testSwap();
+testUninitialized();
+
+print("Variables OK");
+print("ALL TESTS PASSED");
