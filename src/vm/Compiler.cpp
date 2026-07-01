@@ -8,6 +8,7 @@
 #include <functional>
 #include <iostream>
 #include <map>
+#include <unistd.h>
 
 class CompilerVisitor : public ASTVisitor {
   private:
@@ -1017,6 +1018,18 @@ class CompilerVisitor : public ASTVisitor {
         }
 
         std::ifstream file(path);
+        if (!file.is_open()) {
+            // Fallback to <cwd>/lib/<path>
+            char cwd[4096];
+            if (getcwd(cwd, sizeof(cwd))) {
+                std::string libPath = std::string(cwd) + "/lib/" + path.substr(path.find_last_of('/') + 1);
+                file.open(libPath);
+                if (file.is_open()) {
+                    path = libPath;
+                }
+            }
+        }
+
         if (!file.is_open()) {
             std::cerr << "Compile error: Could not load file '" << path << "'" << std::endl;
             return;
