@@ -63,6 +63,8 @@ class VM {
     JITCompiler jit;
     std::unordered_map<void *, JitFunc> compiledFuncs;
 
+    bool suppressRuntimeErrors = false;
+
     VMValue instantiateClass(VMValue classVal, int argCount, VMValue *args);
 
     InterpretResult interpret(ObjFunction *function);
