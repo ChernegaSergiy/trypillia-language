@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
-#include <glob.h>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -16,56 +15,70 @@
 
 namespace fs = std::filesystem;
 
-static std::vector<std::string> expandGlobs(const std::vector<std::string> &patterns) {
+static std::vector<std::string> expandGlobs(const std::vector<std::string>& patterns) {
     std::vector<std::string> files;
 
-    auto addFile = [&](const std::string &path) {
-        bool alreadyAdded = false;
-        for (auto &f : files) {
-            if (f == path) {
-                alreadyAdded = true;
-                break;
-            }
-        }
-        if (!alreadyAdded) {
-            files.push_back(path);
-        }
+    auto addFile = [&](const fs::path& path) {
+        std::error_code ec;
+        if (!fs::is_regular_file(path, ec))
+            return;
+
+        std::string p = path.lexically_normal().string();
+
+        if (std::find(files.begin(), files.end(), p) == files.end())
+            files.push_back(p);
     };
 
-    for (auto &pattern : patterns) {
+    for (const auto& pattern : patterns) {
         std::error_code ec;
-        if (fs::is_directory(pattern, ec)) {
-            for (auto &entry : fs::recursive_directory_iterator(pattern, ec)) {
-                if (!ec && entry.path().extension() == ".try") {
-                    addFile(entry.path().string());
-                }
+        fs::path p(pattern);
+
+        if (fs::is_directory(p, ec)) {
+            for (const auto& entry : fs::recursive_directory_iterator(p, ec)) {
+                if (!ec && entry.path().extension() == ".try")
+                    addFile(entry.path());
             }
-        } else if (pattern.find("**") != std::string::npos) {
-            size_t starPos = pattern.find("**");
-            std::string baseDir = pattern.substr(0, starPos);
-            if (baseDir.empty()) baseDir = ".";
-            if (fs::is_directory(baseDir, ec)) {
-                std::string suffix = pattern.substr(starPos + 2);
-                for (auto &entry : fs::recursive_directory_iterator(baseDir, ec)) {
-                    if (!ec && !fs::is_directory(entry.path(), ec)) {
-                        std::string entryPath = entry.path().string();
-                        if (entryPath.size() >= suffix.size() &&
-                            entryPath.compare(entryPath.size() - suffix.size(), suffix.size(), suffix) == 0) {
-                            addFile(entryPath);
-                        }
+            continue;
+        }
+
+        if (pattern.find("**") != std::string::npos) {
+            size_t pos = pattern.find("**");
+
+            fs::path base = pattern.substr(0, pos);
+            if (base.empty())
+                base = ".";
+
+            std::string suffix = pattern.substr(pos + 2);
+
+            if (suffix.starts_with('/'))
+                suffix.erase(0, 1);
+
+            if (fs::is_directory(base, ec)) {
+                for (const auto& entry : fs::recursive_directory_iterator(base, ec)) {
+                    if (ec || !entry.is_regular_file())
+                        continue;
+
+                    auto rel = fs::relative(entry.path(), base, ec);
+                    if (ec)
+                        continue;
+
+                    std::string relPath = rel.generic_string();
+
+                    if (suffix == "*.try") {
+                        if (entry.path().extension() == ".try")
+                            addFile(entry.path());
+                    } else if (relPath.ends_with(suffix)) {
+                        addFile(entry.path());
                     }
                 }
             }
-        } else {
-            glob_t g;
-            glob(pattern.c_str(), GLOB_NOCHECK | GLOB_TILDE, nullptr, &g);
-            for (size_t i = 0; i < g.gl_pathc; i++) {
-                std::string path = g.gl_pathv[i];
-                if (fs::is_regular_file(path, ec)) {
-                    addFile(path);
-                }
-            }
-            globfree(&g);
+
+            continue;
+        }
+
+        if (pattern.find('*') == std::string::npos &&
+            pattern.find('?') == std::string::npos) {
+            addFile(p);
         }
     }
 
