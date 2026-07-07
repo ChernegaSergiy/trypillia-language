@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Пакунки — Trypillia</title>
+<title>Реєстр пакунків — Trypillia</title>
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -15,7 +15,7 @@
       <a href="docs.html">Документація</a>
       <a href="spec.html">Специфікація</a>
       <a href="packages.html" style="color: var(--text);">Пакунки</a>
-      <a href="https://github.com/ChernegaSergiy/trypillia-language">GitHub</a>
+      <a href="https://github.com/trypillia-lang">GitHub</a>
     </nav>
     <button class="burger" id="burger-btn" aria-label="Меню">
       <span></span><span></span><span></span>
@@ -25,53 +25,107 @@
     <a href="docs.html">Документація</a>
     <a href="spec.html">Специфікація</a>
     <a href="packages.html">Пакунки</a>
-    <a href="https://github.com/ChernegaSergiy/trypillia-language">GitHub</a>
+    <a href="https://github.com/trypillia-lang">GitHub</a>
   </div>
 </header>
 
 <div class="container">
   <main>
     <section>
-      <h2>TrypPM: Менеджер пакунків</h2>
-      <p>Екосистема Trypillia працює на базі <strong>TrypPM</strong>. Він обробляє залежності, компілює код та допомагає публікувати ваші бібліотеки.</p>
+      <h1 style="font-size: 2rem; margin-bottom: 1rem;">Реєстр TrypPM</h1>
+      <p style="margin-bottom: 2rem;">Знайдіть, встановіть та опублікуйте пакунки для ваших проєктів на Trypillia.</p>
+      
+      <form class="search-box" action="#" method="GET" onsubmit="event.preventDefault();">
+        <input type="text" class="search-input" placeholder="Пошук серед 1,248 пакунків..." aria-label="Пошук пакунків">
+        <button type="submit" class="btn btn-primary">Знайти</button>
+      </form>
     </section>
 
     <section>
-      <h2>Популярні пакунки</h2>
-      <ul class="list-group">
-        <li>
-          <div>
-            <strong>http_server</strong> <br/>
-            <span style="font-size: 0.85rem; color: var(--text-muted);">Високопродуктивний HTTP сервер на базі подій.</span>
+      <h2>Нещодавно оновлені</h2>
+      <div class="pkg-list">
+        
+        <div class="pkg-card">
+          <div class="pkg-header">
+            <a href="#" class="pkg-title">http_server</a>
+            <code>v1.2.0</code>
           </div>
-          <code>v1.2.0</code>
-        </li>
-        <li>
-          <div>
-            <strong>json_parse</strong> <br/>
-            <span style="font-size: 0.85rem; color: var(--text-muted);">Безпечний парсер JSON без алокацій.</span>
+          <p class="pkg-desc">Високопродуктивний асинхронний HTTP сервер на базі подій. Оптимізовано для роботи з великою кількістю одночасних з'єднань.</p>
+          <div class="pkg-meta">
+            <span>Оновлено: 2 години тому</span>
+            <span>Завантажень: 42,105</span>
+            <div style="display: flex; gap: 0.5rem;">
+              <a href="#" class="pkg-tag">web</a>
+              <a href="#" class="pkg-tag">network</a>
+            </div>
           </div>
-          <code>v0.9.4</code>
-        </li>
-        <li>
-          <div>
-            <strong>crypto_core</strong> <br/>
-            <span style="font-size: 0.85rem; color: var(--text-muted);">Базові криптографічні алгоритми.</span>
+        </div>
+
+        <div class="pkg-card">
+          <div class="pkg-header">
+            <a href="#" class="pkg-title">json_core</a>
+            <code>v0.9.4</code>
           </div>
-          <code>v2.0.1</code>
-        </li>
-      </ul>
+          <p class="pkg-desc">Швидкий та безпечний парсер JSON. Не використовує алокації пам'яті для читання значень.</p>
+          <div class="pkg-meta">
+            <span>Оновлено: вчора</span>
+            <span>Завантажень: 128,400</span>
+            <div style="display: flex; gap: 0.5rem;">
+              <a href="#" class="pkg-tag">parser</a>
+              <a href="#" class="pkg-tag">data</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="pkg-card">
+          <div class="pkg-header">
+            <a href="#" class="pkg-title">crypto_hash</a>
+            <code>v2.0.1</code>
+          </div>
+          <p class="pkg-desc">Реалізація популярних криптографічних геш-функцій (SHA-256, SHA-3, BLAKE3) без залежностей від C-бібліотек.</p>
+          <div class="pkg-meta">
+            <span>Оновлено: 3 дні тому</span>
+            <span>Завантажень: 15,220</span>
+            <div style="display: flex; gap: 0.5rem;">
+              <a href="#" class="pkg-tag">security</a>
+              <a href="#" class="pkg-tag">crypto</a>
+            </div>
+          </div>
+        </div>
+
+      </div>
     </section>
   </main>
 
   <aside>
     <div class="sidebar-section">
-      <h3>Шпаргалка CLI</h3>
+      <h3>Статистика реєстру</h3>
+      <dl class="dl-grid">
+        <dt>Пакунків</dt>
+        <dd>1,248</dd>
+        <dt>Завантажень</dt>
+        <dd>3.4 млн</dd>
+        <dt>Розробників</dt>
+        <dd>412</dd>
+      </dl>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Популярні категорії</h3>
+      <div class="category-list">
+        <a href="#">Веб-розробка (214)</a>
+        <a href="#">Утиліти CLI (185)</a>
+        <a href="#">Робота з даними (132)</a>
+        <a href="#">Мережа (98)</a>
+        <a href="#">Криптографія (45)</a>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Публікація</h3>
+      <p>Щоб опублікувати власний пакунок, авторизуйтесь у CLI та запустіть:</p>
       <div class="cli-box">
-        <div><span>$</span> tryppm install &lt;pkg&gt;</div>
-        <div><span>$</span> tryppm update</div>
-        <div><span>$</span> tryppm build --release</div>
-        <div><span>$</span> tryppm test</div>
+        <div><span>$</span> tryppm login</div>
         <div><span>$</span> tryppm publish</div>
       </div>
     </div>
