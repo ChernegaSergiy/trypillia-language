@@ -67,13 +67,9 @@ print("Результат: {result}");`}
 		<div class="sidebar-section">
 			<h3>Встановлення</h3>
 			<p>Linux / macOS:</p>
-			<div class="code-block" style="border: none; padding: 0;">
-				<code style="border: none; background: transparent; padding: 0.65rem;">curl -sSL https://tryp.pp.ua/install.sh | sh</code>
-			</div>
+			<CodeBlock code="curl -sSL https://tryp.pp.ua/install.sh | sh" />
 			<p style="margin-top: 1rem;">Windows (PowerShell):</p>
-			<div class="code-block" style="border: none; padding: 0;">
-				<code style="border: none; background: transparent; padding: 0.65rem;">irm https://tryp.pp.ua/install.ps1 | iex</code>
-			</div>
+			<CodeBlock code="irm https://tryp.pp.ua/install.ps1 | iex" />
 		</div>
 
 		<div class="sidebar-section">

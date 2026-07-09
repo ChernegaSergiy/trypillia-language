@@ -1,5 +1,9 @@
 <script lang="ts">
-	let { code = '', lang = 'trypillia' }: { code?: string; lang?: string } = $props();
+	let {
+		code = '',
+		lang = 'trypillia',
+		class: className = ''
+	}: { code?: string; lang?: string; class?: string } = $props();
 
 	let copied = $state(false);
 
@@ -46,7 +50,7 @@
 	}
 </script>
 
-<div class="code-block">
+<div class="code-block {className}">
 	<button class="copy-btn" onclick={copyCode} aria-label="Копіювати код">
 		{copied ? 'Скопійовано' : 'Копіювати'}
 	</button>
