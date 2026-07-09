@@ -697,6 +697,10 @@ footer {
   margin-bottom: 2rem;
 }
 
+.docs-main .code-block {
+  margin: 1rem 0;
+}
+
 @media (max-width: 768px) {
   .docs-layout {
     grid-template-columns: 1fr;
