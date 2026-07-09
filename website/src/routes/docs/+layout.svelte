@@ -6,11 +6,29 @@
 	let { children } = $props();
 
 	const path = $derived($page.url.pathname);
+
+	// On mobile the sidebar is collapsed by default so the page content is
+	// visible immediately without scrolling past a long nav list. The desktop
+	// layout (the default) always shows the nav and ignores this flag.
+	let navOpen = $state(false);
+
+	// Collapse the mobile nav after navigating to a new page.
+	$effect(() => {
+		path;
+		navOpen = false;
+	});
 </script>
 
 <div class="container docs-layout">
 	<aside class="docs-sidebar">
-		<nav>
+		<button
+			class="sidebar-toggle"
+			aria-expanded={navOpen}
+			onclick={() => (navOpen = !navOpen)}
+		>
+			Навігація <span class="sidebar-toggle-chevron">{navOpen ? '▲' : '▼'}</span>
+		</button>
+		<nav class:collapsed={!navOpen}>
 			<p class="docs-nav-title">Мова Trypillia</p>
 			<a href={`${base}/docs/language`} class:active={path === '/docs/language'}>Огляд</a>
 			<ul class="docs-module-list">
