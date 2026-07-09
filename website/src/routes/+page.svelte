@@ -12,7 +12,7 @@
 		<div class="hero-text">
 			<h1 class="hero-title">Мова програмування Trypillia</h1>
 			<p class="hero-desc">
-				Статично типізована мова загального призначення для надійного ПЗ зі
+				Динамічно типізована мова загального призначення для надійного ПЗ зі
 				зрозумілим синтаксисом та передбачуваною продуктивністю.
 			</p>
 			<div class="hero-actions">
@@ -43,11 +43,11 @@ print("Результат: {result}");`}
 			<ul class="list-group">
 				<li>
 					<span>Основи синтаксису</span>
-					<a href={`${base}/docs`}>Читати →</a>
+					<a href={`${base}/docs/language`}>Читати →</a>
 				</li>
 				<li>
-					<span>Система типів</span>
-					<a href={`${base}/docs`}>Читати →</a>
+					<span>Стандартна бібліотека</span>
+					<a href={`${base}/docs/stdlib`}>Читати →</a>
 				</li>
 			</ul>
 		</section>
