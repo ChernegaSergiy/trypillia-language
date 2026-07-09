@@ -14,11 +14,7 @@ export default defineConfig({
 			// Generate a fully static site for GitHub Pages.
 			adapter: adapter({ fallback: undefined }),
 			preprocess: [mdsvex({ extensions: ['.svx', '.md'] })],
-			extensions: ['.svelte', '.svx', '.md'],
-			// Site is published to a subpath on GitHub Pages.
-			paths: {
-				base: '/trypillia-language'
-			}
+			extensions: ['.svelte', '.svx', '.md']
 		})
 	]
 });

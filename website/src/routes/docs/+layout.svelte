@@ -5,7 +5,11 @@
 
 	let { children } = $props();
 
-	const path = $derived($page.url.pathname);
+		const path = $derived($page.url.pathname);
+
+		const isActive = (href: string) => path === href;
+		const isStdlibActive = (slug: string) =>
+			path === '/docs/stdlib/' + slug || path === '/docs/stdlib/' + slug + '/';
 
 	// Each nav section is an accordion. On desktop they are expanded by default
 	// (and still collapsible); on mobile they start collapsed so the page
@@ -33,13 +37,13 @@
 				<span class="docs-nav-chevron" class:collapsed={!languageOpen}></span>
 			</button>
 			<div class="docs-nav-group" class:collapsed={!languageOpen}>
-				<a href={`${base}/docs/language`} class:active={path === '/docs/language'}>Огляд</a>
+				<a href={`${base}/docs/language`} class:active={isActive('/docs/language')}>Огляд</a>
 				<ul class="docs-module-list">
 					{#each languageTopics as t (t.slug)}
 						<li>
 							<a
 								href={`${base}/docs/language/${t.slug}`}
-								class:active={path === `/docs/language/${t.slug}`}
+								class:active={isActive('/docs/language/' + t.slug)}
 							>
 								{t.title}
 							</a>
@@ -62,7 +66,7 @@
 						<li>
 							<a
 								href={`${base}/docs/stdlib/${m.slug}`}
-								class:active={path.startsWith(`/docs/stdlib/${m.slug}`)}
+								class:active={isStdlibActive(m.slug)}
 							>
 								{m.title}
 								<span class="docs-module-count">{m.methods.length}</span>
@@ -75,6 +79,7 @@
 	</aside>
 
 	<main class="docs-main">
+		<!-- DEBUG path={path} rawPath={rawPath} base={base} -->
 		{@render children()}
 	</main>
 </div>
