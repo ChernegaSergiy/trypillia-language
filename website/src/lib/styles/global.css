@@ -238,6 +238,10 @@ header {
   opacity: 1;
 }
 
+.code-block.dense pre, .code-block.dense code {
+  padding: 0.4rem 1rem;
+}
+
 .inline-code {
   display: inline;
   position: relative;

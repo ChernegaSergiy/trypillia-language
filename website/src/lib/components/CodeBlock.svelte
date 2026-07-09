@@ -2,8 +2,9 @@
 	let {
 		code = '',
 		lang = 'trypillia',
-		class: className = ''
-	}: { code?: string; lang?: string; class?: string } = $props();
+		class: className = '',
+		dense = false
+	}: { code?: string; lang?: string; class?: string; dense?: boolean } = $props();
 
 	let copied = $state(false);
 
@@ -50,7 +51,7 @@
 	}
 </script>
 
-<div class="code-block {className}">
+<div class="code-block {className}" class:dense>
 	<button class="copy-btn" onclick={copyCode} aria-label="Копіювати код">
 		{copied ? 'Скопійовано' : 'Копіювати'}
 	</button>

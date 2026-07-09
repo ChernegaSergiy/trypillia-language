@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import CodeBlock from '$lib/components/CodeBlock.svelte';
-	import InlineCode from '$lib/components/InlineCode.svelte';
 </script>
 
 <svelte:head>
@@ -68,9 +67,9 @@ print("Результат: {result}");`}
 		<div class="sidebar-section">
 			<h3>Встановлення</h3>
 			<p>Linux / macOS:</p>
-			<InlineCode code="curl -sSL https://tryp.pp.ua/install.sh | sh" />
+			<CodeBlock dense code="curl -sSL https://tryp.pp.ua/install.sh | sh" />
 			<p style="margin-top: 1rem;">Windows (PowerShell):</p>
-			<InlineCode code="irm https://tryp.pp.ua/install.ps1 | iex" />
+			<CodeBlock dense code="irm https://tryp.pp.ua/install.ps1 | iex" />
 		</div>
 
 		<div class="sidebar-section">
