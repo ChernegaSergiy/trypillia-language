@@ -55,5 +55,9 @@
 	<button class="copy-btn" onclick={copyCode} aria-label="Копіювати код">
 		{copied ? 'Скопійовано' : 'Копіювати'}
 	</button>
-	<pre><code>{@html lang === 'trypillia' ? highlight(code) : escape_html(code)}</code></pre>
+	{#if dense}
+		<code>{@html lang === 'trypillia' ? highlight(code) : escape_html(code)}</code>
+	{:else}
+		<pre><code>{@html lang === 'trypillia' ? highlight(code) : escape_html(code)}</code></pre>
+	{/if}
 </div>

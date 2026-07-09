@@ -238,8 +238,15 @@ header {
   opacity: 1;
 }
 
-.code-block.dense pre, .code-block.dense code {
-  padding: 0.4rem 1rem;
+.code-block.dense {
+  border: none;
+  padding: 0;
+}
+
+.code-block.dense code {
+  border: none;
+  background: transparent;
+  padding: 0.65rem;
 }
 
 .inline-code {
