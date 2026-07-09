@@ -238,6 +238,36 @@ header {
   opacity: 1;
 }
 
+.inline-code {
+  display: inline;
+  position: relative;
+}
+
+.inline-code code {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.15rem 0.4rem;
+  font-family: var(--mono);
+  font-size: 0.85em;
+  color: var(--text);
+}
+
+.inline-code .copy-btn {
+  display: inline-block;
+  position: static;
+  margin-left: 0.3rem;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.75rem;
+  background: color-mix(in srgb, var(--surface) 85%, var(--text));
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text);
+  opacity: 1;
+  vertical-align: middle;
+}
+
 .kw { color: #000000; font-weight: 600; }
 .fn { color: #000000; }
 .str { color: var(--text-muted); }
