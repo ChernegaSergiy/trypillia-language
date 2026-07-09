@@ -1,0 +1,46 @@
+<script lang="ts">
+	import CodeBlock from '$lib/components/CodeBlock.svelte';
+</script>
+
+<svelte:head>
+	<title>Специфікація — Trypillia</title>
+</svelte:head>
+
+<div class="container">
+
+<main>
+
+## Специфікація мови Trypillia
+
+Цей документ описує формальний синтаксис та семантику мови. Призначено для розробників компіляторів, аналізаторів та інструментарію.
+
+## Лексична структура
+
+Вихідний код Trypillia складається з токенів: ключових слів, ідентифікаторів, літералів, операторів та роздільників.
+
+- **Кодування:** Усі файли повинні бути у форматі UTF-8.
+- **Ідентифікатори:** Починаються з літери `[a-zA-Z_]` і можуть містити цифри.
+
+## Граматика (EBNF)
+
+<CodeBlock lang="ebnf" code={`Program = { Statement } ;
+Statement = LetStatement | ReturnStatement | ExpressionStatement ;
+LetStatement = "let" Identifier "=" Expression ";" ;
+Expression = Term { ("+" | "-") Term } ;`} />
+
+</main>
+
+<aside>
+
+<div class="sidebar-section">
+  <h3>Ресурси</h3>
+  <ul class="list-group" style="border: none;">
+    <li style="padding: 0.25rem 0; border: none;"><a href="#">Завантажити PDF</a></li>
+    <li style="padding: 0.25rem 0; border: none;"><a href="#">Процес пропозицій (RFC)</a></li>
+    <li style="padding: 0.25rem 0; border: none;"><a href="#">Історія версій</a></li>
+  </ul>
+</div>
+
+</aside>
+
+</div>

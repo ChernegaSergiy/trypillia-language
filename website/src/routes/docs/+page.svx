@@ -1,0 +1,48 @@
+<script lang="ts">
+	import CodeBlock from '$lib/components/CodeBlock.svelte';
+</script>
+
+<svelte:head>
+	<title>Документація — Trypillia</title>
+</svelte:head>
+
+<div class="container">
+
+<main>
+
+## Вступ до Trypillia
+
+Trypillia розроблена для створення надійних систем з мінімальними витратами ресурсів. Ця сторінка допоможе вам зрозуміти базові концепції мови.
+
+## Оголошення змінних
+
+У мові є два ключових слова для змінних: `let` (змінювані) та `const` (незмінні).
+
+<CodeBlock code={`let mut_var = 10;  // Можна змінити пізніше
+const PI = 3.1415; // Значення фіксоване`} />
+
+## Функції
+
+Функції оголошуються ключовим словом `fn`. Типи аргументів та результат повернення вказуються явно.
+
+<CodeBlock code={`fn greet(name: String) -> String {
+  return "Привіт, {name}!";
+}`} />
+
+</main>
+
+<aside>
+
+<div class="sidebar-section">
+  <h3>Зміст</h3>
+  <ul class="list-group" style="border: none;">
+    <li style="padding: 0.25rem 0; border: none;"><a href="#">Вступ</a></li>
+    <li style="padding: 0.25rem 0; border: none;"><a href="#">Оголошення змінних</a></li>
+    <li style="padding: 0.25rem 0; border: none;"><a href="#">Функції</a></li>
+    <li style="padding: 0.25rem 0; border: none;"><a href="#">Керування пам'яттю</a></li>
+  </ul>
+</div>
+
+</aside>
+
+</div>
