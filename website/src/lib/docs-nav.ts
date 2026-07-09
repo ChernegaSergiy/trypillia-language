@@ -350,7 +350,7 @@ export const languageTopics: TopicEntry[] = [
 	{
 		slug: 'inheritance',
 		title: 'Наслідування',
-		summary: 'Успадкування класів, перевизначення методів та super.'
+		summary: 'Успадкування, super, абстрактні класи, інтерфейси та трейти.'
 	}
 ];
 
