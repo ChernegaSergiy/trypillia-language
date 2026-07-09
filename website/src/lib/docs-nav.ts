@@ -299,3 +299,61 @@ export const modules: ModuleEntry[] = [
 export function getModule(slug: string): ModuleEntry | undefined {
 	return modules.find((m) => m.slug === slug);
 }
+
+// --- Language guide topics ---
+
+export interface TopicEntry {
+	/** Topic slug, also used as the URL segment. */
+	slug: string;
+	/** Display title in the sidebar and headings. */
+	title: string;
+	/** One-line Ukrainian summary shown in listings. */
+	summary: string;
+}
+
+export const languageTopics: TopicEntry[] = [
+	{
+		slug: 'variables',
+		title: 'Змінні та константи',
+		summary: 'Оголошення, присвоєння, область видимості та незмінні значення.'
+	},
+	{
+		slug: 'types',
+		title: 'Типи даних',
+		summary: 'Числа, рядки, булеві значення, nil, списки та словники.'
+	},
+	{
+		slug: 'strings',
+		title: 'Рядки',
+		summary: 'Інтерполяція, екранування та індексація рядків.'
+	},
+	{
+		slug: 'operators',
+		title: 'Оператори',
+		summary: 'Арифметика, порівняння, логіка, побітові оператори та присвоєння.'
+	},
+	{
+		slug: 'control-flow',
+		title: 'Керуючі конструкції',
+		summary: 'Умови, цикли та розгалуження switch.'
+	},
+	{
+		slug: 'functions',
+		title: 'Функції',
+		summary: 'Оголошення, анонімні функції, замикання та функції як значення.'
+	},
+	{
+		slug: 'classes',
+		title: 'Класи',
+		summary: 'Поля, конструктор, методи, модифікатори доступу та static.'
+	},
+	{
+		slug: 'inheritance',
+		title: 'Наслідування',
+		summary: 'Успадкування класів, перевизначення методів та super.'
+	}
+];
+
+export function getTopic(slug: string): TopicEntry | undefined {
+	return languageTopics.find((t) => t.slug === slug);
+}

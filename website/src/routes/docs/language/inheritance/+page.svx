@@ -1,0 +1,101 @@
+<script lang="ts">
+	import CodeBlock from '$lib/components/CodeBlock.svelte';
+	import LanguageBreadcrumb from '$lib/components/LanguageBreadcrumb.svelte';
+
+	const basic = `class Animal {
+  let name;
+  fn init(n) {
+    this.name = n;
+  }
+  fn getName() {
+    return this.name;
+  }
+}
+
+// Dog успадковує Animal через оператор <
+class Dog < Animal {
+  fn init(n) {
+    this.name = n;
+  }
+}
+
+let d = Dog("Дружок");
+print(d.getName());   // Дружок  (метод успадковано)`;
+
+	const override = `class Animal {
+  let name;
+  fn init(n) {
+    this.name = n;
+  }
+  fn speak() {
+    return this.name + " видає звук";
+  }
+}
+
+class Cat < Animal {
+  fn speak() {   // перевизначення методу батька
+    return this.name + " мурчить";
+  }
+}
+
+let c = Cat("Мурка");
+print(c.speak());   // Мурка мурчить`;
+
+	const superEx = `class Animal {
+  let name;
+  fn init(n) {
+    this.name = n;
+  }
+  fn speak() {
+    return this.name + " видає звук";
+  }
+}
+
+class Dog < Animal {
+  fn init(n) {
+    super.init(n);        // виклик конструктора батька
+  }
+  fn speak() {
+    return super.speak() + " (гав!)";  // виклик методу батька
+  }
+}
+
+let d = Dog("Рекс");
+print(d.speak());   // Рекс видає звук (гав!)`;
+</script>
+
+<svelte:head>
+	<title>Наслідування — Trypillia</title>
+</svelte:head>
+
+<LanguageBreadcrumb title="Наслідування" />
+
+<section>
+
+## Наслідування
+
+Один клас може успадкувати інший за допомогою оператора `<`. Похідний клас отримує всі поля та методи базового.
+
+<CodeBlock code={basic} />
+
+</section>
+
+<section>
+
+### Перевизначення методів
+
+Похідний клас може перевизначити метод базового, оголосивши метод з тим самим імʼям.
+
+<CodeBlock code={override} />
+
+</section>
+
+<section>
+
+### Виклик super
+
+Ключове слово `super` дає доступ до реалізації базового класу — зокрема до його конструктора та перевизначених методів.
+
+<CodeBlock code={superEx} />
+
+</section>

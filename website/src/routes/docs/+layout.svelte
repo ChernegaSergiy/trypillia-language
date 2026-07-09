@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { base } from '$app/paths';
-	import { modules } from '$lib/docs-nav';
+	import { modules, languageTopics } from '$lib/docs-nav';
 
 	let { children } = $props();
 
@@ -11,8 +11,20 @@
 <div class="container docs-layout">
 	<aside class="docs-sidebar">
 		<nav>
-			<p class="docs-nav-title">Документація</p>
-			<a href={`${base}/docs/language`} class:active={path === '/docs/language'}>Мова Trypillia</a>
+			<p class="docs-nav-title">Мова Trypillia</p>
+			<a href={`${base}/docs/language`} class:active={path === '/docs/language'}>Огляд</a>
+			<ul class="docs-module-list">
+				{#each languageTopics as t (t.slug)}
+					<li>
+						<a
+							href={`${base}/docs/language/${t.slug}`}
+							class:active={path === `/docs/language/${t.slug}`}
+						>
+							{t.title}
+						</a>
+					</li>
+				{/each}
+			</ul>
 
 			<p class="docs-nav-title">Стандартна бібліотека</p>
 			<ul class="docs-module-list">
