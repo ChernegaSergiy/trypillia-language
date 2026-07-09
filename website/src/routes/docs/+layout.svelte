@@ -5,11 +5,11 @@
 
 	let { children } = $props();
 
-		const path = $derived($page.url.pathname);
+	const path = $derived($page.url.pathname);
 
-		const isActive = (href: string) => path === href;
-		const isStdlibActive = (slug: string) =>
-			path === '/docs/stdlib/' + slug || path === '/docs/stdlib/' + slug + '/';
+	const isActive = (href: string) => path.endsWith(href);
+	const isStdlibActive = (slug: string) =>
+		path.endsWith('/docs/stdlib/' + slug) || path.endsWith('/docs/stdlib/' + slug + '/');
 
 	// Each nav section is an accordion. On desktop they are expanded by default
 	// (and still collapsible); on mobile they start collapsed so the page
@@ -79,7 +79,6 @@
 	</aside>
 
 	<main class="docs-main">
-		<!-- DEBUG path={path} rawPath={rawPath} base={base} -->
 		{@render children()}
 	</main>
 </div>
