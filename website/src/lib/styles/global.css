@@ -600,6 +600,14 @@ footer {
   color: var(--text-muted);
 }
 
+.docs-nav-chevron::after {
+  content: '▼';
+}
+
+.docs-nav-chevron.collapsed::after {
+  content: '▶';
+}
+
 .docs-nav-group {
   overflow: hidden;
   max-height: 2000px;
