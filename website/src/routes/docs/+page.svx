@@ -1,5 +1,31 @@
 <script lang="ts">
 	import CodeBlock from '$lib/components/CodeBlock.svelte';
+
+	const varCode = `let mut_var = 10;  // Можна змінити пізніше
+mut_var = 20;`;
+
+	const constCode = `const let PI = 3.1415;  // Значення зафіксоване`;
+
+	const fnCode = `fn greet(name) {
+  return "Привіт, " + name + "!";
+}
+
+print(greet("Світ"));`;
+
+	const classCode = `class Dog {
+  let name;
+
+  fn init(n) {
+    this.name = n;
+  }
+
+  fn bark() {
+    return this.name + " barks";
+  }
+}
+
+let d = Dog("rex");
+print(d.bark());`;
 </script>
 
 <svelte:head>
@@ -22,10 +48,13 @@ Trypillia розроблена для створення надійних сис
 
 ## Оголошення змінних
 
-У мові є два ключових слова для змінних: `let` (змінювані) та `const` (незмінні).
+Змінні оголошуються ключовим словом `let`. Присвоєння нового значення виконується без повторного ключового слова.
 
-<CodeBlock code={`let mut_var = 10;  // Можна змінити пізніше
-const PI = 3.1415; // Значення фіксоване`} />
+<CodeBlock code={varCode} />
+
+Незмінний зв'язок оголошується як `const let` — спроба переприсвоїти його викличе помилку на етапі семантичного аналізу.
+
+<CodeBlock code={constCode} />
 
 </section>
 
@@ -33,11 +62,19 @@ const PI = 3.1415; // Значення фіксоване`} />
 
 ## Функції
 
-Функції оголошуються ключовим словом `fn`. Типи аргументів та результат повернення вказуються явно.
+Функції оголошуються ключовим словом `fn`. Trypillia — динамічно типізована, тому типи аргументів та значення, що повертається, не вказуються.
 
-<CodeBlock code={`fn greet(name: String) -> String {
-  return "Привіт, {name}!";
-}`} />
+<CodeBlock code={fnCode} />
+
+</section>
+
+<section>
+
+## Класи
+
+Класи підтримують поля, методи та конструктор `init`. Екземпляр створюється викликом класу як функції.
+
+<CodeBlock code={classCode} />
 
 </section>
 
@@ -51,7 +88,7 @@ const PI = 3.1415; // Значення фіксоване`} />
     <li style="padding: 0.25rem 0; border: none;"><a href="#">Вступ</a></li>
     <li style="padding: 0.25rem 0; border: none;"><a href="#">Оголошення змінних</a></li>
     <li style="padding: 0.25rem 0; border: none;"><a href="#">Функції</a></li>
-    <li style="padding: 0.25rem 0; border: none;"><a href="#">Керування пам'яттю</a></li>
+    <li style="padding: 0.25rem 0; border: none;"><a href="#">Класи</a></li>
   </ul>
 </div>
 

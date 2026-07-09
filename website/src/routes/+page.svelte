@@ -22,17 +22,15 @@
 		</div>
 		<CodeBlock
 			code={`// Обчислення числа Фібоначчі
-fn fibonacci(n: Int) -> Int {
-  if n <= 1 {
+fn fibonacci(n) {
+  if (n <= 1) {
     return n;
   }
   return fibonacci(n - 1) + fibonacci(n - 2);
 }
 
-fn main() {
-  let result = fibonacci(10);
-  print("Результат: {result}");
-}`}
+let result = fibonacci(10);
+print("Результат: {result}");`}
 		/>
 	</div>
 </section>

@@ -1,5 +1,32 @@
 <script lang="ts">
 	import CodeBlock from '$lib/components/CodeBlock.svelte';
+
+	const ebnfCode = `Program      = { Declaration } ;
+Declaration  = FunctionDecl | ClassDecl | VarDecl | Statement ;
+
+FunctionDecl = "fn" Identifier "(" [ Parameters ] ")" Block ;
+Parameters   = Identifier { "," Identifier } ;
+
+ClassDecl    = "class" Identifier [ "<" Identifier ]
+               "{" { Member } "}" ;
+Member       = [ "public" | "private" | "protected" ]
+               ( "fn" Identifier "(" [ Parameters ] ")" ( Block | ";" )
+               | "let" Identifier [ "=" Expression ] ";" ) ;
+
+VarDecl      = "let" Identifier [ "=" Expression ] ";"
+             | "const" "let" Identifier "=" Expression ";" ;
+
+Statement    = IfStmt | WhileStmt | DoStmt | ForStmt
+             | ReturnStmt | BreakStmt | ContinueStmt
+             | ExprStmt ;
+IfStmt       = "if" "(" Expression ")" Statement [ "else" Statement ] ;
+WhileStmt    = "while" "(" Expression ")" Statement ;
+ForStmt      = "for" "(" "let" Identifier "=" Expression ";"
+               Expression ";" Expression ")" Statement ;
+ReturnStmt   = "return" [ Expression ] ";" ;
+
+Expression   = Assignment | Ternary | LogicalOr ;
+Assignment   = Identifier "=" Expression ;`;
 </script>
 
 <svelte:head>
@@ -27,6 +54,7 @@
 <ul class="list-group">
   <li><strong>Кодування:</strong> Усі файли повинні бути у форматі UTF-8.</li>
   <li><strong>Ідентифікатори:</strong> Починаються з літери <code>[a-zA-Z_]</code> і можуть містити цифри.</li>
+  <li><strong>Коментарі:</strong> Однорядкові коментарі починаються з <code>//</code> і тривають до кінця рядка.</li>
 </ul>
 
 </section>
@@ -35,10 +63,7 @@
 
 ## Граматика (EBNF)
 
-<CodeBlock lang="ebnf" code={`Program = { Statement } ;
-Statement = LetStatement | ReturnStatement | ExpressionStatement ;
-LetStatement = "let" Identifier "=" Expression ";" ;
-Expression = Term { ("+" | "-") Term } ;`} />
+<CodeBlock lang="ebnf" code={ebnfCode} />
 
 </section>
 
