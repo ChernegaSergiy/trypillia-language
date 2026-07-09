@@ -549,3 +549,130 @@ footer {
   }
   .dl-grid dd { text-align: left; }
 }
+
+.docs-layout {
+  grid-template-columns: 260px 1fr;
+  align-items: start;
+  gap: 2.5rem;
+}
+
+.docs-sidebar {
+  position: sticky;
+  top: 80px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.docs-sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.docs-nav-title {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin: 1rem 0 0.35rem;
+  font-weight: 600;
+}
+
+.docs-sidebar a {
+  text-decoration: none;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.docs-sidebar a:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.docs-sidebar a.active {
+  background: var(--border);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.docs-module-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.docs-module-count {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 0 0.45rem;
+  min-width: 1.4rem;
+  text-align: center;
+}
+
+.docs-main {
+  min-width: 0;
+}
+
+.breadcrumb {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.breadcrumb a {
+  color: var(--text-muted);
+}
+
+.pkg-card .code-block {
+  margin: 0.75rem 0;
+}
+
+.func-doc {
+  font-size: 1rem;
+}
+
+.param-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.5rem;
+}
+
+.param-table th,
+.param-table td {
+  text-align: left;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.param-table th {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.param-table td:first-child {
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .docs-layout {
+    grid-template-columns: 1fr;
+  }
+  .docs-sidebar {
+    position: static;
+    max-height: none;
+  }
+}
