@@ -68,7 +68,7 @@ print("Результат: {result}");`}
 			<h3>Встановлення</h3>
 			<p>За допомогою скрипта (Linux/macOS):</p>
 			<div class="code-block" style="border: none; padding: 0;">
-				<code style="border: none; background: transparent; padding: 0.65rem;">curl -sSL https://try.pp.ua/install.sh | sh</code>
+				<code style="border: none; background: transparent; padding: 0.65rem;">curl -sSL https://tryp.pp.ua/install.sh | sh</code>
 			</div>
 		</div>
 
