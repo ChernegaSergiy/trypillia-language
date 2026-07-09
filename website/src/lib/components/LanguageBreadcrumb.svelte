@@ -1,11 +1,13 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import DocsBreadcrumb from '$lib/components/DocsBreadcrumb.svelte';
 
 	let { title }: { title: string } = $props();
 </script>
 
-<nav class="breadcrumb">
-	<a href={`${base}/docs`}>Документація</a> /
-	<a href={`${base}/docs/language`}>Мова Trypillia</a> /
-	<span>{title}</span>
-</nav>
+<DocsBreadcrumb
+	items={[
+		{ href: '/docs', label: 'Документація' },
+		{ href: '/docs/language', label: 'Мова Trypillia' },
+		{ label: title }
+	]}
+/>

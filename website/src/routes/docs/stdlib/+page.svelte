@@ -1,11 +1,19 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import { modules } from '$lib/docs-nav';
+	import DocsBreadcrumb from '$lib/components/DocsBreadcrumb.svelte';
 </script>
 
 <svelte:head>
 	<title>Стандартна бібліотека — Trypillia</title>
 </svelte:head>
+
+<DocsBreadcrumb
+	items={[
+		{ href: '/docs', label: 'Документація' },
+		{ label: 'Стандартна бібліотека' }
+	]}
+/>
 
 <section>
 	<h2>Стандартна бібліотека</h2>

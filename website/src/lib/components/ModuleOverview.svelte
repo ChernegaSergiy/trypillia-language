@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import { getModule } from '$lib/docs-nav';
+	import DocsBreadcrumb from '$lib/components/DocsBreadcrumb.svelte';
 
 	let { slug }: { slug: string } = $props();
 
@@ -12,9 +13,13 @@
 </svelte:head>
 
 {#if module}
-	<nav class="breadcrumb">
-		<a href={`${base}/docs/stdlib`}>Стандартна бібліотека</a> / <span>{module.title}</span>
-	</nav>
+	<DocsBreadcrumb
+		items={[
+			{ href: '/docs', label: 'Документація' },
+			{ href: '/docs/stdlib', label: 'Стандартна бібліотека' },
+			{ label: module.title }
+		]}
+	/>
 
 	<section>
 		<h2>{module.title}</h2>

@@ -1,15 +1,19 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import { languageTopics } from '$lib/docs-nav';
+	import DocsBreadcrumb from '$lib/components/DocsBreadcrumb.svelte';
 </script>
 
 <svelte:head>
 	<title>Мова Trypillia — Документація</title>
 </svelte:head>
 
-<nav class="breadcrumb">
-	<a href={`${base}/docs`}>Документація</a> / <span>Мова Trypillia</span>
-</nav>
+<DocsBreadcrumb
+	items={[
+		{ href: '/docs', label: 'Документація' },
+		{ label: 'Мова Trypillia' }
+	]}
+/>
 
 <section>
 	<h2>Мова Trypillia</h2>

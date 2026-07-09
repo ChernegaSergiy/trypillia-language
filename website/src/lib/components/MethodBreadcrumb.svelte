@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { base } from '$app/paths';
+	import DocsBreadcrumb from '$lib/components/DocsBreadcrumb.svelte';
 
 	let {
 		module,
@@ -8,8 +8,11 @@
 	}: { module: string; title: string; name: string } = $props();
 </script>
 
-<nav class="breadcrumb">
-	<a href={`${base}/docs/stdlib`}>Стандартна бібліотека</a> /
-	<a href={`${base}/docs/stdlib/${module}`}>{title}</a> /
-	<span>{name}</span>
-</nav>
+<DocsBreadcrumb
+	items={[
+		{ href: '/docs', label: 'Документація' },
+		{ href: '/docs/stdlib', label: 'Стандартна бібліотека' },
+		{ href: `/docs/stdlib/${module}`, label: title },
+		{ label: name }
+	]}
+/>
