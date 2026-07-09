@@ -198,8 +198,8 @@ header {
 }
 
 .code-block {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: #24292e;
+  border: 1px solid #404040;
   border-radius: 6px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
@@ -214,9 +214,10 @@ header {
   font-family: var(--mono);
   font-size: 0.85rem;
   line-height: 1.6;
-  color: var(--text);
+  color: #e1e4e8;
   white-space: pre;
   word-break: normal;
+  background: transparent;
 }
 
 .copy-btn {
@@ -531,9 +532,6 @@ footer {
     --black: #f0f0f0;
   }
   
-  .kw, .fn { color: #e8e8e8; }
-  .comment { color: #666666; }
-  
   .btn-primary {
     background: var(--black);
     color: #1a1a1a;
@@ -546,6 +544,17 @@ footer {
   
   .cli-box {
     background: #000000;
+  }
+
+  .code-block {
+    background: #24292e;
+    border-color: #404040;
+  }
+
+  .code-block pre,
+  .code-block code {
+    color: #e1e4e8;
+    background: transparent;
   }
 }
 
