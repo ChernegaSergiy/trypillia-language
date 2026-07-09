@@ -42,12 +42,12 @@ You can install and compile Trypillia quickly using the following one-liners:
 
 **Linux / macOS** (Bash):
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ChernegaSergiy/trypillia-language/main/install.sh | bash
+curl -sSL https://tryp.pp.ua/install.sh | sh
 ```
 
 **Windows** (PowerShell):
 ```powershell
-irm https://raw.githubusercontent.com/ChernegaSergiy/trypillia-language/main/install.ps1 | iex
+irm https://tryp.pp.ua/install.ps1 | iex
 ```
 
 ### Building from Source
