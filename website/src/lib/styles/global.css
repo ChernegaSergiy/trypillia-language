@@ -204,6 +204,7 @@ header {
   overflow-x: auto;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
+  position: relative;
 }
 
 .code-block pre, .code-block code {
@@ -216,6 +217,24 @@ header {
   color: var(--text);
   white-space: pre;
   word-break: normal;
+}
+
+.copy-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.code-block:hover .copy-btn {
+  opacity: 1;
 }
 
 .kw { color: #000000; font-weight: 600; }

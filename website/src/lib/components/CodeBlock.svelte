@@ -1,6 +1,18 @@
 <script lang="ts">
 	let { code = '', lang = 'trypillia' }: { code?: string; lang?: string } = $props();
 
+	let copied = $state(false);
+
+	async function copyCode() {
+		try {
+			await navigator.clipboard.writeText(code);
+			copied = true;
+			setTimeout(() => (copied = false), 1500);
+		} catch {
+			// ignore
+		}
+	}
+
 	const keywords = new Set([
 		'fn', 'let', 'const', 'if', 'else', 'elif', 'return', 'while', 'for', 'loop',
 		'match', 'in', 'as', 'struct', 'enum', 'pub', 'import', 'from', 'true',
@@ -35,5 +47,8 @@
 </script>
 
 <div class="code-block">
+	<button class="copy-btn" onclick={copyCode} aria-label="Копіювати код">
+		{copied ? 'Скопійовано' : 'Копіювати'}
+	</button>
 	<pre><code>{@html lang === 'trypillia' ? highlight(code) : escape_html(code)}</code></pre>
 </div>
