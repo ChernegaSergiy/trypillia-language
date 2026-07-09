@@ -16,7 +16,7 @@
 			<span>{item.label}</span>
 		{/if}
 		{#if i < items.length - 1}
-			<span class="sep">/</span>
+			<span> / </span>
 		{/if}
 	{/each}
 </nav>
