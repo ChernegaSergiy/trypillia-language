@@ -595,16 +595,9 @@ footer {
 
 .docs-nav-chevron {
   flex-shrink: 0;
-  width: 0;
-  height: 0;
-  border-left: 4px solid transparent;
-  border-right: 4px solid transparent;
-  border-top: 5px solid currentColor;
-  transition: transform 0.2s ease;
-}
-
-.docs-nav-chevron.collapsed {
-  transform: rotate(-90deg);
+  font-size: 0.6rem;
+  line-height: 1;
+  color: var(--text-muted);
 }
 
 .docs-nav-group {

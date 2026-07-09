@@ -30,7 +30,7 @@
 				onclick={() => (languageOpen = !languageOpen)}
 			>
 				Мова Trypillia
-				<span class="docs-nav-chevron" class:collapsed={!languageOpen}></span>
+				<span class="docs-nav-chevron">{languageOpen ? '▼' : '▶'}</span>
 			</button>
 			<div class="docs-nav-group" class:collapsed={!languageOpen}>
 				<a href={`${base}/docs/language`} class:active={path === '/docs/language'}>Огляд</a>
@@ -54,7 +54,7 @@
 				onclick={() => (stdlibOpen = !stdlibOpen)}
 			>
 				Стандартна бібліотека
-				<span class="docs-nav-chevron" class:collapsed={!stdlibOpen}></span>
+				<span class="docs-nav-chevron">{stdlibOpen ? '▼' : '▶'}</span>
 			</button>
 			<div class="docs-nav-group" class:collapsed={!stdlibOpen}>
 				<ul class="docs-module-list">
