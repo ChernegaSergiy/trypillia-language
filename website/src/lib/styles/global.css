@@ -594,7 +594,12 @@ footer {
 }
 
 .docs-nav-chevron {
-  font-size: 0.65rem;
+  flex-shrink: 0;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid currentColor;
   transition: transform 0.2s ease;
 }
 
