@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import { modules } from '$lib/docs-nav';
-	import DocsBreadcrumb from '$lib/components/DocsBreadcrumb.svelte';
 
 	const total = modules.reduce((sum, m) => sum + m.methods.length, 0);
 </script>
@@ -9,8 +8,6 @@
 <svelte:head>
 	<title>Документація — Trypillia</title>
 </svelte:head>
-
-<DocsBreadcrumb items={[{ label: 'Документація' }]} />
 
 <section>
 	<h2>Документація Trypillia</h2>
