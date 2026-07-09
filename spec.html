@@ -1,92 +1,48 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="uk">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Специфікація — Trypillia</title>
-<link rel="stylesheet" href="style.css" />
-</head>
-<body>
-
-<header>
-  <div class="header-inner">
-    <a href="index.html" class="wordmark">Trypillia</a>
-    <nav class="main-nav">
-      <a href="docs.html">Документація</a>
-      <a href="spec.html" style="color: var(--text);">Специфікація</a>
-      <a href="packages.html">Пакунки</a>
-      <a href="https://github.com/ChernegaSergiy/trypillia-language">GitHub</a>
-    </nav>
-    <button class="burger" id="burger-btn" aria-label="Меню">
-      <span></span><span></span><span></span>
-    </button>
-  </div>
-  <div class="mobile-menu" id="mobile-menu">
-    <a href="docs.html">Документація</a>
-    <a href="spec.html">Специфікація</a>
-    <a href="packages.html">Пакунки</a>
-    <a href="https://github.com/ChernegaSergiy/trypillia-language">GitHub</a>
-  </div>
-</header>
-
-<div class="container">
-  <main>
-    <section>
-      <h2>Специфікація мови Trypillia</h2>
-      <p>Цей документ описує формальний синтаксис та семантику мови. Призначено для розробників компіляторів, аналізаторів та інструментарію.</p>
-    </section>
-
-    <section>
-      <h2>Лексична структура</h2>
-      <p>Вихідний код Trypillia складається з токенів: ключових слів, ідентифікаторів, літералів, операторів та роздільників.</p>
-      <ul class="list-group">
-        <li><strong>Кодування:</strong> Усі файли повинні бути у форматі UTF-8.</li>
-        <li><strong>Ідентифікатори:</strong> Починаються з літери <code>[a-zA-Z_]</code> і можуть містити цифри.</li>
-      </ul>
-    </section>
-
-    <section>
-      <h2>Граматика (EBNF)</h2>
-      <div class="code-block">
-<pre><code>Program = { Statement } ;
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="text-scale" content="scale" />
+		<link href="./_app/immutable/entry/start.B6C3EumQ.js" rel="modulepreload">
+		<link href="./_app/immutable/chunks/N5Y-wISs.js" rel="modulepreload">
+		<link href="./_app/immutable/chunks/DTuOUFCB.js" rel="modulepreload">
+		<link href="./_app/immutable/entry/app.C8wDtjC5.js" rel="modulepreload">
+		<link href="./_app/immutable/chunks/xihTtKlq.js" rel="modulepreload">
+		<link href="./_app/immutable/nodes/0.DFeCAxpK.js" rel="modulepreload">
+		<link href="./_app/immutable/nodes/7.mScVidJF.js" rel="modulepreload">
+		<link href="./_app/immutable/chunks/CuHhUPNX.js" rel="modulepreload">
+		<!--13cedj8--><!----><title>Специфікація — Trypillia</title>
+		<link href="./_app/immutable/assets/0.NWsVlibb.css" rel="stylesheet">
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents"><!--[--><!--[0--><!--[--><header><div class="header-inner"><a href="./" class="wordmark">Trypillia</a> <nav class="main-nav"><!--[--><a href="./docs">Документація</a><a href="./spec">Специфікація</a><a href="./packages">Пакунки</a><a href="https://github.com/ChernegaSergiy/trypillia-language">GitHub</a><!--]--></nav> <button class="burger" aria-label="Меню"><span></span><span></span><span></span></button></div> <div class="mobile-menu"><!--[--><a href="./docs">Документація</a><a href="./spec">Специфікація</a><a href="./packages">Пакунки</a><a href="https://github.com/ChernegaSergiy/trypillia-language">GitHub</a><!--]--></div></header><!----> <!--[--><div class="container"><main><h2>Специфікація мови Trypillia</h2> <p>Цей документ описує формальний синтаксис та семантику мови. Призначено для розробників компіляторів, аналізаторів та інструментарію.</p> <h2>Лексична структура</h2> <p>Вихідний код Trypillia складається з токенів: ключових слів, ідентифікаторів, літералів, операторів та роздільників.</p> <ul><li><strong>Кодування:</strong> Усі файли повинні бути у форматі UTF-8.</li> <li><strong>Ідентифікатори:</strong> Починаються з літери <code>[a-zA-Z_]</code> і можуть містити цифри.</li></ul> <h2>Граматика (EBNF)</h2> <div class="code-block"><pre><code><!---->Program = { Statement } ;
 Statement = LetStatement | ReturnStatement | ExpressionStatement ;
 LetStatement = "let" Identifier "=" Expression ";" ;
-Expression = Term { ("+" | "-") Term } ;</code></pre>
-      </div>
-    </section>
-  </main>
+Expression = Term { ("+" | "-") Term } ;<!----></code></pre></div><!----></main> <aside><div class="sidebar-section"><h3>Ресурси</h3> <ul class="list-group" style="border: none;"><li style="padding: 0.25rem 0; border: none;"><a href="#">Завантажити PDF</a></li> <li style="padding: 0.25rem 0; border: none;"><a href="#">Процес пропозицій (RFC)</a></li> <li style="padding: 0.25rem 0; border: none;"><a href="#">Історія версій</a></li></ul></div></aside></div><!--]--><!----> <footer><div class="footer-inner"><div>© 2026 Trypillia Authors. Ліцензовано під CSSM Unlimited License v2.0 (CSSM-ULv2).</div> <div class="footer-links"><a href="./privacy">Політика конфіденційності</a> <a href="./conduct">Код поведінки</a></div></div></footer><!----><!--]--><!--]--> <!--[-1--><!--]--><!--]-->
+			
+			<script>
+				{
+					__sveltekit_n2tw2c = {
+						base: new URL(".", location).pathname.slice(0, -1),
+						assets: "/trypillia-language"
+					};
 
-  <aside>
-    <div class="sidebar-section">
-      <h3>Ресурси</h3>
-      <ul class="list-group" style="border: none;">
-        <li style="padding: 0.25rem 0; border: none;"><a href="#">Завантажити PDF</a></li>
-        <li style="padding: 0.25rem 0; border: none;"><a href="#">Процес пропозицій (RFC)</a></li>
-        <li style="padding: 0.25rem 0; border: none;"><a href="#">Історія версій</a></li>
-      </ul>
-    </div>
-  </aside>
-</div>
+					const element = document.currentScript.parentElement;
 
-<footer>
-  <div class="footer-inner">
-    <div>&copy; 2026 Trypillia Authors. Ліцензовано під CSSM Unlimited License v2.0 (CSSM-ULv2).</div>
-    <div class="footer-links">
-      <a href="privacy.html">Політика конфіденційності</a>
-      <a href="conduct.html">Код поведінки</a>
-    </div>
-  </div>
-</footer>
-
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const burgerBtn = document.getElementById('burger-btn');
-    const mobileMenu = document.getElementById('mobile-menu');
-    burgerBtn.addEventListener('click', () => {
-      mobileMenu.classList.toggle('active');
-      document.body.style.overflow = mobileMenu.classList.contains('active') ? 'hidden' : '';
-    });
-  });
-</script>
-</body>
+					Promise.all([
+						import("./_app/immutable/entry/start.B6C3EumQ.js"),
+						import("./_app/immutable/entry/app.C8wDtjC5.js")
+					]).then(([kit, app]) => {
+						kit.start(app, element, {
+							node_ids: [0, 7],
+							data: [null,null],
+							form: null,
+							error: null
+						});
+					});
+				}
+			</script>
+		</div>
+	</body>
 </html>

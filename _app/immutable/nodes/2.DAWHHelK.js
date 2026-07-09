@@ -1,0 +1,13 @@
+import{A as e,D as t,E as n,H as r,M as i,N as a,U as o,c as s,g as c,j as l,o as u,v as d}from"../chunks/DTuOUFCB.js";import{s as f}from"../chunks/N5Y-wISs.js";import"../chunks/xihTtKlq.js";import{t as p}from"../chunks/CuHhUPNX.js";var m=d(`<section class="hero"><div class="hero-inner"><div class="hero-text"><h1 class="hero-title">Мова програмування Trypillia</h1> <p class="hero-desc">Статично типізована мова загального призначення для надійного ПЗ зі
+				зрозумілим синтаксисом та передбачуваною продуктивністю.</p> <div class="hero-actions"><a class="btn btn-primary">Почати роботу</a> <a href="https://github.com/ChernegaSergiy/trypillia-language/releases" class="btn">Завантажити v1.0</a></div></div> <!></div></section> <div class="container"><main><section id="docs"><h2>Швидкий старт</h2> <p>Офіційні посібники та довідники зі стандартної бібліотеки для швидкого занурення.</p> <ul class="list-group"><li><span>Основи синтаксису</span> <a>Читати →</a></li> <li><span>Система типів</span> <a>Читати →</a></li></ul></section> <section id="pkg"><h2>Пакетний менеджер</h2> <p>Створюйте проєкти за допомогою TrypPM.</p> <div class="cli-box"><div><span>$</span> tryppm init my_project</div> <div><span>$</span> cd my_project</div> <div><span>$</span> tryppm run</div></div></section></main> <aside><div class="sidebar-section"><h3>Встановлення</h3> <p>За допомогою скрипта (Linux/macOS):</p> <div class="code-block" style="border: none; padding: 0;"><code style="border: none; background: transparent; padding: 0.65rem;">curl -sSL https://try.pp.ua/install.sh | sh</code></div></div> <div class="sidebar-section"><h3>Реліз v1.0-draft</h3> <dl class="dl-grid"><dt>Версія</dt> <dd>1.0.0-beta.2</dd> <dt>Дата</dt> <dd>24 Жовтня, 2026</dd> <dt>Ліцензія</dt> <dd>CSSM-ULv2</dd></dl></div></aside></div>`,1);function h(d){var h=m();s(`1uha8ag`,t=>{n(()=>{e.title=`Trypillia Programming Language`})});var g=i(h),_=l(g),v=l(_),y=a(l(v),4),b=l(y);r(2),o(y),o(v),p(a(v,2),{code:`// Обчислення числа Фібоначчі
+fn fibonacci(n: Int) -> Int {
+  if n <= 1 {
+    return n;
+  }
+  return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+fn main() {
+  let result = fibonacci(10);
+  print("Результат: {result}");
+}`}),o(_),o(g);var x=a(g,2),S=l(x),C=l(S),w=a(l(C),4),T=l(w),E=a(l(T),2);o(T);var D=a(T,2),O=a(l(D),2);o(D),o(w),o(C),r(2),o(S),r(2),o(x),t(()=>{u(b,`href`,`${f}/docs`),u(E,`href`,`${f}/docs`),u(O,`href`,`${f}/docs`)}),c(d,h)}export{h as component};
