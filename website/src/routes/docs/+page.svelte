@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { base } from '$app/paths';
-	import { modules } from '$lib/stdlib';
+	import { modules } from '$lib/docs-nav';
 
-	const total = modules.reduce((sum, m) => sum + m.functions.length, 0);
+	const total = modules.reduce((sum, m) => sum + m.methods.length, 0);
 </script>
 
 <svelte:head>
@@ -30,13 +30,13 @@
 
 <section>
 	<h2>Стандартна бібліотека</h2>
-	<p>{modules.length} модулів, {total} задокументованих функцій.</p>
+	<p>{modules.length} модулів, {total} задокументованих методів.</p>
 	<div class="pkg-list">
-		{#each modules as m (m.name)}
+		{#each modules as m (m.slug)}
 			<div class="pkg-card">
 				<div class="pkg-header">
-					<a href={`${base}/docs/stdlib/${m.name}`} class="pkg-title">{m.name}</a>
-					<code>{m.functions.length}</code>
+					<a href={`${base}/docs/stdlib/${m.slug}`} class="pkg-title">{m.title}</a>
+					<code>{m.methods.length}</code>
 				</div>
 				<p class="pkg-desc">{m.description}</p>
 			</div>

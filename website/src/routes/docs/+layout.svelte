@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { base } from '$app/paths';
-	import { modules } from '$lib/stdlib';
+	import { modules } from '$lib/docs-nav';
 
 	let { children } = $props();
 
@@ -16,14 +16,14 @@
 
 			<p class="docs-nav-title">Стандартна бібліотека</p>
 			<ul class="docs-module-list">
-				{#each modules as m (m.name)}
+				{#each modules as m (m.slug)}
 					<li>
 						<a
-							href={`${base}/docs/stdlib/${m.name}`}
-							class:active={path.startsWith(`/docs/stdlib/${m.name}`)}
+							href={`${base}/docs/stdlib/${m.slug}`}
+							class:active={path.startsWith(`/docs/stdlib/${m.slug}`)}
 						>
-							{m.name}
-							<span class="docs-module-count">{m.functions.length}</span>
+							{m.title}
+							<span class="docs-module-count">{m.methods.length}</span>
 						</a>
 					</li>
 				{/each}
